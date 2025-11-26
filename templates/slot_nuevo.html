@@ -1,0 +1,51 @@
+﻿{% extends "base.html" %}
+{% block title %}Nuevo Slot - {{ ubicacion.nombre }}{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Nuevo Slot</h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Ubicación: <span class="font-semibold">{{ ubicacion.nombre }}</span><br>
+            Zona: <span class="font-semibold">{{ ubicacion.zona.nombre }}</span>
+        </p>
+
+        {% if error %}
+        <div class="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/ubicaciones/{{ ubicacion.id }}/slots/nuevo" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Código del slot</label>
+                <input type="text"
+                       name="codigo"
+                       required
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       placeholder="Ej: C1, C2, A3"
+                       value="{{ codigo if codigo is defined else '' }}" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Capacidad (opcional)</label>
+                <input type="number"
+                       name="capacidad"
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       placeholder="Ej: 10"
+                       value="{{ capacidad if capacidad is defined else '' }}" />
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-[0.98]">
+                Guardar slot
+            </button>
+        </form>
+
+        <a href="/ubicaciones/{{ ubicacion.id }}/slots"
+           class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver a slots
+        </a>
+    </div>
+</div>
+{% endblock %}

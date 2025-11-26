@@ -1,0 +1,44 @@
+﻿{% extends "base.html" %}
+{% block title %}Nueva zona - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-3">Nueva zona</h2>
+
+        {% if error %}
+        <div class="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/zonas/nueva" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la zona</label>
+                <input type="text"
+                       name="nombre"
+                       required
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Ej: Despensa, Refrigerador, Freezer"
+                       value="{{ nombre if nombre is defined else '' }}" />
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-gray-700">Sigla</label>
+                <input name="sigla" class="w-full rounded-xl border px-3 py-2 text-sm"
+                       placeholder="Ej: D (para Despensa), R (Refrigerador)">
+            </div>
+
+
+            <button type="submit"
+                    class="w-full bg-emerald-600 text-white font-semibold py-2 rounded-xl hover:bg-emerald-700 active:scale-[0.98]">
+                Guardar zona
+            </button>
+        </form>
+
+        <a href="/zonas" class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver al listado
+        </a>
+    </div>
+</div>
+{% endblock %}

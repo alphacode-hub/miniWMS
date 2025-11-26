@@ -1,0 +1,58 @@
+﻿{% extends "base.html" %}
+{% block title %}Slots - {{ ubicacion.nombre }}{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">
+            Slots en {{ ubicacion.nombre }}
+        </h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Zona: <span class="font-semibold">{{ ubicacion.zona.nombre }}</span>
+        </p>
+
+        <a href="/ubicaciones/{{ ubicacion.id }}/slots/nuevo"
+           class="inline-flex items-center justify-center mb-3 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98]">
+            + Nuevo Slot
+        </a>
+
+        {% if slots|length == 0 %}
+        <p class="text-sm text-gray-500 mt-2">
+            No hay slots definidos en esta ubicación.
+        </p>
+        {% else %}
+        <div class="mt-2 max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 sticky top-0">
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="py-1 px-2">Código</th>
+                        <th class="py-1 px-2">Capacidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in slots %}
+                    <tr class="border-b last:border-0">
+                        <td class="py-1 px-2 font-semibold text-gray-800">
+                            {{ s.codigo }}
+                        </td>
+                        <td class="py-1 px-2 text-gray-600">
+                            {% if s.capacidad %}
+                            {{ s.capacidad }}
+                            {% else %}
+                            <span class="text-gray-300">n/d</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
+           class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver a ubicaciones
+        </a>
+    </div>
+</div>
+{% endblock %}

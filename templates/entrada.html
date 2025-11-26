@@ -1,0 +1,122 @@
+﻿{% extends "base.html" %}
+{% block title %}Registrar entrada - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">
+                Registrar entrada
+            </h1>
+            <p class="text-xs text-gray-500">
+                Ingreso de mercadería para <span class="font-semibold">{{ user.negocio }}</span>.
+            </p>
+        </div>
+        <a href="/dashboard"
+           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+            ← Volver al menú
+        </a>
+    </div>
+
+    <!-- Tarjeta formulario -->
+    <div class="bg-white shadow-lg rounded-2xl p-4 space-y-4">
+
+        <!-- Error -->
+        {% if error %}
+        <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+            <p class="text-[11px] text-red-700">
+                {{ error }}
+            </p>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/movimientos/entrada" class="space-y-4">
+
+            <!-- Producto -->
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Producto
+                </label>
+                <select name="producto"
+                        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    {% for p in productos %}
+                    <option value="{{ p.nombre }}">
+                        {{ p.nombre }} ({{ p.unidad }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="text-[10px] text-gray-400">
+                    Los productos se configuran en el módulo de <span class="font-semibold">Productos</span>.
+                </p>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Cantidad
+                </label>
+                <input type="number"
+                       name="cantidad"
+                       min="1"
+                       required
+                       inputmode="numeric"
+                       placeholder="1"
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+
+            <!-- Ubicación / Slot -->
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Ubicación (zona / repisa / slot)
+                </label>
+                <select name="slot_id"
+                        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    {% for s in slots %}
+                    <option value="{{ s.id }}">
+                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="text-[10px] text-gray-400">
+                    Los slots se configuran en <span class="font-semibold">Zonas &gt; Ubicaciones &gt; Slots</span>.
+                </p>
+            </div>
+
+            <!-- Fecha de vencimiento -->
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Fecha de vencimiento (opcional)
+                </label>
+                <input type="date"
+                       name="fecha_vencimiento"
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="text-[10px] text-gray-400">
+                    Si el producto no tiene vencimiento claro, puedes dejar este campo vacío.
+                </p>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+                <a href="/dashboard"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                    Registrar entrada
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Volver (móvil) -->
+    <a href="/dashboard"
+       class="block text-center text-xs text-gray-500 sm:hidden">
+        ← Volver al menú
+    </a>
+
+</div>
+{% endblock %}

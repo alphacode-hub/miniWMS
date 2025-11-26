@@ -1,0 +1,330 @@
+﻿{% extends "base.html" %}
+{% block title %}Panel - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header superior: negocio + usuario + logout -->
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500">Negocio</p>
+            <p class="text-sm font-semibold text-gray-800">
+                {{ user.negocio }}
+            </p>
+            <p class="text-[11px] text-gray-500">
+                Usuario: {{ user.email }}
+            </p>
+        </div>
+        <a href="/logout"
+           class="text-xs text-red-500 border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">
+            Cerrar sesión
+        </a>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="bg-white shadow-lg rounded-2xl p-4">
+        <h2 class="text-lg font-bold mb-3">Acciones rápidas</h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Piensa en esto como el terminal del WMS: pocos botones, grandes y pensados para usar desde el celular.
+        </p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <!-- Nuevo producto -->
+            <a href="/productos/nuevo"
+               class="flex flex-col items-center justify-center bg-green-500 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">➕</span>
+                <span class="text-sm font-semibold">Nuevo producto</span>
+                <span class="text-[11px] opacity-80">Agregar SKU</span>
+            </a>
+
+            <!-- Entrada -->
+            <a href="/movimientos/entrada"
+               class="flex flex-col items-center justify-center bg-emerald-500 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">📦</span>
+                <span class="text-sm font-semibold">Entrada</span>
+                <span class="text-[11px] opacity-80">Ingreso mercadería</span>
+            </a>
+
+            <!-- Salida -->
+            <a href="/movimientos/salida"
+               class="flex flex-col items-center justify-center bg-blue-500 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">📤</span>
+                <span class="text-sm font-semibold">Salida</span>
+                <span class="text-[11px] opacity-80">Venta / consumo</span>
+            </a>
+
+            <!-- Inventario -->
+            <a href="/inventario"
+               class="flex flex-col items-center justify-center bg-amber-500 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">✅</span>
+                <span class="text-sm font-semibold">Inventario</span>
+                <span class="text-[11px] opacity-80">Conteo físico</span>
+            </a>
+
+            <!-- Stock -->
+            <a href="/stock"
+               class="flex flex-col items-center justify-center bg-slate-700 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">📊</span>
+                <span class="text-sm font-semibold">Stock</span>
+                <span class="text-[11px] opacity-80">Ver existencias</span>
+            </a>
+
+            <!-- Transferencia -->
+            <a href="/transferencia"
+               class="flex flex-col items-center justify-center bg-indigo-500 text-white rounded-2xl py-4 active:scale-[0.97] transition">
+                <span class="text-2xl mb-1">↔️</span>
+                <span class="text-sm font-semibold">Transferir</span>
+                <span class="text-[11px] opacity-80">Mover entre slots</span>
+            </a>
+        </div>
+
+        <!-- Links secundarios -->
+        <div class="mt-4 flex flex-col sm:flex-row sm:justify-between gap-2 text-center">
+            <a href="/movimientos/historial"
+               class="text-xs text-indigo-600 underline">
+                Ver historial de movimientos
+            </a>
+            <a href="/zonas"
+               class="text-[11px] text-slate-500 underline">
+                Configurar zonas de almacenamiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Panel de control / métricas -->
+    <div class="space-y-4">
+
+        <!-- Título + shortcuts -->
+        <div class="flex items-center justify-between mt-2">
+            <div>
+                <h1 class="text-xl font-bold text-gray-800">
+                    Panel de control
+                </h1>
+                <p class="text-xs text-gray-500">
+                    Resumen operativo de tu inventario y movimientos recientes.
+                </p>
+            </div>
+            <div class="hidden sm:flex gap-2">
+                <a href="/movimientos/entrada"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700">
+                    + Entrada
+                </a>
+                <a href="/movimientos/salida"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+                    - Salida
+                </a>
+                <a href="/transferencia"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-sky-600 text-white hover:bg-sky-700">
+                    ↔ Transferencia
+                </a>
+            </div>
+        </div>
+
+        <!-- 1. Tarjetas resumen -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="bg-white shadow rounded-2xl px-3 py-2">
+                <div class="text-[11px] text-gray-500 font-semibold">SKUs distintos</div>
+                <div class="text-xl font-bold text-gray-900">{{ total_skus }}</div>
+                <div class="text-[10px] text-gray-400 mt-1">
+                    Productos registrados
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-2xl px-3 py-2">
+                <div class="text-[11px] text-gray-500 font-semibold">Unidades totales</div>
+                <div class="text-xl font-bold text-gray-900">{{ total_unidades }}</div>
+                <div class="text-[10px] text-gray-400 mt-1">
+                    Suma de stock positivo
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-2xl px-3 py-2">
+                <div class="text-[11px] text-gray-500 font-semibold">Críticos</div>
+                <div class="text-xl font-bold text-red-700">{{ resumen_stock["Crítico"] }}</div>
+                <div class="text-[10px] text-red-500 mt-1">
+                    Bajo stock mínimo
+                </div>
+            </div>
+
+            <div class="bg-white shadow rounded-2xl px-3 py-2">
+                <div class="text-[11px] text-gray-500 font-semibold">Sobre-stock</div>
+                <div class="text-xl font-bold text-amber-700">{{ resumen_stock["Sobre-stock"] }}</div>
+                <div class="text-[10px] text-amber-500 mt-1">
+                    Sobre stock máximo
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Vencimientos -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div class="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-red-700 font-semibold">Vencido</div>
+                <div class="text-lg font-bold text-red-800">{{ resumen_venc["Vencido"] }}</div>
+            </div>
+            <div class="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-orange-700 font-semibold">&lt;7 días</div>
+                <div class="text-lg font-bold text-orange-800">{{ resumen_venc["<7"] }}</div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-amber-700 font-semibold">&lt;15 días</div>
+                <div class="text-lg font-bold text-amber-800">{{ resumen_venc["<15"] }}</div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-yellow-700 font-semibold">&lt;30 días</div>
+                <div class="text-lg font-bold text-yellow-800">{{ resumen_venc["<30"] }}</div>
+            </div>
+            <div class="bg-lime-50 border border-lime-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-lime-700 font-semibold">&lt;60 días</div>
+                <div class="text-lg font-bold text-lime-800">{{ resumen_venc["<60"] }}</div>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-emerald-700 font-semibold">Normal</div>
+                <div class="text-lg font-bold text-emerald-800">{{ resumen_venc["Normal"] }}</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                <div class="text-[11px] text-slate-700 font-semibold">Sin fecha</div>
+                <div class="text-lg font-bold text-slate-800">{{ resumen_venc["Sin fecha"] }}</div>
+            </div>
+        </div>
+
+        <!-- 3. Gráfico Entradas vs Salidas -->
+        <div class="bg-white shadow rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-800">
+                        Movimientos últimos 7 días
+                    </h2>
+                    <p class="text-[11px] text-gray-500">
+                        Entradas vs salidas diarias.
+                    </p>
+                </div>
+                <a href="/movimientos" class="text-[11px] text-indigo-600 hover:underline">
+                    Ver detalle
+                </a>
+            </div>
+            <div class="h-48">
+                <canvas id="chartMovimientos"></canvas>
+            </div>
+        </div>
+
+        <!-- 4. Últimos movimientos -->
+        <div class="bg-white shadow rounded-2xl p-4 mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-gray-800">
+                    Últimos movimientos
+                </h2>
+                <a href="/movimientos" class="text-[11px] text-indigo-600 hover:underline">
+                    Ver todos
+                </a>
+            </div>
+
+            {% if movimientos_recientes|length == 0 %}
+            <p class="text-xs text-gray-500">Todavía no hay movimientos registrados.</p>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead class="bg-slate-50">
+                        <tr class="text-left text-gray-500 border-b">
+                            <th class="py-1.5 px-2">Fecha</th>
+                            <th class="py-1.5 px-2">Tipo</th>
+                            <th class="py-1.5 px-2">Producto</th>
+                            <th class="py-1.5 px-2 text-right">Cantidad</th>
+                            <th class="py-1.5 px-2">Ubicación</th>
+                            <th class="py-1.5 px-2">Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movimientos_recientes %}
+                        <tr class="border-b last:border-0">
+                            <td class="py-1.5 px-2 align-top">
+                                <div class="text-[11px] text-gray-800">
+                                    {{ m.fecha.strftime("%Y-%m-%d") }}
+                                </div>
+                                <div class="text-[10px] text-gray-400">
+                                    {{ m.fecha.strftime("%H:%M") }}
+                                </div>
+                            </td>
+                            <td class="py-1.5 px-2 align-top">
+                                <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                    {% if m.tipo == 'entrada' %}
+                      bg-emerald-100 text-emerald-700
+                    {% elif m.tipo == 'salida' %}
+                      bg-indigo-100 text-indigo-700
+                    {% elif m.tipo == 'ajuste' %}
+                      bg-amber-100 text-amber-700
+                    {% else %}
+                      bg-slate-100 text-slate-700
+                    {% endif %}
+                  ">
+                                    {{ m.tipo|capitalize }}
+                                </span>
+                            </td>
+                            <td class="py-1.5 px-2 align-top">
+                                <div class="text-[11px] text-gray-800">{{ m.producto }}</div>
+                            </td>
+                            <td class="py-1.5 px-2 text-right align-top">
+                                <span class="text-[11px] text-gray-800">{{ m.cantidad }}</span>
+                            </td>
+                            <td class="py-1.5 px-2 align-top">
+                                <div class="font-mono text-[10px] text-slate-800">
+                                    {{ m.zona }}
+                                </div>
+                            </td>
+                            <td class="py-1.5 px-2 align-top">
+                                <div class="text-[11px] text-gray-700">{{ m.usuario }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const chartData = {{ chart_data_json | safe }};
+
+  const ctx = document.getElementById('chartMovimientos').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartData.labels,
+      datasets: [
+        {
+          label: 'Entradas',
+          data: chartData.entradas,
+          tension: 0.3,
+        },
+        {
+          label: 'Salidas',
+          data: chartData.salidas,
+          tension: 0.3,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { font: { size: 10 } }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 9 } } },
+        y: {
+          ticks: { font: { size: 9 } },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

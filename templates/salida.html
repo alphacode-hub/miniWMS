@@ -1,0 +1,67 @@
+﻿{% extends "base.html" %}
+{% block title %}Salida - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Registrar Salida</h2>
+
+        {% if error %}
+        <div class="mb-4 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/movimientos/salida" class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                <select name="producto"
+                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    {% for p in productos %}
+                    <option value="{{ p.nombre }}"
+                            {% if producto is defined and producto == p.nombre %}selected{% endif %}>
+                        {{ p.nombre }} ({{ p.unidad }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <input type="number"
+                       name="cantidad"
+                       min="1"
+                       required
+                       class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       placeholder="1"
+                       value="{{ cantidad if cantidad is defined else '' }}" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+                <select name="slot_id"
+                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    {% for s in slots %}
+                    <option value="{{ s.id }}">
+                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                    </option>
+
+                    {% endfor %}
+                </select>
+            </div>
+
+
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white font-semibold py-2 rounded-xl hover:bg-blue-700 active:scale-[0.98]">
+                Registrar salida
+            </button>
+        </form>
+
+        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver al menú
+        </a>
+    </div>
+</div>
+{% endblock %}

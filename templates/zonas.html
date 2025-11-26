@@ -1,0 +1,56 @@
+﻿{% extends "base.html" %}
+{% block title %}Zonas - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-2">Zonas de almacenamiento</h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Aquí defines las zonas principales de tu almacén (ej: Despensa, Refrigerador, Freezer).
+        </p>
+
+        <a href="/zonas/nueva"
+           class="inline-flex items-center justify-center mb-3 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]">
+            + Nueva zona
+        </a>
+
+        {% if zonas|length == 0 %}
+        <p class="text-sm text-gray-500 mt-2">
+            Aún no tienes zonas definidas. Comienza creando una, por ejemplo "Despensa".
+        </p>
+        {% else %}
+        <div class="mt-2 max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 sticky top-0">
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="py-1 px-2">Nombre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for z in zonas %}
+                    <tr class="border-b last:border-0">
+                        <td class="py-1 px-2 align-top">
+                            <div class="font-semibold text-gray-800">
+                                {{ z.nombre }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 mb-1">
+                                ID: {{ z.id }}
+                            </div>
+                            <a href="/zonas/{{ z.id }}/ubicaciones"
+                               class="inline-flex items-center px-2 py-[3px] rounded-lg text-[11px] bg-slate-100 text-slate-700 hover:bg-slate-200">
+                                Configurar ubicaciones
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver al menú
+        </a>
+    </div>
+</div>
+{% endblock %}

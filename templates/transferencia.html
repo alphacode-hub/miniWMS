@@ -1,0 +1,84 @@
+﻿{% extends "base.html" %}
+{% block title %}Transferencia - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">
+            Transferencia entre slots
+        </h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Mueve stock de un slot a otro sin alterar el stock total del producto.
+        </p>
+
+        {% if error %}
+        <div class="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/transferencia" class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                <select name="producto"
+                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    {% for p in productos %}
+                    <option value="{{ p.nombre }}"
+                            {% if producto is defined and producto == p.nombre %}selected{% endif %}>
+                        {{ p.nombre }} ({{ p.unidad }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Slot origen</label>
+                    <select name="slot_origen_id"
+                            class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                        {% for s in slots %}
+                        <option value="{{ s.id }}"
+                                {% if slot_origen_id is defined and slot_origen_id == s.id %}selected{% endif %}>
+                            {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Slot destino</label>
+                    <select name="slot_destino_id"
+                            class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                        {% for s in slots %}
+                        <option value="{{ s.id }}"
+                                {% if slot_destino_id is defined and slot_destino_id == s.id %}selected{% endif %}>
+                            {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <input type="number"
+                       name="cantidad"
+                       min="1"
+                       required
+                       class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       value="{{ cantidad if cantidad is defined and cantidad != '' else 1 }}" />
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-[0.98]">
+                Ejecutar transferencia
+            </button>
+        </form>
+
+        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver al menú
+        </a>
+    </div>
+</div>
+{% endblock %}

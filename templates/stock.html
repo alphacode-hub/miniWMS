@@ -1,0 +1,245 @@
+﻿{% extends "base.html" %}
+{% block title %}Stock - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header simple -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">
+                Stock
+            </h1>
+            <p class="text-xs text-gray-500">
+                Estado de productos por ubicación, mínimos/máximos y vencimientos.
+            </p>
+        </div>
+        <a href="/dashboard"
+           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+            ← Volver al dashboard
+        </a>
+    </div>
+
+    <!-- Tarjetas resumen -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div class="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            <div class="text-[11px] text-red-700 font-semibold">Crítico</div>
+            <div class="text-lg font-bold text-red-800">
+                {{ resumen["Crítico"] }}
+            </div>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+            <div class="text-[11px] text-emerald-700 font-semibold">OK</div>
+            <div class="text-lg font-bold text-emerald-800">
+                {{ resumen["OK"] }}
+            </div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            <div class="text-[11px] text-amber-700 font-semibold">Sobre-stock</div>
+            <div class="text-lg font-bold text-amber-800">
+                {{ resumen["Sobre-stock"] }}
+            </div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <div class="text-[11px] text-slate-700 font-semibold">Sin config.</div>
+            <div class="text-lg font-bold text-slate-800">
+                {{ resumen["Sin configuración"] }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="bg-white shadow rounded-2xl p-3 space-y-3">
+        <!-- Fila 1: producto + zona -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Producto
+                </label>
+                <input type="text"
+                       name="producto"
+                       placeholder="Ej: pan, yogurt..."
+                       value="{{ f_producto }}"
+                       class="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Zona
+                </label>
+                <select name="zona"
+                        class="w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="">Todas</option>
+                    {% for z in zonas_list %}
+                    <option value="{{ z }}" {% if f_zona == z %}selected{% endif %}>
+                        {{ z }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Fila 2: estado + vencimiento -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Estado stock
+                </label>
+                <select name="estado"
+                        class="w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="">Todos</option>
+                    {% for e in estados_list %}
+                    <option value="{{ e }}" {% if f_estado == e %}selected{% endif %}>
+                        {{ e }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700">
+                    Vencimiento
+                </label>
+                <select name="vencimiento"
+                        class="w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="">Todos</option>
+                    {% for v in venc_list %}
+                    <option value="{{ v }}" {% if f_vencimiento == v %}selected{% endif %}>
+                        {{ v }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+            <button type="submit"
+                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                Aplicar filtros
+            </button>
+            <a href="/stock"
+               class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    <!-- Tabla de stock -->
+    <div class="bg-white shadow-lg rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h2 class="text-sm font-bold text-gray-800">Stock por ubicación</h2>
+                <p class="text-xs text-gray-500">
+                    Vista por producto y slot, con estado vs mínimos, % de ocupación y caducidad.
+                </p>
+            </div>
+            <a href="/dashboard" class="hidden sm:inline text-[11px] text-slate-500 hover:underline">
+                ← Volver al menú
+            </a>
+        </div>
+
+        {% if filas|length == 0 %}
+        <p class="text-xs text-gray-500">
+            No se encontraron registros con los filtros actuales.
+        </p>
+        {% else %}
+        <div class="overflow-x-auto max-h-[480px] border border-slate-200 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 sticky top-0 z-10">
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="py-1.5 px-2">Producto</th>
+                        <th class="py-1.5 px-2">Unidad</th>
+                        <th class="py-1.5 px-2">Zona</th>
+                        <th class="py-1.5 px-2">Ubicación</th>
+                        <th class="py-1.5 px-2">Slot</th>
+                        <th class="py-1.5 px-2 text-right">Stock slot</th>
+                        <th class="py-1.5 px-2 text-right">Stock total</th>
+                        <th class="py-1.5 px-2 text-right">Min</th>
+                        <th class="py-1.5 px-2 text-right">Max</th>
+                        <th class="py-1.5 px-2">Estado</th>
+                        <th class="py-1.5 px-2 text-right">% ocup.</th>
+                        <th class="py-1.5 px-2">Vencimiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in filas %}
+                    <tr class="border-b last:border-0">
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-800">{{ r.producto }}</div>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-700">{{ r.unidad }}</div>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-700">{{ r.zona_nombre }}</div>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-700">{{ r.ubicacion_nombre }}</div>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="font-mono text-[10px] text-slate-800">
+                                {{ r.codigo_full }}
+                            </div>
+                        </td>
+                        <td class="py-1.5 px-2 text-right align-top">
+                            <span class="text-[11px] text-gray-800">
+                                {{ r.cantidad }}
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-right align-top">
+                            <span class="text-[11px] text-gray-800">
+                                {{ r.stock_total }}
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-right align-top">
+                            <span class="text-[11px] text-gray-700">
+                                {{ r.stock_min if r.stock_min is not none else "-" }}
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-right align-top">
+                            <span class="text-[11px] text-gray-700">
+                                {{ r.stock_max if r.stock_max is not none else "-" }}
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold {{ r.estado_css }}">
+                                {{ r.estado }}
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-right align-top">
+                            {% if r.ocupacion_pct is not none %}
+                            <span class="text-[11px] text-gray-800">
+                                {{ r.ocupacion_pct }}%
+                            </span>
+                            {% else %}
+                            <span class="text-[11px] text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-800">
+                                {% if r.vencimiento_fecha %}
+                                {{ r.vencimiento_fecha.strftime("%Y-%m-%d") }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </div>
+                            <div class="mt-0.5">
+                                <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold {{ r.vencimiento_css }}">
+                                    {{ r.vencimiento_estado }}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Link volver en móvil -->
+        <a href="/dashboard" class="mt-4 block text-center text-xs text-slate-500 sm:hidden">
+            ← Volver al menú
+        </a>
+    </div>
+
+</div>
+{% endblock %}

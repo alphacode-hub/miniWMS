@@ -1,0 +1,65 @@
+﻿{% extends "base.html" %}
+{% block title %}Historial - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
+        <h2 class="text-lg font-bold text-gray-800 mb-3">Historial de movimientos</h2>
+        <p class="text-xs text-gray-500 mb-3">
+            Mostrando los últimos movimientos del negocio: <span class="font-semibold">{{ user.negocio }}</span>
+        </p>
+
+        {% if movimientos|length == 0 %}
+        <p class="text-sm text-gray-500">Aún no hay movimientos registrados.</p>
+        {% else %}
+        <div class="max-h-80 overflow-y-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="py-1 pr-1">Fecha</th>
+                        <th class="py-1 pr-1">Tipo</th>
+                        <th class="py-1 pr-1">Producto</th>
+                        <th class="py-1 pr-1 text-right">Cant.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimientos %}
+                    <tr class="border-b last:border-0">
+                        <td class="py-1 pr-1 align-top">
+                            {{ m.fecha.strftime("%d-%m %H:%M") if m.fecha else "" }}
+                        </td>
+                        <td class="py-1 pr-1 align-top">
+                            {% if m.tipo == "salida" %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full bg-blue-50 text-blue-700">
+                                salida
+                            </span>
+                            {% elif m.tipo == "entrada" %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full bg-emerald-50 text-emerald-700">
+                                entrada
+                            </span>
+                            {% else %}
+                            {{ m.tipo }}
+                            {% endif %}
+                        </td>
+                        <td class="py-1 pr-1 align-top">
+                            <div class="font-semibold text-gray-800">{{ m.producto }}</div>
+                            <div class="text-[10px] text-gray-500">{{ m.zona }}</div>
+                        </td>
+                        <td class="py-1 pl-1 text-right align-top">
+                            {{ m.cantidad }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
+            ← Volver al menú
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+
