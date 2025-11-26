@@ -2,79 +2,102 @@
 {% block title %}Inventario - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
-        <h2 class="text-lg font-bold text-gray-800 mb-2">Conteo físico</h2>
-        <p class="text-xs text-gray-500 mb-3">
-            Negocio: <span class="font-semibold">{{ user.negocio }}</span>
-        </p>
+<div class="w-full max-w-md mx-auto px-4 py-4 space-y-4">
 
-
-        {% if stock_items|length == 0 %}
-        <p class="text-sm text-gray-500">
-            Aún no hay productos con movimientos para inventariar.
-        </p>
-        {% else %}
-        <form method="post" action="/inventario" class="space-y-3">
-            <input type="hidden" name="total_items" value="{{ stock_items|length }}" />
-
-            <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
-                <table class="w-full text-xs">
-                    <thead class="bg-slate-50 sticky top-0">
-                        <tr class="text-left text-gray-500 border-b">
-                            <th class="py-1 px-2">Producto</th>
-                            <th class="py-1 px-2">Zona</th>
-                            <th class="py-1 px-2 text-right">Teórico</th>
-                            <th class="py-1 px-2 text-right">Conteo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in stock_items %}
-                        {% set idx = loop.index0 %}
-                        <tr class="border-b last:border-0">
-                            <td class="py-1 px-2 align-top">
-                                <div class="font-semibold text-gray-800">
-                                    {{ item.producto }}
-                                </div>
-                            </td>
-                            <td class="py-1 px-2 align-top">
-                                <span class="inline-flex px-2 py-[2px] rounded-full bg-slate-100 text-slate-700">
-                                    {{ item.zona }}
-                                </span>
-                            </td>
-                            <td class="py-1 px-2 text-right align-top">
-                                {{ item.stock_actual }}
-                            </td>
-                            <td class="py-1 px-2 text-right align-top">
-                                <input type="hidden"
-                                       name="producto_{{ idx }}"
-                                       value="{{ item.producto }}" />
-                                <input type="hidden"
-                                       name="zona_{{ idx }}"
-                                       value="{{ item.zona }}" />
-                                <input type="number"
-                                       name="conteo_{{ idx }}"
-                                       class="w-16 text-right border border-slate-300 rounded-lg px-1 py-[2px] focus:ring-1 focus:ring-amber-500"
-                                       value="{{ item.stock_actual }}"
-                                       min="0" />
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <button type="submit"
-                    class="w-full bg-amber-500 text-white font-semibold py-2 rounded-xl hover:bg-amber-600 active:scale-[0.98]">
-                Registrar ajustes de inventario
-            </button>
-        </form>
-        {% endif %}
-
-        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
-            ← Volver al menú
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">
+                Inventario físico
+            </h1>
+            <p class="text-xs text-gray-500">
+                Compara el stock teórico con el conteo real en bodega.
+            </p>
+        </div>
+        <a href="/dashboard"
+           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+            ← Dashboard
         </a>
     </div>
+
+    <!-- Tarjeta principal -->
+    <div class="bg-white shadow-lg rounded-2xl p-4 space-y-4">
+
+        {% if stock_items|length == 0 %}
+        <p class="text-xs text-gray-500">
+            No hay productos con movimientos aún. Registra entradas primero para poder hacer inventario.
+        </p>
+        {% else %}
+
+        <p class="text-[11px] text-gray-500">
+            Para cada producto/ubicación, ingresa el <span class="font-semibold">conteo físico</span>.
+            El sistema calculará automáticamente los ajustes necesarios.
+        </p>
+
+        <form method="post" action="/inventario" class="space-y-3">
+
+            <!-- total_items para el backend -->
+            <input type="hidden" name="total_items" value="{{ stock_items|length }}" />
+
+            <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                {% for item in stock_items %}
+                {% set i = loop.index0 %}
+                <!-- Fila de conteo -->
+                <div class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
+                    <!-- Hidden fields para el backend -->
+                    <input type="hidden" name="producto_{{ i }}" value="{{ item.producto }}">
+                    <input type="hidden" name="zona_{{ i }}" value="{{ item.zona }}">
+
+                    <div class="flex justify-between items-start gap-2">
+                        <div>
+                            <div class="text-[11px] font-semibold text-gray-800">
+                                {{ item.producto }}
+                            </div>
+                            <div class="text-[10px] text-slate-500">
+                                Ubicación: <span class="font-mono">{{ item.zona }}</span>
+                            </div>
+                            <div class="mt-1 text-[10px] text-gray-500">
+                                Stock teórico:
+                                <span class="font-semibold text-slate-800">{{ item.stock_actual }}</span>
+                            </div>
+                        </div>
+                        <div class="w-20">
+                            <label class="block text-[10px] text-gray-500 mb-1">
+                                Conteo
+                            </label>
+                            <input type="number"
+                                   name="conteo_{{ i }}"
+                                   min="0"
+                                   class="w-full rounded-lg border border-gray-300 px-2 py-1 text-[11px] text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                   placeholder="{{ item.stock_actual }}" />
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+                <a href="/dashboard"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                    Registrar ajustes
+                </button>
+            </div>
+
+        </form>
+
+        {% endif %}
+    </div>
+
+    <!-- Volver (móvil) -->
+    <a href="/dashboard"
+       class="block text-center text-xs text-gray-500 sm:hidden">
+        ← Volver al dashboard
+    </a>
 
 </div>
 {% endblock %}

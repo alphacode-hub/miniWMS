@@ -1,53 +1,84 @@
 ﻿{% extends "base.html" %}
-{% block title %}Login - Mini WMS{% endblock %}
+{% block title %}Iniciar sesión - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center">
-    <div class="bg-white shadow-lg rounded-2xl p-6 w-full max-w-sm mx-auto px-4">
-        <h1 class="text-2xl font-bold text-center mb-2">Mini WMS</h1>
-        <p class="text-center text-sm text-gray-500 mb-6">
-            Inicia sesión para continuar
+<div class="w-full max-w-md mx-auto px-4 py-8">
+
+    <!-- Logo / título -->
+    <div class="mb-6 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 text-white mb-2">
+            <span class="text-lg font-bold">W</span>
+        </div>
+        <h1 class="text-xl font-bold text-slate-900">Mini WMS</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Control simple de inventario desde tu celular.
+        </p>
+    </div>
+
+    <!-- Tarjeta de login -->
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
+        <h2 class="text-sm font-semibold text-slate-800">
+            Inicia sesión en tu bodega
+        </h2>
+        <p class="text-[11px] text-slate-500">
+            Usa tu correo y contraseña asignados para acceder al sistema.
         </p>
 
         {% if error %}
-        <div class="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
             {{ error }}
         </div>
         {% endif %}
 
         <form method="post" action="/login" class="space-y-4">
+
+            <!-- Correo -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="email">
-                    Correo
+                <label for="email" class="block text-xs font-medium text-slate-700 mb-1">
+                    Correo electrónico
                 </label>
                 <input id="email"
                        name="email"
                        type="email"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                       placeholder="trabajador1@negocio.cl" />
+                       autocomplete="username"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="t1@t1.cl" />
             </div>
 
+            <!-- Contraseña -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="password">
+                <label for="password" class="block text-xs font-medium text-slate-700 mb-1">
                     Contraseña
                 </label>
                 <input id="password"
                        name="password"
                        type="password"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                       placeholder="***********" />
+                       autocomplete="current-password"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="••••••••" />
             </div>
 
             <button type="submit"
-                    class="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl text-sm hover:bg-indigo-700 active:scale-[0.99] transition">
-                Entrar
+                    class="w-full bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-xl
+               hover:bg-emerald-700 active:scale-[0.98] transition">
+                Ingresar
             </button>
+
         </form>
+
+        <!-- Nota opcional de entorno de pruebas -->
+        <div class="mt-3 border-t border-slate-100 pt-3">
+            <p class="text-[10px] text-slate-400 leading-snug">
+                Este entorno es de pruebas. Los usuarios y roles se configuran desde el backend
+                (FAKE_USERS) mientras se desarrolla la versión final multi-negocio.
+            </p>
+        </div>
+
     </div>
 </div>
 {% endblock %}
-
-
-

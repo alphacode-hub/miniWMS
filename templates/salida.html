@@ -2,20 +2,34 @@
 {% block title %}Salida - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4">
+<div class="w-full max-w-md mx-auto px-4 py-4">
     <div class="bg-white shadow-lg rounded-2xl p-5">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Registrar Salida</h2>
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-3">
+            <h1 class="text-lg font-bold text-gray-800">Registrar salida</h1>
+            <a href="/dashboard"
+               class="text-[11px] text-gray-500 hover:underline">
+                ← Menú
+            </a>
+        </div>
 
+        <p class="text-xs text-gray-500 mb-4">
+            Registra ventas o consumos desde una ubicación específica del almacén.
+        </p>
+
+        <!-- Mensaje de error (si aplica) -->
         {% if error %}
-        <div class="mb-4 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <div class="mb-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
             {{ error }}
         </div>
         {% endif %}
 
         <form method="post" action="/movimientos/salida" class="space-y-4">
-
+            <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Producto
+                </label>
                 <select name="producto"
                         class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                     {% for p in productos %}
@@ -27,40 +41,52 @@
                 </select>
             </div>
 
-
+            <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Cantidad
+                </label>
                 <input type="number"
                        name="cantidad"
                        min="1"
                        required
+                       value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                       placeholder="1"
-                       value="{{ cantidad if cantidad is defined else '' }}" />
+                       placeholder="1" />
+                <p class="text-[10px] text-gray-400 mt-1">
+                    Debe ser menor o igual al stock disponible en la ubicación seleccionada.
+                </p>
             </div>
 
+            <!-- Ubicación / Slot -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Ubicación
+                </label>
                 <select name="slot_id"
                         class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                     {% for s in slots %}
-                    <option value="{{ s.id }}">
+                    <option value="{{ s.id }}"
+                            {% if slot_id is defined and slot_id == s.id %}selected{% endif %}>
                         {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
                     </option>
-
                     {% endfor %}
                 </select>
+                <p class="text-[10px] text-gray-400 mt-1">
+                    Slot desde donde saldrá la mercadería.
+                </p>
             </div>
 
-
+            <!-- Botón submit -->
             <button type="submit"
-                    class="w-full bg-blue-600 text-white font-semibold py-2 rounded-xl hover:bg-blue-700 active:scale-[0.98]">
+                    class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-[0.98]">
                 Registrar salida
             </button>
         </form>
 
-        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
-            ← Volver al menú
+        <a href="/movimientos"
+           class="block mt-4 text-center text-xs text-indigo-600 hover:underline">
+            Ver movimientos
         </a>
     </div>
 </div>

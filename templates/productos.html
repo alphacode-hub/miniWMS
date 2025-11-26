@@ -2,120 +2,137 @@
 {% block title %}Productos - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-4">
+<div class="w-full max-w-md mx-auto px-4 py-4">
+    <div class="bg-white shadow-lg rounded-2xl p-5">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-bold text-gray-800">
-                Productos
-            </h1>
-            <p class="text-xs text-gray-500">
-                Catálogo del negocio:
-                <span class="font-semibold">{{ user.negocio }}</span>
-            </p>
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">
+                    Productos
+                </h1>
+                <p class="text-xs text-gray-500">
+                    Catálogo de SKUs del negocio {{ user.negocio }}.
+                </p>
+            </div>
+            <a href="/dashboard"
+               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
+                ← Dashboard
+            </a>
         </div>
-        <a href="/dashboard"
-           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-            ← Volver al dashboard
-        </a>
-    </div>
 
-    <!-- Barra de acciones -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div class="text-[11px] text-gray-500">
-            Administra tus SKUs: puedes crear, editar nombre/unidad y activar o desactivar productos.
+        <!-- Botón nuevo producto -->
+        <div class="flex justify-between items-center mb-3">
+            <a href="/productos/nuevo"
+               class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-semibold
+                bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]">
+                + Nuevo producto
+            </a>
+            <span class="text-[11px] text-gray-400">
+                Total: {{ productos|length }} SKU(s)
+            </span>
         </div>
-        <a href="/productos/nuevo"
-           class="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97]">
-            + Nuevo producto
-        </a>
-    </div>
 
-    <!-- Lista de productos -->
-    <div class="bg-white shadow-lg rounded-2xl p-4">
         {% if productos|length == 0 %}
-        <p class="text-xs text-gray-500">
-            Aún no tienes productos registrados. Comienza creando tu primer SKU.
+        <p class="text-sm text-gray-500 mt-2">
+            Aún no tienes productos registrados.
+            Crea tu primer SKU para comenzar a registrar entradas y salidas.
         </p>
+
         {% else %}
-        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+        <!-- Tabla de productos -->
+        <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl mt-2">
             <table class="w-full text-xs">
-                <thead class="bg-slate-50">
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr class="text-left text-gray-500 border-b">
-                        <th class="py-1.5 px-2">Nombre</th>
-                        <th class="py-1.5 px-2">Unidad</th>
-                        <th class="py-1.5 px-2 text-right">Stock mín.</th>
-                        <th class="py-1.5 px-2 text-right">Stock máx.</th>
-                        <th class="py-1.5 px-2">Estado</th>
-                        <th class="py-1.5 px-2 text-right">Acciones</th>
+                        <th class="py-1.5 px-2">Producto</th>
+                        <th class="py-1.5 px-2 w-16">Unidad</th>
+                        <th class="py-1.5 px-2 w-20 text-center">Stock min</th>
+                        <th class="py-1.5 px-2 w-20 text-center">Stock max</th>
+                        <th class="py-1.5 px-2 w-20 text-center">Estado</th>
+                        <th class="py-1.5 px-2 w-28 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in productos %}
-                    <tr class="border-b last:border-0 {% if not p.activo %}bg-slate-50{% endif %}">
+                    <tr class="border-b last:border-0">
                         <!-- Nombre -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-gray-800">
+                            <div class="font-semibold text-gray-800">
                                 {{ p.nombre }}
+                            </div>
+                            <div class="text-[10px] text-gray-400">
+                                ID: {{ p.id }}
                             </div>
                         </td>
 
                         <!-- Unidad -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-gray-700">
-                                {{ p.unidad }}
-                            </div>
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                              bg-slate-100 text-slate-700">
+                                {{ p.unidad or 'unidad' }}
+                            </span>
                         </td>
 
                         <!-- Stock mínimo -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <span class="text-[11px] text-gray-700">
-                                {{ p.stock_min if p.stock_min is not none else "-" }}
+                        <td class="py-1.5 px-2 align-top text-center">
+                            {% if p.stock_min is not none %}
+                            <span class="text-[11px] text-gray-800">
+                                {{ p.stock_min }}
                             </span>
+                            {% else %}
+                            <span class="text-[10px] text-gray-400">–</span>
+                            {% endif %}
                         </td>
 
                         <!-- Stock máximo -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <span class="text-[11px] text-gray-700">
-                                {{ p.stock_max if p.stock_max is not none else "-" }}
+                        <td class="py-1.5 px-2 align-top text-center">
+                            {% if p.stock_max is not none %}
+                            <span class="text-[11px] text-gray-800">
+                                {{ p.stock_max }}
                             </span>
+                            {% else %}
+                            <span class="text-[10px] text-gray-400">–</span>
+                            {% endif %}
                         </td>
 
-                        <!-- Estado -->
-                        <td class="py-1.5 px-2 align-top">
+                        <!-- Estado activo/inactivo -->
+                        <td class="py-1.5 px-2 align-top text-center">
                             {% if p.activo %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                                bg-emerald-100 text-emerald-700">
                                 Activo
                             </span>
                             {% else %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-slate-200 text-slate-700 border border-slate-300">
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                                bg-slate-100 text-slate-500">
                                 Inactivo
                             </span>
                             {% endif %}
                         </td>
 
                         <!-- Acciones -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <div class="inline-flex gap-1">
+                        <td class="py-1.5 px-2 align-top text-right">
+                            <div class="flex flex-col items-end gap-1">
 
                                 <!-- Editar -->
                                 <a href="/productos/{{ p.id }}/editar"
-                                   class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                   class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                            bg-slate-100 text-slate-700 hover:bg-slate-200">
                                     Editar
                                 </a>
 
-                                <!-- Activar / Desactivar -->
+                                <!-- Activar / desactivar -->
                                 <form method="post"
                                       action="/productos/{{ p.id }}/toggle"
                                       class="inline">
                                     <button type="submit"
-                                            class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-semibold
-                              {% if p.activo %}
-                                bg-red-50 text-red-600 border border-red-200 hover:bg-red-100
-                              {% else %}
-                                bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100
-                              {% endif %}">
+                                            class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold
+                                   {% if p.activo %}
+                                     bg-red-50 text-red-600 hover:bg-red-100
+                                   {% else %}
+                                     bg-emerald-50 text-emerald-600 hover:bg-emerald-100
+                                   {% endif %}">
                                         {% if p.activo %}
                                         Desactivar
                                         {% else %}
@@ -133,12 +150,12 @@
         </div>
         {% endif %}
 
-        <!-- Link volver (visible en móvil) -->
+        <!-- Volver móvil -->
         <a href="/dashboard"
-           class="mt-4 block text-center text-xs text-gray-500 sm:hidden">
-            ← Volver al menú
+           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
+            ← Volver al dashboard
         </a>
-    </div>
 
+    </div>
 </div>
 {% endblock %}

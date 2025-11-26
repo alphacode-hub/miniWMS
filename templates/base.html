@@ -4,11 +4,40 @@
     <meta charset="UTF-8" />
     <title>{% block title %}Mini WMS{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Meta básica -->
+    <meta name="description" content="Mini WMS - Control simple y móvil de inventarios y bodegas." />
+    <meta name="theme-color" content="#0f172a" />
+
     <!-- Tailwind CDN (MVP) -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Config mínima de Tailwind (opcional, para futuro branding) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-slate-100 text-slate-900 min-h-screen antialiased">
+
+    <!-- Contenido específico de cada vista -->
     {% block content %}{% endblock %}
+
+    <!-- Scripts adicionales por página (Chart.js, etc.) -->
     {% block scripts_extra %}{% endblock %}
+
 </body>
 </html>

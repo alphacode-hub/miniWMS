@@ -2,64 +2,117 @@
 {% block title %}Historial - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
-        <h2 class="text-lg font-bold text-gray-800 mb-3">Historial de movimientos</h2>
-        <p class="text-xs text-gray-500 mb-3">
-            Mostrando los últimos movimientos del negocio: <span class="font-semibold">{{ user.negocio }}</span>
+<div class="w-full max-w-md mx-auto px-4 py-4">
+
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">
+                    Historial simple
+                </h1>
+                <p class="text-xs text-gray-500">
+                    Últimos movimientos registrados en {{ user.negocio }}.
+                </p>
+            </div>
+
+            <a href="/dashboard"
+               class="hidden sm:inline-flex text-[11px] text-gray-500 hover:underline">
+                ← Dashboard
+            </a>
+        </div>
+
+        <!-- Aviso -->
+        <p class="text-[11px] text-gray-500">
+            Consulta rápida. Para filtros avanzados, ve a
+            <a href="/movimientos" class="text-indigo-600 underline">Movimientos</a>.
         </p>
 
         {% if movimientos|length == 0 %}
-        <p class="text-sm text-gray-500">Aún no hay movimientos registrados.</p>
+        <p class="text-sm text-gray-500">
+            No hay movimientos aún.
+        </p>
         {% else %}
-        <div class="max-h-80 overflow-y-auto">
+
+        <!-- Tabla scrollable -->
+        <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded-xl">
             <table class="w-full text-xs">
-                <thead>
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr class="text-left text-gray-500 border-b">
-                        <th class="py-1 pr-1">Fecha</th>
-                        <th class="py-1 pr-1">Tipo</th>
-                        <th class="py-1 pr-1">Producto</th>
-                        <th class="py-1 pr-1 text-right">Cant.</th>
+                        <th class="py-1.5 px-2">Fecha</th>
+                        <th class="py-1.5 px-2">Tipo</th>
+                        <th class="py-1.5 px-2">Producto</th>
+                        <th class="py-1.5 px-2 text-right">Cant.</th>
+                        <th class="py-1.5 px-2">Ubicación</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for m in movimientos %}
                     <tr class="border-b last:border-0">
-                        <td class="py-1 pr-1 align-top">
-                            {{ m.fecha.strftime("%d-%m %H:%M") if m.fecha else "" }}
+
+                        <!-- Fecha -->
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="text-[11px] text-gray-800">
+                                {{ m.fecha.strftime("%Y-%m-%d") }}
+                            </div>
+                            <div class="text-[10px] text-gray-400">
+                                {{ m.fecha.strftime("%H:%M") }}
+                            </div>
                         </td>
-                        <td class="py-1 pr-1 align-top">
-                            {% if m.tipo == "salida" %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full bg-blue-50 text-blue-700">
-                                salida
+
+                        <!-- Tipo -->
+                        <td class="py-1.5 px-2 align-top">
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                  {% if m.tipo == 'entrada' %}
+                    bg-emerald-100 text-emerald-700
+                  {% elif m.tipo == 'salida' %}
+                    bg-indigo-100 text-indigo-700
+                  {% elif m.tipo == 'ajuste' %}
+                    bg-amber-100 text-amber-700
+                  {% else %}
+                    bg-slate-100 text-slate-700
+                  {% endif %}">
+                                {{ m.tipo|capitalize }}
                             </span>
-                            {% elif m.tipo == "entrada" %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full bg-emerald-50 text-emerald-700">
-                                entrada
+                        </td>
+
+                        <!-- Producto -->
+                        <td class="py-1.5 px-2 align-top">
+                            <span class="text-[11px] text-gray-800">
+                                {{ m.producto }}
                             </span>
-                            {% else %}
-                            {{ m.tipo }}
-                            {% endif %}
                         </td>
-                        <td class="py-1 pr-1 align-top">
-                            <div class="font-semibold text-gray-800">{{ m.producto }}</div>
-                            <div class="text-[10px] text-gray-500">{{ m.zona }}</div>
+
+                        <!-- Cantidad -->
+                        <td class="py-1.5 px-2 text-right align-top">
+                            <span class="text-[11px] text-gray-800">
+                                {{ m.cantidad }}
+                            </span>
                         </td>
-                        <td class="py-1 pl-1 text-right align-top">
-                            {{ m.cantidad }}
+
+                        <!-- Ubicación -->
+                        <td class="py-1.5 px-2 align-top">
+                            <div class="font-mono text-[10px] text-slate-800">
+                                {{ m.zona }}
+                            </div>
                         </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
+
             </table>
         </div>
         {% endif %}
 
-        <a href="/dashboard" class="block mt-4 text-center text-sm text-gray-500">
-            ← Volver al menú
+        <!-- Volver móvil -->
+        <a href="/dashboard"
+           class="block mt-3 text-center text-sm text-gray-500 sm:hidden">
+            ← Volver al dashboard
         </a>
+
     </div>
 </div>
 {% endblock %}
-
-

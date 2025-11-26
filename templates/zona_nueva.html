@@ -2,42 +2,94 @@
 {% block title %}Nueva zona - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4">
+<div class="w-full max-w-md mx-auto px-4 py-4">
     <div class="bg-white shadow-lg rounded-2xl p-5">
-        <h2 class="text-lg font-bold text-gray-800 mb-3">Nueva zona</h2>
 
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">
+                    Nueva zona de almacenamiento
+                </h1>
+                <p class="text-xs text-gray-500">
+                    Crea áreas como <strong>Despensa</strong>, <strong>Refrigerador</strong> o <strong>Congelador</strong>.
+                </p>
+            </div>
+            <a href="/zonas"
+               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
+                ← Volver
+            </a>
+        </div>
+
+        <!-- Mensaje de error -->
         {% if error %}
-        <div class="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            {{ error }}
+        <div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+            <p class="text-[11px] text-red-700">
+                {{ error }}
+            </p>
         </div>
         {% endif %}
 
+        <!-- Formulario -->
         <form method="post" action="/zonas/nueva" class="space-y-4">
+
+            <!-- Nombre de la zona -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la zona</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre de la zona
+                </label>
                 <input type="text"
                        name="nombre"
+                       value="{{ nombre or '' }}"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Ej: Despensa, Refrigerador, Freezer"
-                       value="{{ nombre if nombre is defined else '' }}" />
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Ej: Despensa, Refrigerador, Congelador" />
+                <p class="text-[10px] text-gray-400 mt-1">
+                    Piensa en grandes áreas físicas donde guardas productos.
+                </p>
             </div>
 
+            <!-- Sigla de la zona -->
             <div>
-                <label class="text-sm font-medium text-gray-700">Sigla</label>
-                <input name="sigla" class="w-full rounded-xl border px-3 py-2 text-sm"
-                       placeholder="Ej: D (para Despensa), R (Refrigerador)">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Sigla (opcional)
+                </label>
+                <input type="text"
+                       name="sigla"
+                       value="{{ sigla or '' }}"
+                       maxlength="5"
+                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
+                 uppercase tracking-wide
+                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Ej: D, RF, CG" />
+                <p class="text-[10px] text-gray-400 mt-1">
+                    Si la dejas vacía, se generará automáticamente a partir del nombre.
+                </p>
             </div>
 
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+                <a href="/zonas"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
+                  rounded-xl text-xs font-semibold border border-gray-300 text-gray-700
+                  hover:bg-gray-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
+                 rounded-xl text-xs font-semibold bg-emerald-600 text-white
+                 hover:bg-emerald-700 active:scale-[0.97]">
+                    Crear zona
+                </button>
+            </div>
 
-            <button type="submit"
-                    class="w-full bg-emerald-600 text-white font-semibold py-2 rounded-xl hover:bg-emerald-700 active:scale-[0.98]">
-                Guardar zona
-            </button>
         </form>
 
-        <a href="/zonas" class="block mt-4 text-center text-sm text-gray-500">
-            ← Volver al listado
+        <!-- Volver (móvil) -->
+        <a href="/zonas"
+           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
+            ← Volver al listado de zonas
         </a>
     </div>
 </div>
