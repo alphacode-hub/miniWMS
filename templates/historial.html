@@ -3,34 +3,35 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Historial simple
                 </h1>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-slate-500">
                     Últimos movimientos registrados en {{ user.negocio }}.
                 </p>
             </div>
 
             <a href="/dashboard"
-               class="hidden sm:inline-flex text-[11px] text-gray-500 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
                 ← Dashboard
             </a>
         </div>
 
         <!-- Aviso -->
-        <p class="text-[11px] text-gray-500">
+        <p class="text-[11px] text-slate-500">
             Consulta rápida. Para filtros avanzados, ve a
-            <a href="/movimientos" class="text-indigo-600 underline">Movimientos</a>.
+            <a href="/movimientos" class="text-indigo-600 hover:text-indigo-700 underline">
+                Movimientos
+            </a>.
         </p>
 
         {% if movimientos|length == 0 %}
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-slate-500">
             No hay movimientos aún.
         </p>
         {% else %}
@@ -39,7 +40,7 @@
         <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded-xl">
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
-                    <tr class="text-left text-gray-500 border-b">
+                    <tr class="text-left text-slate-500 border-b">
                         <th class="py-1.5 px-2">Fecha</th>
                         <th class="py-1.5 px-2">Tipo</th>
                         <th class="py-1.5 px-2">Producto</th>
@@ -51,13 +52,12 @@
                 <tbody>
                     {% for m in movimientos %}
                     <tr class="border-b last:border-0">
-
                         <!-- Fecha -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-gray-800">
+                            <div class="text-[11px] text-slate-800">
                                 {{ m.fecha.strftime("%Y-%m-%d") }}
                             </div>
-                            <div class="text-[10px] text-gray-400">
+                            <div class="text-[10px] text-slate-400">
                                 {{ m.fecha.strftime("%H:%M") }}
                             </div>
                         </td>
@@ -65,40 +65,37 @@
                         <!-- Tipo -->
                         <td class="py-1.5 px-2 align-top">
                             <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
-                  {% if m.tipo == 'entrada' %}
-                    bg-emerald-100 text-emerald-700
-                  {% elif m.tipo == 'salida' %}
-                    bg-indigo-100 text-indigo-700
-                  {% elif m.tipo == 'ajuste' %}
-                    bg-amber-100 text-amber-700
-                  {% else %}
-                    bg-slate-100 text-slate-700
-                  {% endif %}">
+                                {% if m.tipo == 'entrada' %}
+                                    bg-emerald-50 text-emerald-700
+                                {% elif m.tipo == 'salida' %}
+                                    bg-red-50 text-red-700
+                                {% else %}
+                                    bg-slate-50 text-slate-700
+                                {% endif %}">
                                 {{ m.tipo|capitalize }}
                             </span>
                         </td>
 
                         <!-- Producto -->
                         <td class="py-1.5 px-2 align-top">
-                            <span class="text-[11px] text-gray-800">
+                            <span class="text-[11px] text-slate-800">
                                 {{ m.producto }}
                             </span>
                         </td>
 
                         <!-- Cantidad -->
                         <td class="py-1.5 px-2 text-right align-top">
-                            <span class="text-[11px] text-gray-800">
+                            <span class="text-[11px] text-slate-800">
                                 {{ m.cantidad }}
                             </span>
                         </td>
 
                         <!-- Ubicación -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="font-mono text-[10px] text-slate-800">
-                                {{ m.zona }}
+                            <div class="text-[10px] text-slate-500">
+                                {{ m.zona }} · {{ m.ubicacion }} · {{ m.slot }}
                             </div>
                         </td>
-
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -109,7 +106,7 @@
 
         <!-- Volver móvil -->
         <a href="/dashboard"
-           class="block mt-3 text-center text-sm text-gray-500 sm:hidden">
+           class="block mt-3 text-center text-sm text-slate-500 sm:hidden">
             ← Volver al dashboard
         </a>
 

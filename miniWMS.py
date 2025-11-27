@@ -1,103 +1,137 @@
-﻿
-from fastapi import FastAPI, Request, Form, Depends
+﻿from pathlib import Path
+from datetime import datetime, date, timedelta
+import json
+import bcrypt
+import secrets
+
+from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import TimestampSigner, BadSignature
-from pathlib import Path
-from datetime import datetime, date, timedelta
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey ,func, Date, inspect, text
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Date,
+    ForeignKey,
+    func,
+    text,
+    Float,   # si quieres, puedes seguir usando FLOAT en vez de Float
+)
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
-
-from pathlib import Path
-from fastapi import HTTPException
-
-import json
-
-BASE_DIR = Path(__file__).resolve().parent
 
 # ============================
 #   BASE DE DATOS (SQLite)
 # ============================
 
+BASE_DIR = Path(__file__).resolve().parent
+
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{BASE_DIR / 'miniWMS.db'}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}  # Necesario para SQLite en FastAPI
+    connect_args={"check_same_thread": False},  # Necesario para SQLite en FastAPI
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# ============================
+#   DICCIONARIO PLANES
+# ============================
 
-def apply_schema_updates(engine):
+PLANES_CONFIG = {
+    "demo": {
+        "max_usuarios": 1,
+        "max_productos": 50,
+        "max_zonas": 5,
+        "max_ubicaciones": 20,
+        "max_slots": 200,
+        "alertas_habilitadas": False,
+        "exportaciones_habilitadas": False,
+    },
+    "free": {
+        "max_usuarios": 2,
+        "max_productos": 100,
+        "max_zonas": 10,
+        "max_ubicaciones": 50,
+        "max_slots": 500,
+        "alertas_habilitadas": True,
+        "exportaciones_habilitadas": True,
+    },
+    "basic": {
+        "max_usuarios": 5,
+        "max_productos": 500,
+        "max_zonas": 50,
+        "max_ubicaciones": 300,
+        "max_slots": 2000,
+        "alertas_habilitadas": True,
+        "exportaciones_habilitadas": True,
+    },
+    "pro": {
+        "max_usuarios": 20,
+        "max_productos": 3000,
+        "max_zonas": 200,
+        "max_ubicaciones": 2000,
+        "max_slots": 20000,
+        "alertas_habilitadas": True,
+        "exportaciones_habilitadas": True,
+    },
+}
+
+# =======================
+# Seguridad: contraseñas con bcrypt directo
+# =======================
+
+BCRYPT_MAX_LENGTH = 72  # bcrypt solo usa los primeros 72 bytes de la contraseña
+
+
+def hash_password(password: str) -> str:
     """
-    Pequeño sistema de 'migraciones' para SQLite.
-    Revisa si existen ciertas columnas; si no, las agrega con ALTER TABLE.
+    Hashea la contraseña en texto plano usando bcrypt.
+    Devuelve el hash como string UTF-8.
 
-    Esto se ejecuta una vez al inicio de la app y permite
-    evolucionar el esquema sin borrar la base de datos.
+    Nota:
+        bcrypt solo considera los primeros 72 bytes de la contraseña.
+        Aquí truncamos explícitamente para evitar sorpresas.
     """
-    with engine.connect() as conn:
+    if isinstance(password, str):
+        password_bytes = password.encode("utf-8")
+    else:
+        password_bytes = password
 
-        def column_exists(table_name: str, column_name: str) -> bool:
-            result = conn.execute(text(f"PRAGMA table_info({table_name});"))
-            for row in result:
-                # row[1] = nombre de la columna
-                if row[1] == column_name:
-                    return True
-            return False
+    password_bytes = password_bytes[:BCRYPT_MAX_LENGTH]
 
-        # ==============================
-        # Tabla productos: stock_min, stock_max
-        # ==============================
-        if not column_exists("productos", "stock_min"):
-            conn.execute(text("ALTER TABLE productos ADD COLUMN stock_min INTEGER;"))
-            print("[MIGRACION] Agregada columna productos.stock_min")
-
-        if not column_exists("productos", "stock_max"):
-            conn.execute(text("ALTER TABLE productos ADD COLUMN stock_max INTEGER;"))
-            print("[MIGRACION] Agregada columna productos.stock_max")
-
-        # ==============================
-        # Tabla movimientos: fecha_vencimiento
-        # ==============================
-        if not column_exists("movimientos", "fecha_vencimiento"):
-            # En SQLite, DATE es básicamente texto ISO-8601; SQLAlchemy se encarga de parsear
-            conn.execute(text("ALTER TABLE movimientos ADD COLUMN fecha_vencimiento DATE;"))
-            print("[MIGRACION] Agregada columna movimientos.fecha_vencimiento")
-
-        # ==============================
-        # Tabla zonas: sigla (si la estás usando)
-        # ==============================
-        if not column_exists("zonas", "sigla"):
-            conn.execute(text("ALTER TABLE zonas ADD COLUMN sigla TEXT;"))
-            print("[MIGRACION] Agregada columna zonas.sigla")
-
-        # ==============================
-        # Tabla ubicaciones: sigla (si la estás usando)
-        # ==============================
-        if not column_exists("ubicaciones", "sigla"):
-            conn.execute(text("ALTER TABLE ubicaciones ADD COLUMN sigla TEXT;"))
-            print("[MIGRACION] Agregada columna ubicaciones.sigla")
-
-        # ==============================
-        # Tabla slots: capacidad (por si en algún momento la agregas después)
-        # ==============================
-        if not column_exists("slots", "capacidad"):
-            conn.execute(text("ALTER TABLE slots ADD COLUMN capacidad INTEGER;"))
-            print("[MIGRACION] Agregada columna slots.capacidad")
-
-        # ==============================
-        # Tabla productos: activo (soft delete)
-        # ==============================
-        if not column_exists("productos", "activo"):
-            conn.execute(text("ALTER TABLE productos ADD COLUMN activo INTEGER DEFAULT 1;"))
-            print("[MIGRACION] Agregada columna productos.activo")
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verifica una contraseña en texto plano contra su hash almacenado.
+    """
+    if isinstance(plain_password, str):
+        plain_bytes = plain_password.encode("utf-8")
+    else:
+        plain_bytes = plain_password
+
+    plain_bytes = plain_bytes[:BCRYPT_MAX_LENGTH]
+
+    if isinstance(hashed_password, str):
+        hashed_bytes = hashed_password.encode("utf-8")
+    else:
+        hashed_bytes = hashed_password
+
+    try:
+        return bcrypt.checkpw(plain_bytes, hashed_bytes)
+    except ValueError:
+        # Por si el hash almacenado tiene un formato inválido.
+        return False
       
 
 # ============================
@@ -108,80 +142,241 @@ class Auditoria(Base):
     __tablename__ = "auditoria"
 
     id = Column(Integer, primary_key=True, index=True)
-    fecha = Column(DateTime, default=datetime.utcnow, index=True)
-    negocio = Column(String, index=True)
-    usuario = Column(String, index=True)
-    accion = Column(String, index=True)
-    detalle = Column(String)  # JSON o texto libre
+    fecha = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    negocio = Column(String, index=True, nullable=False)  # nombre del negocio (fantasía)
+    usuario = Column(String, index=True, nullable=False)  # email del usuario
+    accion = Column(String, index=True, nullable=False)   # etiqueta corta: 'entrada_creada', etc.
+    detalle = Column(String, nullable=True)               # JSON o texto
 
+
+class Negocio(Base):
+    __tablename__ = "negocios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre_fantasia = Column(String, nullable=False, unique=True, index=True)
+    whatsapp_notificaciones = Column(String, nullable=True)
+    estado = Column(String, nullable=False, default="activo")  # activo / suspendido
+    plan_tipo = Column(String, default="demo", nullable=False)
+    plan_fecha_inicio = Column(Date, nullable=True)
+    plan_fecha_fin = Column(Date, nullable=True)
+    plan_renovacion_cada_meses = Column(Integer, default=1, nullable=False)
+    ultimo_acceso = Column(DateTime, nullable=True)
+
+    # Relaciones
+    usuarios = relationship(
+        "Usuario",
+        back_populates="negocio",
+        cascade="all, delete-orphan",
+    )
+    alertas = relationship(
+        "Alerta",
+        back_populates="negocio",
+        cascade="all, delete-orphan",
+    )
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=True, index=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    rol = Column(String, nullable=False, default="operador")  # superadmin / admin / operador
+    activo = Column(Integer, nullable=False, default=1)       # 1 = activo, 0 = inactivo
+    nombre_mostrado = Column(String, nullable=True)           # opcional, para UI
+
+    negocio = relationship("Negocio", back_populates="usuarios")
+    sesiones = relationship(
+        "SesionUsuario",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+    )
+
+
+class SesionUsuario(Base):
+    """
+    Control de sesiones activas por usuario.
+
+    - Registro de la sesión actual (token_sesion)
+    - Invalidar sesiones anteriores al hacer login nuevo
+    """
+    __tablename__ = "sesiones_usuario"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    token_sesion = Column(String, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    activo = Column(Integer, default=1, nullable=False)  # 1 = sesión activa, 0 = invalidada
+
+    usuario = relationship("Usuario", back_populates="sesiones")
 
 
 class Zona(Base):
     __tablename__ = "zonas"
 
     id = Column(Integer, primary_key=True, index=True)
-    negocio = Column(String, index=True)
-    nombre = Column(String, index=True)
-    sigla = Column(String, index=True)
-    ubicaciones = relationship("Ubicacion", back_populates="zona", cascade="all, delete-orphan")
+    negocio = Column(String, index=True, nullable=False)  # nombre del negocio
+    nombre = Column(String, index=True, nullable=False)
+    sigla = Column(String, index=True, nullable=True)
+
+    ubicaciones = relationship(
+        "Ubicacion",
+        back_populates="zona",
+        cascade="all, delete-orphan",
+    )
 
 
 class Ubicacion(Base):
     __tablename__ = "ubicaciones"
 
     id = Column(Integer, primary_key=True, index=True)
-    zona_id = Column(Integer, ForeignKey("zonas.id"), index=True)
-    nombre = Column(String, index=True)
-    sigla = Column(String, index=True)
-    zona = relationship("Zona", back_populates="ubicaciones")
-    slots = relationship("Slot", back_populates="ubicacion", cascade="all, delete-orphan")
+    zona_id = Column(Integer, ForeignKey("zonas.id"), index=True, nullable=False)
+    nombre = Column(String, index=True, nullable=False)
+    sigla = Column(String, index=True, nullable=True)
 
+    zona = relationship("Zona", back_populates="ubicaciones")
+    slots = relationship(
+        "Slot",
+        back_populates="ubicacion",
+        cascade="all, delete-orphan",
+    )
 
 
 class Slot(Base):
     __tablename__ = "slots"
 
     id = Column(Integer, primary_key=True, index=True)
-    ubicacion_id = Column(Integer, ForeignKey("ubicaciones.id"), index=True)
-    codigo = Column(String, index=True)  # Ej: C1, C2, C3...
-    capacidad = Column(Integer, default=None)  # opcional
-    codigo_full = Column(String, index=True)
-    ubicacion = relationship("Ubicacion", back_populates="slots")
+    ubicacion_id = Column(Integer, ForeignKey("ubicaciones.id"), index=True, nullable=False)
+    codigo = Column(String, index=True, nullable=False)      # Ej: C1, C2, C3...
+    capacidad = Column(Integer, default=None)                # opcional
+    codigo_full = Column(String, index=True, nullable=False) # Ej: Z1-R1-C1
 
+    ubicacion = relationship("Ubicacion", back_populates="slots")
 
 
 class Producto(Base):
     __tablename__ = "productos"
+
     id = Column(Integer, primary_key=True, index=True)
-    negocio = Column(String, index=True)
-    nombre = Column(String, index=True)
-    unidad = Column(String, default="unidad")
+    negocio = Column(String, index=True, nullable=False)   # nombre del negocio
+    nombre = Column(String, index=True, nullable=False)
+    unidad = Column(String, default="unidad", nullable=False)
     stock_min = Column(Integer, nullable=True)
     stock_max = Column(Integer, nullable=True)
-    activo = Column(Integer, default=1)
-
+    activo = Column(Integer, default=1, nullable=False)
+    costo_unitario = Column(FLOAT, nullable=True)
 
 
 class Movimiento(Base):
     __tablename__ = "movimientos"
+
     id = Column(Integer, primary_key=True, index=True)
-    negocio = Column(String, index=True)
-    usuario = Column(String, index=True)
-    tipo = Column(String, index=True)
-    producto = Column(String, index=True)
-    cantidad = Column(Integer)
-    zona = Column(String)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    negocio = Column(String, index=True, nullable=False)   # nombre del negocio
+    usuario = Column(String, index=True, nullable=False)   # email
+    tipo = Column(String, index=True, nullable=False)      # entrada / salida / ajuste / etc.
+    producto = Column(String, index=True, nullable=False)
+    cantidad = Column(Integer, nullable=False)
+    zona = Column(String, nullable=False)                  # código_full del slot
+    fecha = Column(DateTime, default=datetime.utcnow, nullable=False)
     fecha_vencimiento = Column(Date, nullable=True)
+    motivo_salida = Column(String, nullable=True)
 
 
-# Crear tablas (si no existen)
+class Alerta(Base):
+    __tablename__ = "alertas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=False, index=True)
+
+    tipo = Column(String, nullable=False)      # stock_min, stock_max, vencimiento, etc.
+    mensaje = Column(String, nullable=False)
+    destino = Column(String, nullable=True)    # futuro: whatsapp, email
+
+    estado = Column(String, nullable=False, default="pendiente")  # pendiente, leida, enviada, error
+    fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    fecha_envio = Column(DateTime, nullable=True)
+
+    origen = Column(String, nullable=True)     # 'entrada', 'salida', 'sistema', etc.
+    datos_json = Column(String, nullable=True) # JSON opcional
+
+    negocio = relationship("Negocio", back_populates="alertas")
+
+
+# ============================
+# Seed inicial: superadmin
+# ============================
+
+def seed_superadmin():
+    """
+    Crea un usuario superadmin (tú) si no existe.
+    - Crea un negocio 'Global' si no existe.
+    - Crea el usuario superadmin ligado a ese negocio.
+    """
+    db = SessionLocal()
+    try:
+        email_root = "root@superadmin.cl"  # 👈 puedes cambiarlo si quieres
+        existing = db.query(Usuario).filter(Usuario.email == email_root).first()
+        if existing:
+            return  # ya está creado
+
+        # Crear negocio 'Global'
+        negocio_global = Negocio(
+            nombre_fantasia="Global",
+            whatsapp_notificaciones=None,
+            estado="activo",
+        )
+        db.add(negocio_global)
+        db.flush()  # para tener negocio_global.id
+
+        # Crear usuario superadmin
+        superadmin = Usuario(
+            negocio_id=negocio_global.id,
+            email=email_root,
+            password_hash=hash_password("12345678"),  # 👈 cambia esta contraseña luego
+            rol="superadmin",
+            activo=1,
+            nombre_mostrado="Superadmin",
+        )
+        db.add(superadmin)
+        db.commit()
+        print(f"Superadmin creado: {email_root}")
+    except Exception as e:
+        db.rollback()
+        print(f"[SEED_SUPERADMIN] Error al crear superadmin: {e}")
+    finally:
+        db.close()
+
+
+# ============================
+# CREAR TABLAS Y SEED INICIAL
+# ============================
+
 Base.metadata.create_all(bind=engine)
-# Aplicar actualizaciones de esquema (no destructivas)
-apply_schema_updates(engine)
+seed_superadmin()
 
 
-# Dependencia para obtener sesión de BD en cada request
+# ============================
+# FASTAPI, TEMPLATES Y SESIÓN
+# ============================
+
+app = FastAPI()
+
+# Servir archivos estáticos
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+templates = Jinja2Templates(directory="templates")
+
+# 🔑 Firmador simple para la cookie de sesión
+SECRET_KEY = "VeuoeH6L"   # TODO: mover a variable de entorno en producción
+signer = TimestampSigner(SECRET_KEY)
+
+
+# ============================
+# Dependencia de BD
+# ============================
+
 def get_db():
     db = SessionLocal()
     try:
@@ -189,74 +384,170 @@ def get_db():
     finally:
         db.close()
 
-app = FastAPI()
 
-# Servir archivos estáticos (si los necesitas luego)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# ============================
+# Helpers de sesión (BD)
+# ============================
 
-templates = Jinja2Templates(directory="templates")
+def crear_sesion_db(db: Session, usuario: Usuario) -> str:
+    """
+    Crea un registro de sesión para el usuario, invalidando sesiones anteriores.
+    Devuelve el token de sesión generado.
+    """
+    # Invalidar sesiones activas anteriores
+    db.query(SesionUsuario).filter(
+        SesionUsuario.usuario_id == usuario.id,
+        SesionUsuario.activo == 1
+    ).update({SesionUsuario.activo: 0})
 
-# 🔑 Firmador simple para la cookie de sesion
-SECRET_KEY = "VeuoeH6L"
-signer = TimestampSigner(SECRET_KEY)
+    token_sesion = secrets.token_urlsafe(32)
 
-# 🧪 Usuarios de prueba (MVP)
-# En el futuro esto vendrá de Azure SQL / SQLite
-FAKE_USERS = {
-    "t1@t1.cl": {
-        "password": "1234",
-        "negocio": "Negocio Demo 1",
-        "rol": "admin",        # dueño / admin Negocio Demo 1
-    },
-    "t12@t1.cl": {
-        "password": "1234",
-        "negocio": "Negocio Demo 1",
-        "rol": "operador",     # operador Negocio Demo 1
-    },
-    "t2@t2.cl": {
-        "password": "1234",
-        "negocio": "Negocio Demo 2",
-        "rol": "admin",        # admin Negocio Demo 2
-    },
-    # Ejemplo de superadmin (opcional)
-    "root@wms.cl": {
-        "password": "1234",
-        "negocio": "Negocio Demo 1",  # base por defecto
-        "rol": "superadmin",
-    },
-}
+    nueva_sesion = SesionUsuario(
+        usuario_id=usuario.id,
+        token_sesion=token_sesion,
+        activo=1,
+    )
+    db.add(nueva_sesion)
+    db.commit()
+
+    return token_sesion
 
 
-# ------------ Helpers de sesion ------------
+def crear_cookie_sesion(response: RedirectResponse, usuario: Usuario, token_sesion: str):
+    """
+    Crea el payload JSON, lo firma y lo guarda en la cookie 'session'.
+    """
+    payload = {
+        "user_id": usuario.id,
+        "email": usuario.email,
+        "rol": usuario.rol,
+        "negocio_id": usuario.negocio_id,
+        "negocio": usuario.negocio.nombre_fantasia if usuario.negocio else None,
+        "token_sesion": token_sesion,
+        "ts": datetime.utcnow().isoformat(),
+    }
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    signed = signer.sign(data).decode("utf-8")
+
+    response.set_cookie(
+        key="session",
+        value=signed,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 4,  # 4 horas
+        # secure=True  # activar en producción con HTTPS
+    )
+
 
 def get_current_user(request: Request):
+    """
+    Lee la cookie, verifica firma y sesión en BD y devuelve un dict con:
+    {id, email, negocio, negocio_id, rol} o None si no hay sesión válida.
+    """
     cookie = request.cookies.get("session")
     if not cookie:
         return None
+
     try:
-        value = signer.unsign(cookie).decode("utf-8")
-        # value = email del usuario
-        user = FAKE_USERS.get(value)
-        if not user:
-            return None
-        return {"email": value, "negocio": user["negocio"], "rol": user.get("rol", "operador"),}
-    except BadSignature:
+        data = signer.unsign(cookie).decode("utf-8")
+        payload = json.loads(data)
+    except (BadSignature, json.JSONDecodeError):
         return None
+
+    user_id = payload.get("user_id")
+    token_sesion = payload.get("token_sesion")
+    if not user_id or not token_sesion:
+        return None
+
+    db = SessionLocal()
+    try:
+        # Verificar que la sesión siga activa
+        sesion = (
+            db.query(SesionUsuario)
+            .filter(
+                SesionUsuario.usuario_id == user_id,
+                SesionUsuario.token_sesion == token_sesion,
+                SesionUsuario.activo == 1,
+            )
+            .first()
+        )
+        if not sesion:
+            return None
+
+        usuario = db.query(Usuario).filter(
+            Usuario.id == user_id,
+            Usuario.activo == 1,
+        ).first()
+        if not usuario:
+            return None
+
+        # Actualizar last_seen_at
+        sesion.last_seen_at = datetime.utcnow()
+        db.commit()
+
+        negocio_nombre = (
+            usuario.negocio.nombre_fantasia if usuario.negocio else "Global"
+        )
+
+        return {
+            "id": usuario.id,
+            "email": usuario.email,
+            "negocio": negocio_nombre,
+            "negocio_id": usuario.negocio_id,
+            "rol": usuario.rol,
+        }
+    finally:
+        db.close()
+
+
+# ============================
+# Helpers de autorización
+# ============================
+
+def is_superadmin(user: dict) -> bool:
+    return user.get("rol") == "superadmin"
+
+
+def require_superadmin(user: dict):
+    """
+    Atajo para exigir rol superadmin.
+    """
+    if not user or user.get("rol") != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Solo superadmin puede acceder a esta sección",
+        )
+
 
 def require_role(user: dict, allowed_roles: tuple[str, ...]):
     """
     Lanza 403 si el usuario no tiene un rol permitido.
     allowed_roles: ej. ("admin", "superadmin")
     """
-    if user["rol"] not in allowed_roles:
+    if user.get("rol") not in allowed_roles:
         raise HTTPException(status_code=403, detail="No autorizado para esta acción")
 
+
 def login_required(request: Request):
+    """
+    Helper para vistas HTML:
+    - Devuelve el dict user si hay sesión.
+    - Si no hay sesión, devuelve un RedirectResponse al login.
+    
+    ⚠️ Importante:
+    No usar junto con require_superadmin(user) sin verificar que
+    user no sea un RedirectResponse. En vistas nuevas, mejor usar
+    get_current_user + if not user: RedirectResponse(...)
+    """
     user = get_current_user(request)
     if not user:
-        # si no hay sesion, redirige al login
         return RedirectResponse(url="/login", status_code=302)
     return user
+
+
+# ============================
+# Auditoría
+# ============================
 
 def registrar_auditoria(db: Session, user: dict, accion: str, detalle: dict | str):
     """
@@ -279,54 +570,1008 @@ def registrar_auditoria(db: Session, user: dict, accion: str, detalle: dict | st
     db.commit()
 
 
+# ============================
+# Límites por plan
+# ============================
 
-# ------------ Rutas ------------
+def check_plan_limit(db: Session, negocio_id: int, recurso: str):
+    """
+    Valida que un negocio no exceda los límites de su plan.
+    recurso puede ser: usuarios, productos, zonas, ubicaciones, slots.
+    """
+
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    if not negocio:
+        raise HTTPException(status_code=400, detail="Negocio no encontrado.")
+
+    plan = negocio.plan_tipo
+    conf = PLANES_CONFIG.get(plan)
+    if not conf:
+        raise HTTPException(status_code=400, detail="Plan no válido.")
+
+    limite = conf.get(f"max_{recurso}")
+    if limite is None:
+        return  # sin límite
+
+    # Conteo según recurso
+    if recurso == "usuarios":
+        count = db.query(Usuario).filter(Usuario.negocio_id == negocio.id).count()
+    elif recurso == "productos":
+        count = db.query(Producto).filter(Producto.negocio == negocio.nombre_fantasia).count()
+    elif recurso == "zonas":
+        count = db.query(Zona).filter(Zona.negocio == negocio.nombre_fantasia).count()
+    elif recurso == "ubicaciones":
+        count = (
+            db.query(Ubicacion)
+            .join(Zona, Ubicacion.zona_id == Zona.id)
+            .filter(Zona.negocio == negocio.nombre_fantasia)
+            .count()
+        )
+    elif recurso == "slots":
+        count = (
+            db.query(Slot)
+            .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
+            .join(Zona, Ubicacion.zona_id == Zona.id)
+            .filter(Zona.negocio == negocio.nombre_fantasia)
+            .count()
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Recurso desconocido.")
+
+    if count >= limite:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Has alcanzado el máximo de {recurso} para tu plan "
+                f"({count}/{limite}). Contáctanos para ampliar tu capacidad."
+            ),
+        )
+
+
+# ============================
+# Alertas internas
+# ============================
+
+def crear_alerta_interna(
+    db: Session,
+    negocio_id: int,
+    tipo: str,
+    mensaje: str,
+    origen: str = "sistema",
+    datos: dict | None = None,
+    destino: str | None = None,
+):
+    """
+    Crea una alerta interna para un negocio.
+    - Evita duplicar EXACTAMENTE el mismo mensaje en las últimas 24h.
+    - Guarda detalles opcionales en datos_json (como JSON).
+    """
+    ahora = datetime.utcnow()
+    hace_24h = ahora - timedelta(hours=24)
+
+    # Evitar spam: misma alerta, mismo mensaje en menos de 24h
+    alerta_existente = (
+        db.query(Alerta)
+        .filter(
+            Alerta.negocio_id == negocio_id,
+            Alerta.tipo == tipo,
+            Alerta.mensaje == mensaje,
+            Alerta.fecha_creacion >= hace_24h,
+        )
+        .first()
+    )
+
+    if alerta_existente:
+        return alerta_existente
+
+    datos_json = json.dumps(datos, ensure_ascii=False) if datos else None
+
+    alerta = Alerta(
+        negocio_id=negocio_id,
+        tipo=tipo,
+        mensaje=mensaje,
+        destino=destino,
+        estado="pendiente",  # flujo interno: pendiente → leida / enviada
+        fecha_creacion=ahora,
+        fecha_envio=None,
+        origen=origen,
+        datos_json=datos_json,
+    )
+    db.add(alerta)
+    db.commit()
+    db.refresh(alerta)
+    return alerta
+
+
+def generar_alertas_para_negocio(db: Session, negocio_id: int, negocio_nombre: str):
+    """
+    Recorre el inventario de un negocio y genera alertas internas
+    según reglas básicas de stock y vencimientos.
+
+    Esta función está pensada para ser llamada, por ejemplo, en /dashboard.
+    """
+    hoy = date.today()
+
+    # 1) Productos activos del negocio
+    productos = (
+        db.query(Producto)
+        .filter(
+            Producto.negocio == negocio_nombre,
+            Producto.activo == 1,
+        )
+        .all()
+    )
+    if not productos:
+        return
+
+    productos_by_name = {p.nombre.lower(): p for p in productos}
+
+    # 2) Movimientos del negocio
+    movimientos = (
+        db.query(Movimiento)
+        .filter(Movimiento.negocio == negocio_nombre)
+        .all()
+    )
+
+    # Totales por producto y vencimientos simplificados
+    totales_producto: dict[str, int] = {}
+    fv_min_por_producto: dict[str, date | None] = {}
+
+    for m in movimientos:
+        prod_name = (m.producto or "").strip()
+        if not prod_name:
+            continue
+
+        key = prod_name.lower()
+        qty = m.cantidad or 0
+
+        # misma lógica que usas en stock: salidas restan
+        if m.tipo == "salida" or (m.tipo == "ajuste" and qty < 0):
+            delta = -abs(qty)
+        else:
+            delta = abs(qty)
+
+        totales_producto[key] = totales_producto.get(key, 0) + delta
+
+        # vencimiento (simplificado: tomamos la fecha más cercana de entradas)
+        if m.fecha_vencimiento and delta > 0:
+            fv = m.fecha_vencimiento
+            actual = fv_min_por_producto.get(key)
+            if actual is None or fv < actual:
+                fv_min_por_producto[key] = fv
+
+    # 3) Reglas por producto → alertas
+    for key, producto in productos_by_name.items():
+        stock_total = totales_producto.get(key, 0)
+        stock_min = producto.stock_min
+        stock_max = producto.stock_max
+
+        # --- Regla: stock crítico ---
+        if stock_min is not None and stock_total < stock_min:
+            msg = (
+                f"Stock crítico de '{producto.nombre}': "
+                f"{stock_total} unidades (< mínimo configurado {stock_min})."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio_id,
+                tipo="stock_min",
+                mensaje=msg,
+                origen="regla_stock",
+                datos={
+                    "producto_id": producto.id,
+                    "nombre": producto.nombre,
+                    "stock_total": stock_total,
+                    "stock_min": stock_min,
+                },
+            )
+
+        # --- Regla: sobre-stock ---
+        if stock_max is not None and stock_total > stock_max:
+            msg = (
+                f"Sobre-stock de '{producto.nombre}': "
+                f"{stock_total} unidades (> máximo configurado {stock_max})."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio_id,
+                tipo="stock_max",
+                mensaje=msg,
+                origen="regla_stock",
+                datos={
+                    "producto_id": producto.id,
+                    "nombre": producto.nombre,
+                    "stock_total": stock_total,
+                    "stock_max": stock_max,
+                },
+            )
+
+        # --- Reglas por vencimiento ---
+        fv_min = fv_min_por_producto.get(key)
+        if fv_min is None:
+            continue
+
+        dias = (fv_min - hoy).days
+
+        # vencido
+        if dias < 0:
+            msg = (
+                f"Producto vencido: '{producto.nombre}' con lote que venció el {fv_min}."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio_id,
+                tipo="vencido",
+                mensaje=msg,
+                origen="regla_vencimiento",
+                datos={
+                    "producto_id": producto.id,
+                    "nombre": producto.nombre,
+                    "fecha_vencimiento": fv_min.isoformat(),
+                    "dias": dias,
+                },
+            )
+        # por vencer en menos de 7 días
+        elif dias <= 7:
+            msg = (
+                f"Producto por vencer (<7 días): '{producto.nombre}' "
+                f"vence el {fv_min} ({dias} día(s))."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio_id,
+                tipo="vencimiento_proximo",
+                mensaje=msg,
+                origen="regla_vencimiento",
+                datos={
+                    "producto_id": producto.id,
+                    "nombre": producto.nombre,
+                    "fecha_vencimiento": fv_min.isoformat(),
+                    "dias": dias,
+                },
+            )
+
+# ============================
+# ALERTAS (reglas de negocio)
+# ============================
+
+def evaluar_alertas_stock(
+    db: Session,
+    user: dict,
+    producto_nombre: str,
+    origen: str,
+):
+    """
+    Evalúa si el producto está en stock crítico o sobre-stock
+    y genera alertas internas en base a stock_min / stock_max.
+
+    Se llama después de entradas/salidas.
+    """
+    negocio = db.query(Negocio).filter(Negocio.id == user["negocio_id"]).first()
+    if not negocio:
+        return
+
+    negocio_nombre = negocio.nombre_fantasia
+
+    # Producto del negocio
+    producto = (
+        db.query(Producto)
+        .filter(
+            Producto.negocio == negocio_nombre,
+            func.lower(Producto.nombre) == producto_nombre.lower(),
+        )
+        .first()
+    )
+    if not producto:
+        return
+
+    # Si no tiene reglas, no genera alertas
+    if producto.stock_min is None and producto.stock_max is None:
+        return
+
+    # Calcular stock total del producto en el negocio (entradas - salidas)
+    movimientos = (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.negocio == negocio_nombre,
+            func.lower(Movimiento.producto) == producto_nombre.lower(),
+        )
+        .all()
+    )
+
+    stock_total = 0
+    for m in movimientos:
+        qty = m.cantidad or 0
+        if m.tipo == "salida" or (m.tipo == "ajuste" and qty < 0):
+            stock_total -= abs(qty)
+        else:
+            stock_total += abs(qty)
+
+    destino = negocio.whatsapp_notificaciones  # puede ser None por ahora
+
+    # 🔴 Alerta por stock mínimo
+    if producto.stock_min is not None and stock_total < producto.stock_min:
+        mensaje = (
+            f"Stock CRÍTICO de '{producto.nombre}': {stock_total} unidades "
+            f"(mínimo configurado: {producto.stock_min})."
+        )
+        crear_alerta_interna(
+            db=db,
+            negocio_id=negocio.id,
+            tipo="stock_min",
+            mensaje=mensaje,
+            origen=origen,
+            destino=destino,
+            datos={
+                "producto": producto.nombre,
+                "stock_total": stock_total,
+                "stock_min": producto.stock_min,
+            },
+        )
+
+    # 🟠 Alerta por sobre-stock
+    if producto.stock_max is not None and stock_total > producto.stock_max:
+        mensaje = (
+            f"SOBRE-STOCK de '{producto.nombre}': {stock_total} unidades "
+            f"(máximo configurado: {producto.stock_max})."
+        )
+        crear_alerta_interna(
+            db=db,
+            negocio_id=negocio.id,
+            tipo="stock_max",
+            mensaje=mensaje,
+            origen=origen,
+            destino=destino,
+            datos={
+                "producto": producto.nombre,
+                "stock_total": stock_total,
+                "stock_max": producto.stock_max,
+            },
+        )
+
+
+def evaluar_alertas_vencimiento(
+    db: Session,
+    user: dict,
+    producto_nombre: str,
+    origen: str,
+):
+    """
+    Genera alertas internas cuando un producto está vencido o próximo a vencer.
+    Se basa en las fechas de vencimiento registradas en las ENTRADAS.
+    """
+    negocio = db.query(Negocio).filter(Negocio.id == user["negocio_id"]).first()
+    if not negocio:
+        return
+
+    negocio_nombre = negocio.nombre_fantasia
+
+    # Filtrar entradas del producto con fecha de vencimiento válida
+    entradas = (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.negocio == negocio_nombre,
+            Movimiento.tipo == "entrada",
+            func.lower(Movimiento.producto) == producto_nombre.lower(),
+            Movimiento.fecha_vencimiento.isnot(None),
+        )
+        .all()
+    )
+
+    if not entradas:
+        return
+
+    hoy = date.today()
+
+    for e in entradas:
+        fv = e.fecha_vencimiento
+        if not fv:
+            continue
+
+        dias = (fv - hoy).days  # días restantes
+        destino = negocio.whatsapp_notificaciones
+
+        # 🔴 Producto ya vencido
+        if dias < 0:
+            mensaje = (
+                f"ALERTA: El producto '{e.producto}' está VENCIDO "
+                f"(fecha: {fv.strftime('%d-%m-%Y')})."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio.id,
+                tipo="vencido",
+                mensaje=mensaje,
+                origen=origen,
+                destino=destino,
+                datos={
+                    "producto": e.producto,
+                    "fecha_vencimiento": fv.isoformat(),
+                    "dias_restantes": dias,
+                },
+            )
+            continue
+
+        # 🟠 Próximo a vencer (dentro de 7 días)
+        if dias <= 7:
+            mensaje = (
+                f"Advertencia: El producto '{e.producto}' vencerá en {dias} días "
+                f"(fecha: {fv.strftime('%d-%m-%Y')})."
+            )
+            crear_alerta_interna(
+                db=db,
+                negocio_id=negocio.id,
+                tipo="proximo_vencer",
+                mensaje=mensaje,
+                origen=origen,
+                destino=destino,
+                datos={
+                    "producto": e.producto,
+                    "fecha_vencimiento": fv.isoformat(),
+                    "dias_restantes": dias,
+                },
+            )
+
+
+
+# ============================
+# SUPERADMIN
+# ============================
+
+@app.get("/superadmin/dashboard", response_class=HTMLResponse)
+async def superadmin_dashboard(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_superadmin(user)
+
+    # Totales de negocios
+    total_negocios = db.query(Negocio).count()
+    negocios_activos = db.query(Negocio).filter(Negocio.estado == "activo").count()
+    negocios_suspendidos = db.query(Negocio).filter(Negocio.estado == "suspendido").count()
+
+    # Alertas pendientes (todas)
+    alertas_pendientes = db.query(Alerta).filter(Alerta.estado == "pendiente").count()
+
+    return templates.TemplateResponse(
+        "superadmin_dashboard.html",
+        {
+            "request": request,
+            "user": user,
+            "total_negocios": total_negocios,
+            "negocios_activos": negocios_activos,
+            "negocios_suspendidos": negocios_suspendidos,
+            "alertas_pendientes": alertas_pendientes,
+        },
+    )
+
+
+@app.get("/superadmin/negocios", response_class=HTMLResponse)
+async def superadmin_negocios(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_superadmin(user)
+
+    negocios = db.query(Negocio).all()
+    data = []
+
+    for n in negocios:
+        usuarios = db.query(Usuario).filter(Usuario.negocio_id == n.id).count()
+        productos = db.query(Producto).filter(Producto.negocio == n.nombre_fantasia).count()
+
+        hace_30 = datetime.utcnow() - timedelta(days=30)
+        movimientos = (
+            db.query(Movimiento)
+            .filter(Movimiento.negocio == n.nombre_fantasia)
+            .filter(Movimiento.fecha >= hace_30)
+            .count()
+        )
+
+        data.append(
+            {
+                "id": n.id,
+                "nombre": n.nombre_fantasia,
+                "plan": n.plan_tipo,
+                "estado": n.estado,
+                "usuarios": usuarios,
+                "productos": productos,
+                "movimientos_30d": movimientos,
+                "ultimo_acceso": n.ultimo_acceso,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "superadmin_negocios.html",
+        {
+            "request": request,
+            "user": user,
+            "negocios": data,
+        },
+    )
+
+
+@app.get("/superadmin/negocios/{negocio_id}", response_class=HTMLResponse)
+async def superadmin_negocio_detalle(
+    request: Request,
+    negocio_id: int,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_superadmin(user)
+
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    if not negocio:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+
+    return templates.TemplateResponse(
+        "superadmin_negocio_detalle.html",
+        {
+            "request": request,
+            "user": user,
+            "negocio": negocio,
+            "planes": PLANES_CONFIG.keys(),
+        },
+    )
+
+
+@app.post("/superadmin/negocios/{negocio_id}/update")
+async def superadmin_negocio_update(
+    request: Request,
+    negocio_id: int,
+    plan_tipo: str = Form(...),
+    estado: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_superadmin(user)
+
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    if not negocio:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+
+    negocio.plan_tipo = plan_tipo
+    negocio.estado = estado
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/superadmin/negocios/{negocio_id}",
+        status_code=302,
+    )
+
+
+@app.get("/superadmin/alertas", response_class=HTMLResponse)
+async def superadmin_alertas(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_superadmin(user)
+
+    alertas = (
+        db.query(Alerta)
+        .join(Negocio, Alerta.negocio_id == Negocio.id)
+        .order_by(Alerta.fecha_creacion.desc(), Alerta.id.desc())
+        .limit(500)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "superadmin_alertas.html",
+        {
+            "request": request,
+            "user": user,
+            "alertas": alertas,
+        },
+    )
+
+# ============================
+# HOME / LOGIN / LOGOUT
+# ============================
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     user = get_current_user(request)
-    if user:
-        return RedirectResponse(url="/dashboard", status_code=302)
-    return RedirectResponse(url="/login", status_code=302)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    if is_superadmin(user):
+        return RedirectResponse(url="/superadmin/dashboard", status_code=302)
+
+    return RedirectResponse(url="/dashboard", status_code=302)
+
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
+    user = get_current_user(request)
+    if user:
+        # Si ya está autenticado, lo mandamos a su panel
+        if is_superadmin(user):
+            return RedirectResponse(url="/superadmin/dashboard", status_code=302)
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "error": None}
+        {"request": request, "error": None},
     )
+
 
 @app.post("/login", response_class=HTMLResponse)
 async def login_submit(
     request: Request,
     email: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
+    db: Session = Depends(get_db),
 ):
-    user = FAKE_USERS.get(email)
-    if not user or user["password"] != password:
-        # Credenciales inválidas
+    email_norm = (email or "").strip().lower()
+
+    usuario = (
+        db.query(Usuario)
+        .filter(Usuario.email == email_norm)
+        .first()
+    )
+
+    # Validar existencia y estado
+    if not usuario or usuario.activo != 1:
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Correo o contraseña incorrectos."},
-            status_code=401
+            status_code=401,
         )
 
-    # Login OK -> generar cookie firmada
-    signed = signer.sign(email.encode("utf-8")).decode("utf-8")
-    response = RedirectResponse(url="/dashboard", status_code=302)
-    response.set_cookie(
-        key="session",
-        value=signed,
-        httponly=True,
-        max_age=60 * 60 * 4  # 4 horas
-    )
+    # Validar contraseña con bcrypt
+    if not verify_password(password, usuario.password_hash):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Correo o contraseña incorrectos."},
+            status_code=401,
+        )
+
+    # (Opcional) Validar estado del negocio
+    if usuario.negocio and usuario.negocio.estado != "activo":
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "El negocio asociado a este usuario está suspendido.",
+            },
+            status_code=403,
+        )
+
+    # Login OK → crear sesión en BD
+    token_sesion = crear_sesion_db(db, usuario)
+
+    # Crear respuesta de redirección según rol
+    if usuario.rol == "superadmin":
+        redirect_url = "/superadmin/dashboard"
+    else:
+        redirect_url = "/dashboard"
+
+    response = RedirectResponse(url=redirect_url, status_code=302)
+    crear_cookie_sesion(response, usuario, token_sesion)
     return response
 
+
 @app.get("/logout")
-async def logout():
+async def logout(request: Request, db: Session = Depends(get_db)):
+    cookie = request.cookies.get("session")
+
+    if cookie:
+        try:
+            data = signer.unsign(cookie).decode("utf-8")
+            payload = json.loads(data)
+            user_id = payload.get("user_id")
+            token_sesion = payload.get("token_sesion")
+
+            if user_id and token_sesion:
+                db.query(SesionUsuario).filter(
+                    SesionUsuario.usuario_id == user_id,
+                    SesionUsuario.token_sesion == token_sesion,
+                    SesionUsuario.activo == 1,
+                ).update({SesionUsuario.activo: 0})
+                db.commit()
+        except (BadSignature, json.JSONDecodeError):
+            # Si la cookie es inválida, simplemente la borramos
+            pass
+
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("session")
     return response
+
+
+# ============================
+#     REGISTRAR NEGOCIO
+# ============================
+
+@app.get("/registrar-negocio", response_class=HTMLResponse)
+async def registrar_negocio_get(request: Request):
+    """
+    Muestra el formulario para que un dueño cree su negocio + usuario admin.
+    Si ya está autenticado, lo mandamos a su dashboard.
+    """
+    user = get_current_user(request)
+    if user:
+        if is_superadmin(user):
+            return RedirectResponse(url="/superadmin/dashboard", status_code=302)
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    return templates.TemplateResponse(
+        "registrar_negocio.html",
+        {
+            "request": request,
+            "errores": [],
+            "nombre_negocio": "",
+            "whatsapp": "",
+            "email": "",
+        },
+    )
+
+
+@app.post("/registrar-negocio", response_class=HTMLResponse)
+async def registrar_negocio_post(
+    request: Request,
+    nombre_negocio: str = Form(...),
+    whatsapp: str = Form(""),
+    email: str = Form(...),
+    password: str = Form(...),
+    password2: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    errores: list[str] = []
+
+    nombre_negocio = (nombre_negocio or "").strip()
+    whatsapp = (whatsapp or "").strip()
+    email_norm = (email or "").strip().lower()
+    password = password or ""
+    password2 = password2 or ""
+
+    # Validaciones básicas
+    if len(nombre_negocio) < 3:
+        errores.append("El nombre del negocio es muy corto (mínimo 3 caracteres).")
+
+    if " " in email_norm or "@" not in email_norm:
+        errores.append("Debes ingresar un correo válido.")
+
+    if len(password) < 8:
+        errores.append("La contraseña debe tener al menos 8 caracteres.")
+
+    if password != password2:
+        errores.append("Las contraseñas no coinciden.")
+
+    # Validar unicidad de email
+    existing_user = (
+        db.query(Usuario)
+        .filter(Usuario.email == email_norm)
+        .first()
+    )
+    if existing_user:
+        errores.append("Ya existe un usuario registrado con ese correo.")
+
+    # Validar unicidad de nombre de negocio
+    existing_neg = (
+        db.query(Negocio)
+        .filter(func.lower(Negocio.nombre_fantasia) == nombre_negocio.lower())
+        .first()
+    )
+    if existing_neg:
+        errores.append("Ya existe un negocio con ese nombre de fantasía.")
+
+    if errores:
+        # Volver a mostrar el formulario con mensajes
+        return templates.TemplateResponse(
+            "registrar_negocio.html",
+            {
+                "request": request,
+                "errores": errores,
+                "nombre_negocio": nombre_negocio,
+                "whatsapp": whatsapp,
+                "email": email_norm,
+            },
+            status_code=400,
+        )
+
+    # Crear negocio + usuario admin
+    try:
+        negocio = Negocio(
+            nombre_fantasia=nombre_negocio,
+            whatsapp_notificaciones=whatsapp or None,
+            estado="activo",
+            # opcional: si quieres fijar explícitamente el plan
+            # plan_tipo="demo",
+        )
+        db.add(negocio)
+        db.flush()  # para obtener negocio.id
+
+        usuario_admin = Usuario(
+            negocio_id=negocio.id,
+            email=email_norm,
+            password_hash=hash_password(password),
+            rol="admin",
+            activo=1,
+            nombre_mostrado=None,
+        )
+        db.add(usuario_admin)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[REGISTRAR_NEGOCIO] Error al crear negocio/usuario: {e}")
+        return templates.TemplateResponse(
+            "registrar_negocio.html",
+            {
+                "request": request,
+                "errores": ["Ocurrió un error al crear el negocio. Inténtalo nuevamente."],
+                "nombre_negocio": nombre_negocio,
+                "whatsapp": whatsapp,
+                "email": email_norm,
+            },
+            status_code=500,
+        )
+
+    # Login automático del admin recién creado
+    token_sesion = crear_sesion_db(db, usuario_admin)
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    crear_cookie_sesion(response, usuario_admin, token_sesion)
+    return response
+
+
+# ============================
+#     REGISTRAR USUARIOS
+# ============================
+
+@app.get("/usuarios", response_class=HTMLResponse)
+async def listar_usuarios(request: Request, db: Session = Depends(get_db)):
+    """
+    Lista usuarios (equipo) del negocio actual.
+    - admin: ve usuarios de su negocio
+    - superadmin: ve todos los usuarios
+    """
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_role(user, ("admin", "superadmin"))
+
+    if user["rol"] == "superadmin":
+        usuarios = (
+            db.query(Usuario)
+            .order_by(Usuario.id)
+            .all()
+        )
+    else:
+        usuarios = (
+            db.query(Usuario)
+            .filter(Usuario.negocio_id == user["negocio_id"])
+            .order_by(Usuario.id)
+            .all()
+        )
+
+    return templates.TemplateResponse(
+        "usuarios.html",
+        {
+            "request": request,
+            "user": user,
+            "usuarios": usuarios,
+        },
+    )
+
+
+@app.get("/usuarios/nuevo", response_class=HTMLResponse)
+async def nuevo_usuario_get(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_role(user, ("admin", "superadmin"))
+
+    return templates.TemplateResponse(
+        "usuarios_nuevo.html",
+        {
+            "request": request,
+            "user": user,
+            "errores": [],
+            "nombre": "",
+            "email": "",
+        },
+    )
+
+
+@app.post("/usuarios/nuevo", response_class=HTMLResponse)
+async def nuevo_usuario_post(
+    request: Request,
+    nombre: str = Form(""),
+    email: str = Form(...),
+    password: str = Form(...),
+    password2: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    require_role(user, ("admin", "superadmin"))
+
+    errores: list[str] = []
+
+    nombre = (nombre or "").strip()
+    email_norm = (email or "").strip().lower()
+    password = password or ""
+    password2 = password2 or ""
+
+    # Validaciones básicas
+    if " " in email_norm or "@" not in email_norm:
+        errores.append("Debes ingresar un correo válido.")
+
+    if len(password) < 8:
+        errores.append("La contraseña debe tener al menos 8 caracteres.")
+
+    if password != password2:
+        errores.append("Las contraseñas no coinciden.")
+
+    # Validar que no exista otro usuario con el mismo correo
+    existing = (
+        db.query(Usuario)
+        .filter(Usuario.email == email_norm)
+        .first()
+    )
+    if existing:
+        errores.append("Ya existe un usuario registrado con ese correo.")
+
+    if errores:
+        return templates.TemplateResponse(
+            "usuarios_nuevo.html",
+            {
+                "request": request,
+                "user": user,
+                "errores": errores,
+                "nombre": nombre,
+                "email": email_norm,
+            },
+            status_code=400,
+        )
+
+    # Negocio al que pertenecerá el operador
+    negocio_id = user["negocio_id"]
+    # Aplicar límite de plan
+    check_plan_limit(db, negocio_id, "usuarios")
+
+    try:
+        nuevo = Usuario(
+            negocio_id=negocio_id,
+            email=email_norm,
+            password_hash=hash_password(password),
+            rol="operador",
+            activo=1,
+            nombre_mostrado=nombre or None,
+        )
+        db.add(nuevo)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[USUARIOS_NUEVO] Error al crear operador: {e}")
+        errores.append("Ocurrió un error al crear el usuario. Inténtalo nuevamente.")
+        return templates.TemplateResponse(
+            "usuarios_nuevo.html",
+            {
+                "request": request,
+                "user": user,
+                "errores": errores,
+                "nombre": nombre,
+                "email": email_norm,
+            },
+            status_code=500,
+        )
+
+    # futuro: registrar_auditoria(...)
+    return RedirectResponse("/usuarios", status_code=302)
+
 
 
 # ============================
@@ -337,7 +1582,19 @@ async def logout():
 async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
+
+    # El superadmin no usa este dashboard, va al corporativo
+    if is_superadmin(user):
+        return RedirectResponse("/superadmin/dashboard", status_code=302)
+
+    # Generar/actualizar alertas internas para el negocio actual
+    if user.get("negocio_id"):
+        generar_alertas_para_negocio(
+            db=db,
+            negocio_id=user["negocio_id"],
+            negocio_nombre=user["negocio"],
+        )
 
     hoy = date.today()
 
@@ -363,15 +1620,18 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Totales por producto y lotes para vencimiento (FEFO simplificado por producto)
-    totales_producto = {}        # producto -> qty total
-    lotes_por_producto = {}      # producto -> lista {"fv": date|None, "qty": int}
+    # Totales por producto y lotes (para vencimiento FEFO simplificado)
+    totales_producto: dict[str, int] = {}        # producto -> qty total
+    lotes_por_producto: dict[str, list[dict]] = {}  # producto -> [{fv, qty}, ...]
 
     for mov in movimientos_all:
-        prod_name = mov.producto
+        prod_name = mov.producto or ""
         prod_key = prod_name.lower()
+        if not prod_key:
+            continue
 
         qty = mov.cantidad or 0
+
         # misma lógica que en stock: salidas/ajustes negativos restan
         if mov.tipo == "salida" or (mov.tipo == "ajuste" and qty < 0):
             signed_delta = -abs(qty)
@@ -392,7 +1652,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
             lotes.sort(
                 key=lambda l: (
                     l["fv"] is None,
-                    l["fv"] or date(9999, 12, 31)
+                    l["fv"] or date(9999, 12, 31),
                 )
             )
             for lote in lotes:
@@ -409,10 +1669,15 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     # ============================
     # 3) Resumen de estados por producto (min/max)
     # ============================
-    resumen_stock = {"Crítico": 0, "OK": 0, "Sobre-stock": 0, "Sin configuración": 0}
+    resumen_stock = {
+        "Crítico": 0,
+        "OK": 0,
+        "Sobre-stock": 0,
+        "Sin configuración": 0,
+    }
     prioridad = {"Crítico": 3, "Sobre-stock": 2, "OK": 1, "Sin configuración": 0}
 
-    estado_producto = {}  # producto -> estado
+    estado_producto: dict[str, str] = {}  # producto -> estado
 
     for p in productos:
         key = p.nombre.lower()
@@ -452,12 +1717,12 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     }
 
     for prod_name, lotes in lotes_por_producto.items():
-        # tomar la fecha de vencimiento más próxima entre los lotes que quedan
         fv_min = None
         for l in lotes:
             if l["fv"] is not None:
                 if fv_min is None or l["fv"] < fv_min:
                     fv_min = l["fv"]
+
         if fv_min is None:
             resumen_venc["Sin fecha"] += 1
         else:
@@ -479,6 +1744,38 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     # 5) Total unidades en stock (suma de positivos)
     # ============================
     total_unidades = sum(q for q in totales_producto.values() if q > 0)
+
+    # 💰 Valor total de inventario (solo cantidades positivas)
+    valor_inventario = 0.0
+    for prod_key, qty in totales_producto.items():
+        if qty <= 0:
+            continue
+        p = productos_by_name.get(prod_key)
+        if p and p.costo_unitario is not None:
+            valor_inventario += qty * p.costo_unitario
+
+    valor_inventario = int(round(valor_inventario))
+
+    # 💸 Pérdidas por merma últimos 30 días (motivo_salida = 'merma')
+    desde_30 = hoy - timedelta(days=30)
+    salidas_merma = (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.negocio == user["negocio"],
+            Movimiento.tipo == "salida",
+            Movimiento.motivo_salida == "merma",
+            Movimiento.fecha >= datetime.combine(desde_30, datetime.min.time()),
+        )
+        .all()
+    )
+
+    perdidas_merma_30d = 0.0
+    for m in salidas_merma:
+        p = productos_by_name.get((m.producto or "").lower())
+        if p and p.costo_unitario is not None:
+            perdidas_merma_30d += abs(m.cantidad or 0) * p.costo_unitario
+
+    perdidas_merma_30d = int(round(perdidas_merma_30d))
 
     # ============================
     # 6) Últimos movimientos (tabla)
@@ -505,7 +1802,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    serie_por_dia = {}  # fecha (date) -> {"entrada": x, "salida": y}
+    serie_por_dia: dict[date, dict[str, int]] = {}
 
     for m in mov_ultimos_7:
         dia = m.fecha.date()
@@ -523,12 +1820,25 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     chart_entradas = [serie_por_dia[d]["entrada"] for d in dias_ordenados]
     chart_salidas = [serie_por_dia[d]["salida"] for d in dias_ordenados]
 
-    # Pasamos las listas como JSON para Chart.js
     chart_data = {
         "labels": chart_labels,
         "entradas": chart_entradas,
         "salidas": chart_salidas,
     }
+
+    # ============================
+    # 8) Alertas pendientes del negocio
+    # ============================
+    alertas_pendientes = 0
+    if user.get("negocio_id"):
+        alertas_pendientes = (
+            db.query(Alerta)
+            .filter(
+                Alerta.negocio_id == user["negocio_id"],
+                Alerta.estado == "pendiente",
+            )
+            .count()
+        )
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -541,8 +1851,12 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
             "resumen_venc": resumen_venc,
             "movimientos_recientes": movimientos_recientes,
             "chart_data_json": json.dumps(chart_data),
-        }
+            "valor_inventario": valor_inventario,
+            "perdidas_merma_30d": perdidas_merma_30d,
+            "alertas_pendientes": alertas_pendientes,
+        },
     )
+
 
 # ============================
 #     ZONAS
@@ -550,6 +1864,10 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/zonas", response_class=HTMLResponse)
 async def zonas_list(request: Request, db: Session = Depends(get_db)):
+    """
+    Lista las zonas del negocio actual.
+    Solo admin y superadmin pueden acceder.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -569,11 +1887,15 @@ async def zonas_list(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "zonas": zonas,
-        }
+        },
     )
+
 
 @app.get("/zonas/nueva", response_class=HTMLResponse)
 async def zona_nueva_form(request: Request):
+    """
+    Formulario para crear una nueva zona en el negocio actual.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -587,7 +1909,8 @@ async def zona_nueva_form(request: Request):
             "user": user,
             "error": None,
             "nombre": "",
-        }
+            "sigla": "",
+        },
     )
 
 
@@ -596,8 +1919,11 @@ async def zona_nueva_submit(
     request: Request,
     nombre: str = Form(...),
     sigla: str = Form(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa la creación de una nueva zona.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -607,7 +1933,7 @@ async def zona_nueva_submit(
     nombre = (nombre or "").strip()
     sigla = (sigla or "").strip().upper()
 
-
+    # Validación: nombre obligatorio
     if not nombre:
         return templates.TemplateResponse(
             "zona_nueva.html",
@@ -621,7 +1947,7 @@ async def zona_nueva_submit(
             status_code=400,
         )
 
-    # opcional: validar sigla vacía o no
+    # Si no se entrega sigla, usamos la primera letra del nombre
     if not sigla:
         sigla = nombre[:1].upper()
 
@@ -630,7 +1956,7 @@ async def zona_nueva_submit(
         db.query(Zona)
         .filter(
             Zona.negocio == user["negocio"],
-            func.lower(Zona.nombre) == nombre.lower()
+            func.lower(Zona.nombre) == nombre.lower(),
         )
         .first()
     )
@@ -646,6 +1972,9 @@ async def zona_nueva_submit(
             },
             status_code=400,
         )
+
+    # Aplicar límite de plan
+    check_plan_limit(db, user["negocio_id"], "zonas")
 
     zona = Zona(
         negocio=user["negocio"],
@@ -669,8 +1998,12 @@ async def zona_nueva_submit(
 async def ubicaciones_list(
     zona_id: int,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Lista las ubicaciones de una zona específica del negocio actual.
+    Solo admin y superadmin.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -681,7 +2014,7 @@ async def ubicaciones_list(
         db.query(Zona)
         .filter(
             Zona.id == zona_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -702,7 +2035,7 @@ async def ubicaciones_list(
             "user": user,
             "zona": zona,
             "ubicaciones": ubicaciones,
-        }
+        },
     )
 
 
@@ -710,8 +2043,11 @@ async def ubicaciones_list(
 async def ubicacion_nueva_form(
     zona_id: int,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Formulario para crear una nueva ubicación dentro de una zona.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -722,7 +2058,7 @@ async def ubicacion_nueva_form(
         db.query(Zona)
         .filter(
             Zona.id == zona_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -737,7 +2073,8 @@ async def ubicacion_nueva_form(
             "zona": zona,
             "error": None,
             "nombre": "",
-        }
+            "sigla": "",
+        },
     )
 
 
@@ -747,8 +2084,11 @@ async def ubicacion_nueva_submit(
     request: Request,
     nombre: str = Form(...),
     sigla: str = Form(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa la creación de una nueva ubicación en una zona.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -759,7 +2099,7 @@ async def ubicacion_nueva_submit(
         db.query(Zona)
         .filter(
             Zona.id == zona_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -769,7 +2109,7 @@ async def ubicacion_nueva_submit(
     nombre = (nombre or "").strip()
     sigla = (sigla or "").strip().upper()
 
-
+    # Validación: nombre obligatorio
     if not nombre:
         return templates.TemplateResponse(
             "ubicacion_nueva.html",
@@ -784,17 +2124,17 @@ async def ubicacion_nueva_submit(
             status_code=400,
         )
 
-    
+    # Si no se entrega sigla, se genera a partir de las iniciales del nombre
     if not sigla:
-        # ejemplo: Repisa A -> RA (tomas primera letra de cada palabra)
         partes = nombre.split()
         sigla = "".join(p[0] for p in partes).upper()
 
+    # Validar duplicado dentro de la misma zona (case-insensitive)
     existe = (
         db.query(Ubicacion)
         .filter(
             Ubicacion.zona_id == zona.id,
-            func.lower(Ubicacion.nombre) == nombre.lower()
+            func.lower(Ubicacion.nombre) == nombre.lower(),
         )
         .first()
     )
@@ -812,6 +2152,9 @@ async def ubicacion_nueva_submit(
             status_code=400,
         )
 
+    # Aplicar límite de plan
+    check_plan_limit(db, user["negocio_id"], "ubicaciones")
+
     ubicacion = Ubicacion(
         zona_id=zona.id,
         nombre=nombre,
@@ -821,13 +2164,12 @@ async def ubicacion_nueva_submit(
     db.commit()
     db.refresh(ubicacion)
 
-    print(">>> NUEVA ZONA:", zona.id, zona.nombre, zona.sigla)
+    print(">>> NUEVA UBICACION:", ubicacion.id, ubicacion.nombre, ubicacion.sigla)
 
     return RedirectResponse(
         url=f"/zonas/{zona.id}/ubicaciones",
-        status_code=302
+        status_code=302,
     )
-
 
 
 # ============================
@@ -835,7 +2177,15 @@ async def ubicacion_nueva_submit(
 # ============================
 
 @app.get("/ubicaciones/{ubicacion_id}/slots", response_class=HTMLResponse)
-async def slots_list(ubicacion_id: int, request: Request, db: Session = Depends(get_db)):
+async def slots_list(
+    ubicacion_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Lista los slots de una ubicación específica del negocio actual.
+    Solo accesible para admin y superadmin.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -847,7 +2197,7 @@ async def slots_list(ubicacion_id: int, request: Request, db: Session = Depends(
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Ubicacion.id == ubicacion_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -868,11 +2218,19 @@ async def slots_list(ubicacion_id: int, request: Request, db: Session = Depends(
             "user": user,
             "ubicacion": ubicacion,
             "slots": slots,
-        }
+        },
     )
 
+
 @app.get("/ubicaciones/{ubicacion_id}/slots/nuevo", response_class=HTMLResponse)
-async def slot_nuevo_form(ubicacion_id: int, request: Request, db: Session = Depends(get_db)):
+async def slot_nuevo_form(
+    ubicacion_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Formulario para crear un nuevo slot en una ubicación.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -884,7 +2242,7 @@ async def slot_nuevo_form(ubicacion_id: int, request: Request, db: Session = Dep
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Ubicacion.id == ubicacion_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -900,7 +2258,7 @@ async def slot_nuevo_form(ubicacion_id: int, request: Request, db: Session = Dep
             "error": None,
             "codigo": "",
             "capacidad": "",
-        }
+        },
     )
 
 
@@ -912,6 +2270,9 @@ async def slot_nuevo_submit(
     capacidad: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    """
+    Procesa la creación de un nuevo slot en una ubicación.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -923,7 +2284,7 @@ async def slot_nuevo_submit(
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Ubicacion.id == ubicacion_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -933,6 +2294,7 @@ async def slot_nuevo_submit(
     codigo = (codigo or "").strip().upper()
     capacidad_str = (capacidad or "").strip()
 
+    # Validación: código obligatorio
     if not codigo:
         return templates.TemplateResponse(
             "slot_nuevo.html",
@@ -947,11 +2309,12 @@ async def slot_nuevo_submit(
             status_code=400,
         )
 
+    # Validar duplicado de código dentro de la misma ubicación
     existe = (
         db.query(Slot)
         .filter(
             Slot.ubicacion_id == ubicacion.id,
-            func.lower(Slot.codigo) == codigo.lower()
+            func.lower(Slot.codigo) == codigo.lower(),
         )
         .first()
     )
@@ -969,11 +2332,15 @@ async def slot_nuevo_submit(
             status_code=400,
         )
 
+    # Parseo de capacidad (opcional)
     capacidad_int = None
     if capacidad_str.isdigit():
         capacidad_int = int(capacidad_str)
 
-    # 👇 aquí usamos las siglas que ya están en la BD
+    # Aplicar límite de plan
+    check_plan_limit(db, user["negocio_id"], "slots")
+
+    # Construcción de código completo usando siglas reales de zona/ubicación
     zona_sigla = (ubicacion.zona.sigla or ubicacion.zona.nombre[:1]).upper()
     ubic_sigla = (ubicacion.sigla or "".join(p[0] for p in ubicacion.nombre.split())).upper()
     codigo_full = f"{zona_sigla}-{ubic_sigla}-{codigo}"
@@ -992,14 +2359,14 @@ async def slot_nuevo_submit(
 
     return RedirectResponse(
         url=f"/ubicaciones/{ubicacion.id}/slots",
-        status_code=302
+        status_code=302,
     )
-
 
 
 def get_slots_negocio(db: Session, negocio: str):
     """
     Devuelve todos los slots del negocio con información de zona y ubicación.
+    Ideal para poblar selects en formularios de movimientos.
     """
     slots = (
         db.query(Slot)
@@ -1012,13 +2379,16 @@ def get_slots_negocio(db: Session, negocio: str):
     return slots
 
 
-
 # ============================
 #     PRODUCTOS
 # ============================
 
 @app.get("/productos", response_class=HTMLResponse)
 async def productos_list(request: Request, db: Session = Depends(get_db)):
+    """
+    Lista los productos del negocio actual.
+    Solo accesible para admin y superadmin.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1038,11 +2408,15 @@ async def productos_list(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "productos": productos,
-        }
+        },
     )
+
 
 @app.get("/productos/nuevo", response_class=HTMLResponse)
 async def producto_nuevo_form(request: Request):
+    """
+    Formulario de creación de producto.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1057,7 +2431,10 @@ async def producto_nuevo_form(request: Request):
             "error": None,
             "nombre": "",
             "unidad": "unidad",
-        }
+            "stock_min": "",
+            "stock_max": "",
+            "costo_unitario": "",
+        },
     )
 
 
@@ -1068,8 +2445,12 @@ async def producto_nuevo_submit(
     unidad: str = Form(...),
     stock_min: str = Form(""),
     stock_max: str = Form(""),
-    db: Session = Depends(get_db)
+    costo_unitario: str = Form(""),
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa la creación de un nuevo producto del negocio actual.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1085,8 +2466,26 @@ async def producto_nuevo_submit(
     stock_min_val = int(stock_min_str) if stock_min_str.isdigit() else None
     stock_max_val = int(stock_max_str) if stock_max_str.isdigit() else None
 
+    costo_str = (costo_unitario or "").strip().replace(",", ".")
+    try:
+        costo_val = float(costo_str) if costo_str else None
+    except ValueError:
+        return templates.TemplateResponse(
+            "producto_nuevo.html",
+            {
+                "request": request,
+                "user": user,
+                "error": "El costo unitario debe ser un número válido.",
+                "nombre": nombre,
+                "unidad": unidad,
+                "stock_min": stock_min_str,
+                "stock_max": stock_max_str,
+                "costo_unitario": costo_str,
+            },
+            status_code=400,
+        )
+
     if not nombre:
-        # adapta a tu template actual
         return templates.TemplateResponse(
             "producto_nuevo.html",
             {
@@ -1097,6 +2496,7 @@ async def producto_nuevo_submit(
                 "unidad": unidad,
                 "stock_min": stock_min_str,
                 "stock_max": stock_max_str,
+                "costo_unitario": costo_str,
             },
             status_code=400,
         )
@@ -1106,7 +2506,7 @@ async def producto_nuevo_submit(
         db.query(Producto)
         .filter(
             Producto.negocio == user["negocio"],
-            func.lower(Producto.nombre) == nombre.lower()
+            func.lower(Producto.nombre) == nombre.lower(),
         )
         .first()
     )
@@ -1121,9 +2521,13 @@ async def producto_nuevo_submit(
                 "unidad": unidad,
                 "stock_min": stock_min_str,
                 "stock_max": stock_max_str,
+                "costo_unitario": costo_str,
             },
             status_code=400,
         )
+
+    # Aplicar límite de plan
+    check_plan_limit(db, user["negocio_id"], "productos")
 
     producto = Producto(
         negocio=user["negocio"],
@@ -1131,6 +2535,8 @@ async def producto_nuevo_submit(
         unidad=unidad,
         stock_min=stock_min_val,
         stock_max=stock_max_val,
+        activo=1,
+        costo_unitario=costo_val,
     )
     db.add(producto)
     db.commit()
@@ -1146,11 +2552,18 @@ async def producto_nuevo_submit(
             "unidad": producto.unidad,
             "stock_min": producto.stock_min,
             "stock_max": producto.stock_max,
+            "costo_unitario": producto.costo_unitario,
         },
     )
 
-
-    print(">>> NUEVO PRODUCTO:", producto.nombre, "min:", producto.stock_min, "max:", producto.stock_max)
+    print(
+        ">>> NUEVO PRODUCTO:",
+        producto.nombre,
+        "min:",
+        producto.stock_min,
+        "max:",
+        producto.stock_max,
+    )
 
     return RedirectResponse(url="/productos", status_code=302)
 
@@ -1159,8 +2572,11 @@ async def producto_nuevo_submit(
 async def producto_editar_form(
     producto_id: int,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Formulario de edición de producto.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1185,9 +2601,8 @@ async def producto_editar_form(
             "user": user,
             "error": None,
             "producto": producto,
-        }
+        },
     )
-
 
 
 @app.post("/productos/{producto_id}/editar", response_class=HTMLResponse)
@@ -1198,8 +2613,12 @@ async def producto_editar_submit(
     unidad: str = Form(...),
     stock_min: str = Form(""),
     stock_max: str = Form(""),
-    db: Session = Depends(get_db)
+    costo_unitario: str = Form(""),
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa la edición de un producto existente del negocio actual.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1224,6 +2643,21 @@ async def producto_editar_submit(
 
     stock_min_val = int(stock_min_str) if stock_min_str.isdigit() else None
     stock_max_val = int(stock_max_str) if stock_max_str.isdigit() else None
+
+    costo_str = (costo_unitario or "").strip().replace(",", ".")
+    try:
+        costo_val = float(costo_str) if costo_str else None
+    except ValueError:
+        return templates.TemplateResponse(
+            "producto_editar.html",
+            {
+                "request": request,
+                "user": user,
+                "error": "El costo unitario debe ser un número válido.",
+                "producto": producto,
+            },
+            status_code=400,
+        )
 
     if not nombre:
         return templates.TemplateResponse(
@@ -1264,6 +2698,7 @@ async def producto_editar_submit(
     producto.unidad = unidad
     producto.stock_min = stock_min_val
     producto.stock_max = stock_max_val
+    producto.costo_unitario = costo_val
 
     db.commit()
     db.refresh(producto)
@@ -1278,19 +2713,22 @@ async def producto_editar_submit(
             "unidad": producto.unidad,
             "stock_min": producto.stock_min,
             "stock_max": producto.stock_max,
+            "costo_unitario": producto.costo_unitario,
         },
     )
 
     return RedirectResponse(url="/productos", status_code=302)
 
 
-
 @app.post("/productos/{producto_id}/toggle-estado")
 async def producto_toggle_estado(
     producto_id: int,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Activa / desactiva (soft delete) un producto del negocio actual.
+    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -1328,18 +2766,22 @@ async def producto_toggle_estado(
     return RedirectResponse(url="/productos", status_code=302)
 
 
-
 # ============================
 #     MOVIMIENTOS
 # ============================
 
-from datetime import datetime
-
 @app.get("/movimientos", response_class=HTMLResponse)
 async def movimientos_view(request: Request, db: Session = Depends(get_db)):
+    """
+    Listado de movimientos con filtros básicos:
+    - rango de fechas
+    - tipo de movimiento
+    - producto (contiene)
+    - usuario (contiene)
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     params = request.query_params
 
@@ -1357,6 +2799,7 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
             dt_desde = datetime.strptime(fecha_desde_str, "%Y-%m-%d")
             query = query.filter(Movimiento.fecha >= dt_desde)
         except ValueError:
+            # si viene mal, simplemente ignoramos el filtro
             pass
 
     # Filtro por fecha hasta (inclusive día completo)
@@ -1384,10 +2827,10 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
             func.lower(Movimiento.usuario).like(f"%{usuario_filtro.lower()}%")
         )
 
-    # Orden más reciente primero
+    # Orden más reciente primero + límite de seguridad
     movimientos = (
         query.order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
-        .limit(500)  # seguridad básica para no reventar la tabla
+        .limit(500)
         .all()
     )
 
@@ -1406,7 +2849,6 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
         .order_by(Movimiento.usuario.asc())
         .all()
     )
-
     tipos_distintos = (
         db.query(Movimiento.tipo)
         .filter(Movimiento.negocio == user["negocio"])
@@ -1435,12 +2877,8 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
             "f_tipo": tipo_filtro,
             "f_producto": producto_filtro,
             "f_usuario": usuario_filtro,
-        }
+        },
     )
-
-
-
-
 
 # ============================
 #     MOVIMIENTO DE SALIDA
@@ -1448,22 +2886,32 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/movimientos/salida", response_class=HTMLResponse)
 async def salida_form(request: Request, db: Session = Depends(get_db)):
+    """
+    Formulario para registrar una salida de mercadería.
+    - Solo requiere usuario autenticado (operador/admin/superadmin).
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
+    # Productos activos del negocio
     productos = (
         db.query(Producto)
-        .filter(Producto.negocio == user["negocio"],
-                Producto.activo == 1)
+        .filter(
+            Producto.negocio == user["negocio"],
+            Producto.activo == 1,
+        )
         .order_by(Producto.nombre.asc())
         .all()
     )
     if not productos:
+        # Sin productos → forzar flujo a creación de productos
         return RedirectResponse("/productos/nuevo", status_code=302)
 
+    # Slots disponibles del negocio
     slots = get_slots_negocio(db, user["negocio"])
     if not slots:
+        # Sin slots → ir a configuración de zonas/ubicaciones/slots
         return RedirectResponse("/zonas", status_code=302)
 
     return templates.TemplateResponse(
@@ -1477,10 +2925,8 @@ async def salida_form(request: Request, db: Session = Depends(get_db)):
             "producto": "",
             "cantidad": "",
             "slot_id": "",
-        }
+        },
     )
-
-
 
 
 @app.post("/movimientos/salida", response_class=HTMLResponse)
@@ -1489,31 +2935,41 @@ async def salida_submit(
     producto: str = Form(...),
     cantidad: int = Form(...),
     slot_id: int = Form(...),
-    db: Session = Depends(get_db)
+    motivo_salida: str = Form(""),
+    comentario: str = Form(""),
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa el formulario de salida:
+    - valida stock disponible en la zona/slot
+    - registra el movimiento
+    - dispara auditoría y evaluación de alertas
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     # 🔧 Normalizar entradas
     producto = (producto or "").strip()
 
-    # Buscar slot con su ubicación y zona
+    # Buscar slot con su ubicación y zona, asegurando que pertenezca al negocio
     slot = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Slot.id == slot_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
     if not slot:
         productos = (
             db.query(Producto)
-            .filter(Producto.negocio == user["negocio"],
-                    Producto.activo == 1)
+            .filter(
+                Producto.negocio == user["negocio"],
+                Producto.activo == 1,
+            )
             .order_by(Producto.nombre.asc())
             .all()
         )
@@ -1535,8 +2991,7 @@ async def salida_submit(
 
     zona_str = slot.codigo_full
 
-    # 1) Calcular stock actual de ese producto + zona + negocio
-    #    (entradas - salidas)
+    # 1) Calcular stock actual de ese producto + zona + negocio (entradas - salidas)
     movimientos = (
         db.query(Movimiento)
         .filter(
@@ -1553,15 +3008,16 @@ async def salida_submit(
 
     # 2) Verificar si alcanza el stock
     if cantidad > stock_actual:
-        # No hay stock suficiente → mostrar error en el mismo formulario
         error_msg = (
             f"No puedes registrar una salida de {cantidad} unidad(es) de '{producto}' "
             f"en {zona_str} porque el stock actual es {stock_actual}."
         )
         productos = (
             db.query(Producto)
-            .filter(Producto.negocio == user["negocio"],
-                    Producto.activo == 1)
+            .filter(
+                Producto.negocio == user["negocio"],
+                Producto.activo == 1,
+            )
             .order_by(Producto.nombre.asc())
             .all()
         )
@@ -1589,13 +3045,15 @@ async def salida_submit(
         producto=producto,
         cantidad=cantidad,
         zona=zona_str,
-        fecha=datetime.utcnow()
+        fecha=datetime.utcnow(),
+        motivo_salida=(motivo_salida or None),
     )
 
     db.add(movimiento)
     db.commit()
     db.refresh(movimiento)
 
+    # Auditoría
     registrar_auditoria(
         db,
         user,
@@ -1605,13 +3063,22 @@ async def salida_submit(
             "producto": producto,
             "cantidad": cantidad,
             "zona": zona_str,
+            "motivo_salida": motivo_salida or None,
+            "comentario": (comentario or "").strip() or None,
         },
+    )
+
+    # Evaluar alertas de stock tras la salida
+    evaluar_alertas_stock(
+        db=db,
+        user=user,
+        producto_nombre=producto,
+        origen="salida",
     )
 
     print(">>> NUEVA SALIDA:", movimiento.id, producto, cantidad, "en", zona_str)
 
     return RedirectResponse(url="/dashboard", status_code=302)
-
 
 # ============================
 #     MOVIMIENTO DE ENTRADA
@@ -1619,23 +3086,32 @@ async def salida_submit(
 
 @app.get("/movimientos/entrada", response_class=HTMLResponse)
 async def entrada_form(request: Request, db: Session = Depends(get_db)):
+    """
+    Formulario para registrar una entrada de mercadería.
+    - Solo requiere usuario autenticado.
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
+    # Productos activos del negocio
     productos = (
         db.query(Producto)
-        .filter(Producto.negocio == user["negocio"],
-                Producto.activo == 1)
+        .filter(
+            Producto.negocio == user["negocio"],
+            Producto.activo == 1,
+        )
         .order_by(Producto.nombre.asc())
         .all()
     )
     if not productos:
+        # Sin productos → forzar flujo a creación de producto
         return RedirectResponse("/productos/nuevo", status_code=302)
 
+    # Slots configurados del negocio
     slots = get_slots_negocio(db, user["negocio"])
     if not slots:
-        # Si no hay slots, que vaya a configurar el diseño del almacén
+        # Sin slots → ir a configurar el diseño del almacén
         return RedirectResponse("/zonas", status_code=302)
 
     return templates.TemplateResponse(
@@ -1646,41 +3122,48 @@ async def entrada_form(request: Request, db: Session = Depends(get_db)):
             "productos": productos,
             "slots": slots,
             "error": None,
-        }
+            "producto": "",
+            "cantidad": "",
+            "slot_id": "",
+            "fecha_vencimiento": "",
+        },
     )
 
 
-
-
-@app.post("/movimientos/entrada")
+@app.post("/movimientos/entrada", response_class=HTMLResponse)
 async def entrada_submit(
     request: Request,
     producto: str = Form(...),
     cantidad: int = Form(...),
     slot_id: int = Form(...),
     fecha_vencimiento: str = Form(""),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa el formulario de entrada:
+    - valida slot
+    - registra movimiento
+    - dispara auditoría y reglas de alertas (stock + vencimiento)
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     producto = (producto or "").strip()
 
-    # Buscar slot con su ubicación y zona
+    # Buscar slot con su ubicación y zona, validando que pertenezca al negocio
     slot = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Slot.id == slot_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
     if not slot:
-        # slot inválido → volver al formulario
-        slots = get_slots_negocio(db, user["negocio"])
+        # Slot inválido → volver al formulario con mensaje
         productos = (
             db.query(Producto)
             .filter(Producto.negocio == user["negocio"])
@@ -1696,6 +3179,10 @@ async def entrada_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": "La ubicación seleccionada no es válida.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_id": slot_id,
+                "fecha_vencimiento": fecha_vencimiento,
             },
             status_code=400,
         )
@@ -1712,6 +3199,7 @@ async def entrada_submit(
             # Si viene mal, simplemente la ignoramos en este MVP
             fv_date = None
 
+    # Crear movimiento de entrada
     movimiento = Movimiento(
         negocio=user["negocio"],
         usuario=user["email"],
@@ -1727,6 +3215,7 @@ async def entrada_submit(
     db.commit()
     db.refresh(movimiento)
 
+    # Auditoría
     registrar_auditoria(
         db,
         user,
@@ -1738,6 +3227,22 @@ async def entrada_submit(
             "zona": zona_str,
             "fecha_vencimiento": str(fv_date) if fv_date else None,
         },
+    )
+
+    # Evaluar alertas de stock tras la entrada
+    evaluar_alertas_stock(
+        db=db,
+        user=user,
+        producto_nombre=producto,
+        origen="entrada",
+    )
+
+    # 🔔 Evaluar alertas de vencimiento (FEFO simplificado)
+    evaluar_alertas_vencimiento(
+        db=db,
+        user=user,
+        producto_nombre=producto,
+        origen="entrada",
     )
 
     print(
@@ -1759,14 +3264,19 @@ async def entrada_submit(
 
 @app.get("/transferencia", response_class=HTMLResponse)
 async def transferencia_form(request: Request, db: Session = Depends(get_db)):
+    """
+    Formulario para transferir stock entre slots dentro del mismo negocio.
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     productos = (
         db.query(Producto)
-        .filter(Producto.negocio == user["negocio"],
-                 Producto.activo == 1)
+        .filter(
+            Producto.negocio == user["negocio"],
+            Producto.activo == 1,
+        )
         .order_by(Producto.nombre.asc())
         .all()
     )
@@ -1789,8 +3299,9 @@ async def transferencia_form(request: Request, db: Session = Depends(get_db)):
             "cantidad": "",
             "slot_origen_id": "",
             "slot_destino_id": "",
-        }
+        },
     )
+
 
 @app.post("/transferencia", response_class=HTMLResponse)
 async def transferencia_submit(
@@ -1799,20 +3310,29 @@ async def transferencia_submit(
     cantidad: int = Form(...),
     slot_origen_id: int = Form(...),
     slot_destino_id: int = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    """
+    Procesa la transferencia:
+    - valida que origen ≠ destino
+    - valida slots pertenecen al negocio
+    - verifica stock suficiente en el slot origen
+    - registra salida en origen y entrada en destino
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     producto = (producto or "").strip()
 
-    # Si el origen y destino son el mismo, no tiene sentido la transferencia
+    # Origen y destino no pueden ser el mismo
     if slot_origen_id == slot_destino_id:
         productos = (
             db.query(Producto)
-            .filter(Producto.negocio == user["negocio"],
-                    Producto.activo == 1)
+            .filter(
+                Producto.negocio == user["negocio"],
+                Producto.activo == 1,
+            )
             .order_by(Producto.nombre.asc())
             .all()
         )
@@ -1833,14 +3353,14 @@ async def transferencia_submit(
             status_code=400,
         )
 
-    # Buscar slots de origen y destino
+    # Buscar slots de origen y destino, validando que sean del negocio
     slot_origen = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Slot.id == slot_origen_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -1850,7 +3370,7 @@ async def transferencia_submit(
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(
             Slot.id == slot_destino_id,
-            Zona.negocio == user["negocio"]
+            Zona.negocio == user["negocio"],
         )
         .first()
     )
@@ -1858,8 +3378,10 @@ async def transferencia_submit(
     if not slot_origen or not slot_destino:
         productos = (
             db.query(Producto)
-            .filter(Producto.negocio == user["negocio"],
-                    Producto.activo == 1)
+            .filter(
+                Producto.negocio == user["negocio"],
+                Producto.activo == 1,
+            )
             .order_by(Producto.nombre.asc())
             .all()
         )
@@ -1906,8 +3428,10 @@ async def transferencia_submit(
 
         productos = (
             db.query(Producto)
-            .filter(Producto.negocio == user["negocio"],
-                    Producto.activo == 1)
+            .filter(
+                Producto.negocio == user["negocio"],
+                Producto.activo == 1,
+            )
             .order_by(Producto.nombre.asc())
             .all()
         )
@@ -1937,7 +3461,7 @@ async def transferencia_submit(
         producto=producto,
         cantidad=cantidad,
         zona=zona_origen_str,
-        fecha=datetime.utcnow()
+        fecha=datetime.utcnow(),
     )
 
     # 3) Crear entrada en destino
@@ -1948,12 +3472,29 @@ async def transferencia_submit(
         producto=producto,
         cantidad=cantidad,
         zona=zona_destino_str,
-        fecha=datetime.utcnow()
+        fecha=datetime.utcnow(),
     )
 
     db.add(mov_salida)
     db.add(mov_entrada)
     db.commit()
+    db.refresh(mov_salida)
+    db.refresh(mov_entrada)
+
+    # Auditoría de la transferencia (una sola entrada con ambos movimientos)
+    registrar_auditoria(
+        db,
+        user,
+        accion="transferencia_creada",
+        detalle={
+            "producto": producto,
+            "cantidad": cantidad,
+            "zona_origen": zona_origen_str,
+            "zona_destino": zona_destino_str,
+            "mov_salida_id": mov_salida.id,
+            "mov_entrada_id": mov_entrada.id,
+        },
+    )
 
     print(
         f">>> TRANSFERENCIA: {cantidad} x '{producto}' "
@@ -1964,19 +3505,22 @@ async def transferencia_submit(
     # Te llevo a stock para ver el efecto
     return RedirectResponse(url="/stock", status_code=302)
 
-
-
 # ============================
 #           STOCK
 # ============================
 
-
-
 @app.get("/stock", response_class=HTMLResponse)
 async def stock_view(request: Request, db: Session = Depends(get_db)):
+    """
+    Vista de stock consolidado por producto y slot:
+    - Calcula stock por slot y por producto (entradas - salidas / ajustes).
+    - Evalúa estado por reglas de stock_min / stock_max.
+    - Evalúa estado de vencimiento por FEFO basado en movimientos.
+    - Aplica filtros por producto, zona, estado y vencimiento.
+    """
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     hoy = date.today()
 
@@ -2013,12 +3557,15 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    totales_producto = {}        # prod_key -> qty total
-    stock_por_slot = {}          # (producto, zona_str) -> info
-    lotes_por_slot = {}          # (producto, zona_str) -> lista {"fv": date|None, "qty": int}
+    totales_producto: dict[str, int] = {}   # prod_key -> qty total
+    stock_por_slot: dict[tuple[str, str], dict] = {}
+    lotes_por_slot: dict[tuple[str, str], list] = {}
 
     for mov, slot, ubic, zona in movimientos:
         prod_name = mov.producto
+        if not prod_name:
+            continue
+
         prod_key = prod_name.lower()
         zona_str = mov.zona  # D-RA-C1, etc.
 
@@ -2029,7 +3576,7 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
         else:
             signed_delta = abs(qty)
 
-        # Totales por producto
+        # Totales por producto (nivel global)
         totales_producto[prod_key] = totales_producto.get(prod_key, 0) + signed_delta
 
         # Stock por slot
@@ -2043,8 +3590,11 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
                 "ubic": ubic,
                 "zona": zona,
             }
+
         info = stock_por_slot[slot_key]
         info["cantidad"] += signed_delta
+
+        # aseguramos tener las referencias más recientes
         if slot is not None:
             info["slot"] = slot
         if ubic is not None:
@@ -2058,11 +3608,12 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
             fv = mov.fecha_vencimiento
             lotes.append({"fv": fv, "qty": signed_delta})
         elif signed_delta < 0:
+            # consumir lotes (FEFO)
             qty_to_remove = -signed_delta
             lotes.sort(
                 key=lambda l: (
                     l["fv"] is None,
-                    l["fv"] or date(9999, 12, 31)
+                    l["fv"] or date(9999, 12, 31),
                 )
             )
             for lote in lotes:
@@ -2079,7 +3630,7 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
     # ============================
     # 3) Construir filas base (todas)
     # ============================
-    filas_all = []
+    filas_all: list[dict] = []
 
     for (producto_nombre, zona_str), info in stock_por_slot.items():
         cantidad_slot = info["cantidad"]
@@ -2154,25 +3705,27 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
                 venc_estado = "Normal"
                 venc_css = "bg-emerald-100 text-emerald-700 border border-emerald-200"
 
-        filas_all.append({
-            "producto": producto_nombre,
-            "unidad": prod.unidad if prod else "unidad",
-            "zona_nombre": zona_obj.nombre if zona_obj is not None else "-",
-            "ubicacion_nombre": ubic.nombre if ubic is not None else "-",
-            "codigo_full": slot.codigo_full if slot is not None else zona_str,
-            "cantidad": cantidad_slot,
-            "stock_total": stock_total,
-            "stock_min": stock_min,
-            "stock_max": stock_max,
-            "estado": estado,
-            "estado_css": estado_css,
-            "capacidad": capacidad,
-            "ocupacion_pct": ocupacion_pct,
-            "vencimiento_fecha": fv_min,
-            "vencimiento_dias": venc_dias,
-            "vencimiento_estado": venc_estado,
-            "vencimiento_css": venc_css,
-        })
+        filas_all.append(
+            {
+                "producto": producto_nombre,
+                "unidad": prod.unidad if prod else "unidad",
+                "zona_nombre": zona_obj.nombre if zona_obj is not None else "-",
+                "ubicacion_nombre": ubic.nombre if ubic is not None else "-",
+                "codigo_full": slot.codigo_full if slot is not None else zona_str,
+                "cantidad": cantidad_slot,
+                "stock_total": stock_total,
+                "stock_min": stock_min,
+                "stock_max": stock_max,
+                "estado": estado,
+                "estado_css": estado_css,
+                "capacidad": capacidad,
+                "ocupacion_pct": ocupacion_pct,
+                "vencimiento_fecha": fv_min,
+                "vencimiento_dias": venc_dias,
+                "vencimiento_estado": venc_estado,
+                "vencimiento_css": venc_css,
+            }
+        )
 
     # Productos sin stock pero con reglas configuradas
     for p in productos:
@@ -2196,40 +3749,45 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
                     estado = "OK"
                     estado_css = "bg-emerald-100 text-emerald-700 border border-emerald-200"
 
-            filas_all.append({
-                "producto": p.nombre,
-                "unidad": p.unidad,
-                "zona_nombre": "-",
-                "ubicacion_nombre": "-",
-                "codigo_full": "-",
-                "cantidad": 0,
-                "stock_total": stock_total,
-                "stock_min": stock_min,
-                "stock_max": stock_max,
-                "estado": estado,
-                "estado_css": estado_css,
-                "capacidad": None,
-                "ocupacion_pct": None,
-                "vencimiento_fecha": None,
-                "vencimiento_dias": None,
-                "vencimiento_estado": "Sin fecha",
-                "vencimiento_css": "bg-slate-100 text-slate-700 border border-slate-200",
-            })
+            filas_all.append(
+                {
+                    "producto": p.nombre,
+                    "unidad": p.unidad,
+                    "zona_nombre": "-",
+                    "ubicacion_nombre": "-",
+                    "codigo_full": "-",
+                    "cantidad": 0,
+                    "stock_total": stock_total,
+                    "stock_min": stock_min,
+                    "stock_max": stock_max,
+                    "estado": estado,
+                    "estado_css": estado_css,
+                    "capacidad": None,
+                    "ocupacion_pct": None,
+                    "vencimiento_fecha": None,
+                    "vencimiento_dias": None,
+                    "vencimiento_estado": "Sin fecha",
+                    "vencimiento_css": "bg-slate-100 text-slate-700 border border-slate-200",
+                }
+            )
 
     # ============================
     # 4) Opciones para selects (de todas las filas)
     # ============================
-    zonas_list = sorted({
-        r["zona_nombre"] for r in filas_all
-        if r["zona_nombre"] and r["zona_nombre"] != "-"
-    })
+    zonas_list = sorted(
+        {
+            r["zona_nombre"]
+            for r in filas_all
+            if r["zona_nombre"] and r["zona_nombre"] != "-"
+        }
+    )
     estados_list = sorted({r["estado"] for r in filas_all})
     venc_list = sorted({r["vencimiento_estado"] for r in filas_all})
 
     # ============================
     # 5) Aplicar filtros sobre filas_all
     # ============================
-    filas_filtradas = []
+    filas_filtradas: list[dict] = []
 
     for r in filas_all:
         if f_producto and f_producto.lower() not in r["producto"].lower():
@@ -2257,8 +3815,13 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
     # ============================
     # 7) Resumen de estados (sólo filas filtradas)
     # ============================
-    resumen_estados = {"Crítico": 0, "OK": 0, "Sobre-stock": 0, "Sin configuración": 0}
-    estado_producto = {}
+    resumen_estados = {
+        "Crítico": 0,
+        "OK": 0,
+        "Sobre-stock": 0,
+        "Sin configuración": 0,
+    }
+    estado_producto: dict[str, str] = {}
     prioridad = {"Crítico": 3, "Sobre-stock": 2, "OK": 1, "Sin configuración": 0}
 
     for r in filas_filtradas:
@@ -2287,31 +3850,38 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
             "f_zona": f_zona,
             "f_estado": f_estado,
             "f_vencimiento": f_vencimiento,
-        }
+        },
     )
+
 
 # ============================
 #      INVENTARIO / CONTEO
 # ============================
 
-@app.get("/inventario", response_class=HTMLResponse)
-async def inventario_form(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse("/login")
-
-    # 1. Traer movimientos del negocio
+def _calcular_resumen_inventario(db: Session, negocio_nombre: str) -> dict[tuple[str, str], dict]:
+    """
+    Calcula el stock teórico por (producto_norm, zona) a partir de la tabla de movimientos.
+    Devuelve un dict:
+      (producto_norm, zona_norm) -> {
+          "producto_display": str,
+          "zona": str,
+          "entradas": int,
+          "salidas": int,
+      }
+    """
     movimientos = (
         db.query(Movimiento)
-        .filter(Movimiento.negocio == user["negocio"])
+        .filter(Movimiento.negocio == negocio_nombre)
         .all()
     )
 
-    # 2. Calcular stock teórico por (producto_norm, zona)
-    resumen = {}
+    resumen: dict[tuple[str, str], dict] = {}
 
     for m in movimientos:
         nombre_original = (m.producto or "").strip()
+        if not nombre_original:
+            continue
+
         nombre_norm = nombre_original.lower()
         zona_norm = (m.zona or "").strip()
 
@@ -2325,18 +3895,33 @@ async def inventario_form(request: Request, db: Session = Depends(get_db)):
             }
 
         if m.tipo == "entrada":
-            resumen[key]["entradas"] += m.cantidad
+            resumen[key]["entradas"] += m.cantidad or 0
         elif m.tipo == "salida":
-            resumen[key]["salidas"] += m.cantidad
+            resumen[key]["salidas"] += m.cantidad or 0
 
-    stock_items = []
-    for key, data in resumen.items():
-        stock_actual = data["entradas"] - data["salidas"]
-        stock_items.append({
-            "producto": data["producto_display"],
-            "zona": data["zona"],
-            "stock_actual": stock_actual,
-        })
+    return resumen
+
+
+@app.get("/inventario", response_class=HTMLResponse)
+async def inventario_form(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    # 1. Calcular stock teórico por (producto_norm, zona)
+    resumen = _calcular_resumen_inventario(db, user["negocio"])
+
+    # 2. Construir lista para la tabla
+    stock_items: list[dict] = []
+    for (_prod_norm, _zona_norm), data in resumen.items():
+        stock_actual = (data["entradas"] or 0) - (data["salidas"] or 0)
+        stock_items.append(
+            {
+                "producto": data["producto_display"],
+                "zona": data["zona"],
+                "stock_actual": stock_actual,
+            }
+        )
 
     # Ordenamos por zona y nombre
     stock_items.sort(key=lambda x: (x["zona"], x["producto"]))
@@ -2347,7 +3932,7 @@ async def inventario_form(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "stock_items": stock_items,
-        }
+        },
     )
 
 
@@ -2355,37 +3940,16 @@ async def inventario_form(request: Request, db: Session = Depends(get_db)):
 async def inventario_submit(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     form = await request.form()
-    total_items = int(form.get("total_items", 0))
+    try:
+        total_items = int(form.get("total_items", 0))
+    except ValueError:
+        total_items = 0
 
     # 1. Recalcular stock teórico igual que en el GET
-    movimientos = (
-        db.query(Movimiento)
-        .filter(Movimiento.negocio == user["negocio"])
-        .all()
-    )
-
-    resumen = {}
-    for m in movimientos:
-        nombre_original = (m.producto or "").strip()
-        nombre_norm = nombre_original.lower()
-        zona_norm = (m.zona or "").strip()
-
-        key = (nombre_norm, zona_norm)
-        if key not in resumen:
-            resumen[key] = {
-                "producto_display": nombre_original,
-                "zona": zona_norm,
-                "entradas": 0,
-                "salidas": 0,
-            }
-
-        if m.tipo == "entrada":
-            resumen[key]["entradas"] += m.cantidad
-        elif m.tipo == "salida":
-            resumen[key]["salidas"] += m.cantidad
+    resumen = _calcular_resumen_inventario(db, user["negocio"])
 
     # 2. Procesar conteos y generar ajustes
     ajustes_realizados = 0
@@ -2394,23 +3958,23 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
         producto = (form.get(f"producto_{i}") or "").strip()
         zona = (form.get(f"zona_{i}") or "").strip()
         conteo_str = form.get(f"conteo_{i}") or ""
+
+        if not producto:
+            continue
+
         try:
             conteo = int(conteo_str)
         except ValueError:
             conteo = 0
-
-        if not producto:
-            continue
 
         key_norm = (producto.lower(), zona)
         data = resumen.get(key_norm)
 
         stock_teorico = 0
         if data is not None:
-            stock_teorico = data["entradas"] - data["salidas"]
+            stock_teorico = (data["entradas"] or 0) - (data["salidas"] or 0)
 
         diff = conteo - stock_teorico
-
         if diff == 0:
             continue  # no hay ajuste
 
@@ -2426,7 +3990,7 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
             producto=producto,
             cantidad=cantidad_ajuste,
             zona=zona,
-            fecha=datetime.utcnow()
+            fecha=datetime.utcnow(),
         )
         db.add(movimiento)
         ajustes_realizados += 1
@@ -2436,12 +4000,26 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
             f"(teórico={stock_teorico}, conteo={conteo})"
         )
 
+        # Opcional pero útil: registramos en auditoría
+        registrar_auditoria(
+            db,
+            user,
+            accion="ajuste_inventario",
+            detalle={
+                "producto": producto,
+                "zona": zona,
+                "tipo_mov": tipo_mov,
+                "cantidad_ajuste": cantidad_ajuste,
+                "stock_teorico": stock_teorico,
+                "conteo": conteo,
+            },
+        )
+
     if ajustes_realizados > 0:
         db.commit()
 
     # Luego de ajustar, volvemos al /stock para ver el resultado
     return RedirectResponse(url="/stock", status_code=302)
-
 
 
 # ============================
@@ -2452,13 +4030,13 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
 async def movimientos_historial(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=302)
 
     # Traer solo movimientos del negocio del usuario
     movimientos = (
         db.query(Movimiento)
         .filter(Movimiento.negocio == user["negocio"])
-        .order_by(Movimiento.fecha.desc())
+        .order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
         .limit(50)
         .all()
     )
@@ -2468,9 +4046,10 @@ async def movimientos_historial(request: Request, db: Session = Depends(get_db))
         {
             "request": request,
             "user": user,
-            "movimientos": movimientos
-        }
+            "movimientos": movimientos,
+        },
     )
+
 
 # ============================
 #      AUDITORIA
@@ -2495,11 +4074,80 @@ async def auditoria_view(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse(
         "auditoria.html",
-        {"request": request, "user": user, "registros": registros},
+        {
+            "request": request,
+            "user": user,
+            "registros": registros,
+        },
+    )
+
+# ============================
+#      ALERTAS
+# ============================
+
+@app.get("/alertas", response_class=HTMLResponse)
+async def alertas_view(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    # Solo admin y superadmin pueden ver el centro de alertas
+    require_role(user, ("admin", "superadmin"))
+
+    alertas = (
+        db.query(Alerta)
+        .filter(Alerta.negocio_id == user["negocio_id"])
+        .order_by(Alerta.fecha_creacion.desc(), Alerta.id.desc())
+        .limit(200)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "alertas.html",
+        {
+            "request": request,
+            "user": user,
+            "alertas": alertas,
+        },
     )
 
 
+@app.post("/alertas/{alerta_id}/marcar-leida")
+async def alerta_marcar_leida(
+    alerta_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
 
+    require_role(user, ("admin", "superadmin"))
+
+    alerta = (
+        db.query(Alerta)
+        .join(Negocio, Alerta.negocio_id == Negocio.id)
+        .filter(
+            Alerta.id == alerta_id,
+            Negocio.id == user["negocio_id"],
+        )
+        .first()
+    )
+
+    if not alerta:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada.")
+
+    if alerta.estado == "pendiente":
+        alerta.estado = "leida"
+        # dejamos fecha_envio para CUANDO realmente se envíe por WhatsApp/email
+        db.commit()
+
+    return RedirectResponse(url="/alertas", status_code=302)
+
+
+# ============================
+#      MAIN
+# ============================
 
 if __name__ == "__main__":
     import uvicorn

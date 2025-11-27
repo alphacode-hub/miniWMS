@@ -1,8 +1,9 @@
-pip==25.3
-setuptools==80.9.0
+pip
+setuptools
 fastapi
 uvicorn
 jinja2
 python-multipart
 itsdangerous
 sqlalchemy
+passlib[bcrypt]

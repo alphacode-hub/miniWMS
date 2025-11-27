@@ -3,22 +3,21 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Registrar entrada
                 </h1>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-slate-500">
                     Ingreso de mercadería al inventario de {{ user.negocio }}.
                 </p>
             </div>
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
-                ← Dashboard
+            <a href="/movimientos"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Movimientos
             </a>
         </div>
 
@@ -38,27 +37,26 @@
 
             <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Producto
                 </label>
                 <select name="producto"
-                        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        required>
+                    <option value="">Selecciona un producto</option>
                     {% for p in productos %}
                     <option value="{{ p.nombre }}"
                             {% if producto is defined and producto == p.nombre %}selected{% endif %}>
-                        {{ p.nombre }} ({{ p.unidad }})
+                        {{ p.nombre }}
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Si necesitas un nuevo SKU, créalo primero en “Productos”.
-                </p>
             </div>
 
             <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Cantidad
                 </label>
                 <input type="number"
@@ -66,58 +64,72 @@
                        min="1"
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-brand-500"
                        placeholder="1" />
             </div>
 
             <!-- Ubicación / Slot -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Ubicación (slot)
                 </label>
                 <select name="slot_id"
-                        class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        required>
+                    <option value="">Selecciona zona / ubicación / slot</option>
                     {% for s in slots %}
                     <option value="{{ s.id }}"
                             {% if slot_id is defined and slot_id == s.id %}selected{% endif %}>
-                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                        {{ s.codigo_full }}
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Define bien zonas, ubicaciones y slots en “Zonas” antes de operar en serio.
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Recuerda mantener FEFO si estás manejando vencimientos.
                 </p>
             </div>
 
             <!-- Fecha de vencimiento -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Fecha de vencimiento (opcional)
                 </label>
                 <input type="date"
                        name="fecha_vencimiento"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Si el producto no tiene vencimiento claro, deja este campo vacío.
+                       value="{% if fecha_vencimiento is defined %}{{ fecha_vencimiento }}{% endif %}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Si la dejas vacía, el lote ingresará sin fecha de vencimiento.
                 </p>
+            </div>
+
+            <!-- Fecha de entrada (visual / futuro) -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha de entrada
+                </label>
+                <input type="date"
+                       name="fecha"
+                       value="{{ fecha or '' }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
 
             <!-- Botón -->
             <button type="submit"
-                    class="w-full inline-flex items-center justify-center px-4 py-2
-               rounded-xl text-sm font-semibold bg-emerald-600 text-white
-               hover:bg-emerald-700 active:scale-[0.98]">
+                    class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
+                           bg-brand-500 hover:bg-brand-600 text-white shadow-sm active:scale-[0.98]">
                 Registrar entrada
             </button>
         </form>
 
         <!-- Volver móvil -->
-        <a href="/dashboard"
-           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
-            ← Volver al menú principal
+        <a href="/movimientos"
+           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
+            ← Volver a movimientos
         </a>
 
     </div>

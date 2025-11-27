@@ -3,37 +3,35 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-2">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Auditoría
                 </h1>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-slate-500">
                     Registro de acciones realizadas en {{ user.negocio }}.
                 </p>
             </div>
             <a href="/dashboard"
-               class="hidden sm:inline-flex text-[11px] text-gray-500 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
                 ← Dashboard
             </a>
         </div>
 
         {% if registros|length == 0 %}
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-slate-500">
             No hay registros de auditoría aún.
         </p>
         {% else %}
 
         <!-- Caja scrollable -->
         <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded-xl">
-
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
-                    <tr class="text-left text-gray-500 border-b">
+                    <tr class="text-left text-slate-500 border-b">
                         <th class="py-1.5 px-2">Fecha</th>
                         <th class="py-1.5 px-2">Usuario</th>
                         <th class="py-1.5 px-2">Acción</th>
@@ -44,42 +42,40 @@
                 <tbody>
                     {% for r in registros %}
                     <tr class="border-b last:border-0">
-
                         <!-- Fecha -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-gray-800">
+                            <div class="text-[11px] text-slate-800">
                                 {{ r.fecha.strftime("%Y-%m-%d") }}
                             </div>
-                            <div class="text-[10px] text-gray-400">
+                            <div class="text-[10px] text-slate-400">
                                 {{ r.fecha.strftime("%H:%M:%S") }}
                             </div>
                         </td>
 
                         <!-- Usuario -->
                         <td class="py-1.5 px-2 align-top">
-                            <span class="text-[11px] text-gray-800">
+                            <span class="text-[11px] text-slate-800">
                                 {{ r.usuario }}
                             </span>
                         </td>
 
                         <!-- Acción -->
                         <td class="py-1.5 px-2 align-top">
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                                         bg-slate-100 text-slate-700">
                                 {{ r.accion }}
                             </span>
                         </td>
 
                         <!-- Detalle -->
                         <td class="py-1.5 px-2 align-top">
-                            <pre class="text-[10px] text-gray-700 whitespace-pre-wrap font-mono leading-tight">
+                            <pre class="text-[10px] text-slate-700 whitespace-pre-wrap font-mono leading-tight">
 {{ r.detalle }}
-                </pre>
+                            </pre>
                         </td>
-
                     </tr>
                     {% endfor %}
                 </tbody>
-
             </table>
         </div>
 
@@ -87,7 +83,7 @@
 
         <!-- Volver móvil -->
         <a href="/dashboard"
-           class="block mt-2 text-center text-sm text-gray-500 sm:hidden">
+           class="block mt-2 text-center text-sm text-slate-500 sm:hidden">
             ← Volver al dashboard
         </a>
 

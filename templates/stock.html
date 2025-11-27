@@ -7,10 +7,10 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">
+            <h1 class="text-xl font-bold text-slate-900">
                 Stock por ubicación
             </h1>
-            <p class="text-xs text-gray-500">
+            <p class="text-xs text-slate-500">
                 Vista consolidada de productos por zona / ubicación / slot.
             </p>
         </div>
@@ -25,246 +25,94 @@
         <div class="bg-red-50 border border-red-200 rounded-2xl px-3 py-2">
             <div class="text-[11px] text-red-700 font-semibold">Críticos</div>
             <div class="text-lg font-bold text-red-800">{{ resumen["Crítico"] }}</div>
-            <div class="text-[10px] text-red-500 mt-1">
-                Bajo stock mínimo
-            </div>
+        </div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-3 py-2">
+            <div class="text-[11px] text-yellow-700 font-semibold">Bajo</div>
+            <div class="text-lg font-bold text-yellow-800">{{ resumen["Bajo"] }}</div>
         </div>
         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-emerald-700 font-semibold">OK</div>
-            <div class="text-lg font-bold text-emerald-800">{{ resumen["OK"] }}</div>
-            <div class="text-[10px] text-emerald-500 mt-1">
-                Dentro de rangos
-            </div>
-        </div>
-        <div class="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-amber-700 font-semibold">Sobre-stock</div>
-            <div class="text-lg font-bold text-amber-800">{{ resumen["Sobre-stock"] }}</div>
-            <div class="text-[10px] text-amber-500 mt-1">
-                Sobre stock máximo
-            </div>
+            <div class="text-[11px] text-emerald-700 font-semibold">Óptimo</div>
+            <div class="text-lg font-bold text-emerald-800">{{ resumen["Óptimo"] }}</div>
         </div>
         <div class="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-slate-700 font-semibold">Sin configuración</div>
-            <div class="text-lg font-bold text-slate-800">{{ resumen["Sin configuración"] }}</div>
-            <div class="text-[10px] text-slate-500 mt-1">
-                Sin min / max definidos
-            </div>
+            <div class="text-[11px] text-slate-700 font-semibold">Sobre stock</div>
+            <div class="text-lg font-bold text-slate-800">{{ resumen["Sobre stock"] }}</div>
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="bg-white shadow rounded-2xl p-3 space-y-3">
-        <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-800">
-                Filtros de stock
-            </h2>
-            <a href="/stock" class="text-[11px] text-slate-500 hover:underline">
-                Limpiar filtros
-            </a>
+    <!-- Tabla principal -->
+    <div class="bg-white shadow-lg rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Detalle por producto y ubicación
+                </h2>
+                <p class="text-[11px] text-slate-500">
+                    Ordenado por zona, ubicación y slot.
+                </p>
+            </div>
+            <!-- (opcional) filtros o export -->
         </div>
 
-        <form method="get" action="/stock" class="grid grid-cols-1 md:grid-cols-4 gap-2">
-
-            <!-- Producto -->
-            <div class="space-y-1">
-                <label class="block text-[11px] font-medium text-gray-700">
-                    Producto
-                </label>
-                <input type="text"
-                       name="producto"
-                       value="{{ f_producto }}"
-                       placeholder="Nombre contiene..."
-                       class="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-
-            <!-- Zona -->
-            <div class="space-y-1">
-                <label class="block text-[11px] font-medium text-gray-700">
-                    Zona
-                </label>
-                <select name="zona"
-                        class="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Todas</option>
-                    {% for z in zonas_list %}
-                    <option value="{{ z }}" {% if f_zona == z %}selected{% endif %}>
-                        {{ z }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Estado stock -->
-            <div class="space-y-1">
-                <label class="block text-[11px] font-medium text-gray-700">
-                    Estado stock
-                </label>
-                <select name="estado"
-                        class="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Todos</option>
-                    {% for est in estados_list %}
-                    <option value="{{ est }}" {% if f_estado == est %}selected{% endif %}>
-                        {{ est }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Vencimiento -->
-            <div class="space-y-1">
-                <label class="block text-[11px] font-medium text-gray-700">
-                    Vencimiento
-                </label>
-                <select name="vencimiento"
-                        class="w-full rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Todos</option>
-                    {% for v in venc_list %}
-                    <option value="{{ v }}" {% if f_vencimiento == v %}selected{% endif %}>
-                        {{ v }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="md:col-span-4 flex justify-end pt-1">
-                <button type="submit"
-                        class="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97] w-full md:w-auto">
-                    Aplicar filtros
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Tabla de stock -->
-    <div class="bg-white shadow rounded-2xl p-3">
-        <div class="flex items-center justify-between mb-2">
-            <h2 class="text-sm font-semibold text-gray-800">
-                Detalle de stock
-            </h2>
-            <p class="text-[11px] text-gray-400">
-                {{ filas|length }} filas
-            </p>
-        </div>
-
-        {% if filas|length == 0 %}
-        <p class="text-xs text-gray-500">
-            No hay resultados con los filtros actuales. Ajusta los filtros para ver stock.
-        </p>
-        {% else %}
-        <div class="overflow-x-auto -mx-1">
-            <table class="min-w-full text-xs border-collapse">
-                <thead class="bg-slate-50 border-b">
-                    <tr class="text-left text-gray-500">
-                        <th class="py-1.5 px-2">Producto</th>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="min-w-full text-xs">
+                <thead class="bg-slate-50">
+                    <tr class="text-left text-slate-500 border-b">
+                        <th class="py-1.5 px-2">Zona</th>
                         <th class="py-1.5 px-2">Ubicación</th>
-                        <th class="py-1.5 px-2 text-right">Cant.</th>
-                        <th class="py-1.5 px-2 text-right">Total</th>
-                        <th class="py-1.5 px-2">Estado</th>
-                        <th class="py-1.5 px-2">Venc.</th>
-                        <th class="py-1.5 px-2 text-right">Slot</th>
+                        <th class="py-1.5 px-2">Slot</th>
+                        <th class="py-1.5 px-2">Producto</th>
+                        <th class="py-1.5 px-2 text-center">Stock</th>
+                        <th class="py-1.5 px-2 text-center">Stock min</th>
+                        <th class="py-1.5 px-2 text-center">Stock max</th>
+                        <th class="py-1.5 px-2 text-center">Estado</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for r in filas %}
-                    <tr class="border-b last:border-0">
-                        <!-- Producto -->
-                        <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-gray-800 font-semibold">
-                                {{ r.producto }}
-                            </div>
-                            <div class="text-[10px] text-gray-400">
-                                Unidad: {{ r.unidad }}
-                            </div>
+                <tbody class="divide-y divide-slate-100">
+                    {% for fila in filas %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.zona }}</td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.ubicacion }}</td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.slot }}</td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-900 font-semibold">{{ fila.producto }}</td>
+                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">{{ fila.stock }}</td>
+                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
+                            {{ fila.stock_min if fila.stock_min is not none else "–" }}
                         </td>
-
-                        <!-- Ubicación -->
-                        <td class="py-1.5 px-2 align-top">
-                            <div class="text-[10px] text-gray-700">
-                                {{ r.zona_nombre }}
-                            </div>
-                            <div class="text-[10px] text-gray-500">
-                                {{ r.ubicacion_nombre }}
-                            </div>
-                            <div class="text-[10px] font-mono text-slate-700">
-                                {{ r.codigo_full }}
-                            </div>
-
-                            {% if r.capacidad %}
-                            <div class="mt-1">
-                                <div class="flex justify-between items-center text-[9px] text-slate-500">
-                                    <span>Ocupación</span>
-                                    <span>
-                                        {{ r.ocupacion_pct }}%
-                                    </span>
-                                </div>
-                                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-0.5">
-                                    <div class="h-1.5 rounded-full bg-slate-400"
-                                         style="width: {{ r.ocupacion_pct }}%;"></div>
-                                </div>
-                            </div>
-                            {% endif %}
+                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
+                            {{ fila.stock_max if fila.stock_max is not none else "–" }}
                         </td>
-
-                        <!-- Cantidad en slot -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <span class="text-[11px] text-gray-800 font-semibold">
-                                {{ r.cantidad }}
+                        <td class="py-1.5 px-2 text-center">
+                            {% if fila.estado == "Crítico" %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                                Crítico
                             </span>
-                        </td>
-
-                        <!-- Stock total -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <div class="text-[11px] text-gray-800">
-                                {{ r.stock_total }}
-                            </div>
-                            <div class="text-[9px] text-gray-400">
-                                min: {{ r.stock_min if r.stock_min is not none else "-" }},
-                                max: {{ r.stock_max if r.stock_max is not none else "-" }}
-                            </div>
-                        </td>
-
-                        <!-- Estado stock -->
-                        <td class="py-1.5 px-2 align-top">
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold {{ r.estado_css }}">
-                                {{ r.estado }}
+                            {% elif fila.estado == "Bajo" %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">
+                                Bajo
                             </span>
-                        </td>
-
-                        <!-- Vencimiento -->
-                        <td class="py-1.5 px-2 align-top">
-                            <div>
-                                <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold {{ r.vencimiento_css }}">
-                                    {{ r.vencimiento_estado }}
-                                </span>
-                            </div>
-                            {% if r.vencimiento_fecha %}
-                            <div class="text-[9px] text-gray-500 mt-1">
-                                {{ r.vencimiento_fecha.strftime("%Y-%m-%d") }}
-                                {% if r.vencimiento_dias is not none %}
-                                ({{ r.vencimiento_dias }} días)
-                                {% endif %}
-                            </div>
+                            {% elif fila.estado == "Óptimo" %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                                Óptimo
+                            </span>
+                            {% else %}
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                Sobre stock
+                            </span>
                             {% endif %}
-                        </td>
-
-                        <!-- Slot simple (para mobile, redundante pero útil) -->
-                        <td class="py-1.5 px-2 text-right align-top">
-                            <div class="text-[9px] font-mono text-slate-700">
-                                {{ r.codigo_full }}
-                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% endif %}
-    </div>
 
-    <!-- Volver (móvil) -->
-    <a href="/dashboard"
-       class="block text-center text-xs text-gray-500 sm:hidden">
-        ← Volver al dashboard
-    </a>
+        <!-- Volver móvil -->
+        <a href="/dashboard"
+           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
+            ← Volver al dashboard
+        </a>
+    </div>
 
 </div>
 {% endblock %}

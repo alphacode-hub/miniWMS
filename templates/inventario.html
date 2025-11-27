@@ -2,35 +2,36 @@
 {% block title %}Inventario - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4 space-y-4">
+<div class="w-full max-w-md mx-auto px-4 py-4">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-bold text-gray-800">
-                Inventario físico
-            </h1>
-            <p class="text-xs text-gray-500">
-                Compara el stock teórico con el conteo real en bodega.
-            </p>
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h1 class="text-lg font-bold text-slate-900">
+                    Inventario físico
+                </h1>
+                <p class="text-xs text-slate-500">
+                    Compara el stock teórico con el conteo real en bodega.
+                </p>
+            </div>
+            <a href="/dashboard"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Dashboard
+            </a>
         </div>
-        <a href="/dashboard"
-           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-            ← Dashboard
-        </a>
-    </div>
 
-    <!-- Tarjeta principal -->
-    <div class="bg-white shadow-lg rounded-2xl p-4 space-y-4">
-
+        <!-- Tarjeta principal -->
         {% if stock_items|length == 0 %}
-        <p class="text-xs text-gray-500">
+        <p class="text-xs text-slate-500">
             No hay productos con movimientos aún. Registra entradas primero para poder hacer inventario.
         </p>
         {% else %}
 
-        <p class="text-[11px] text-gray-500">
-            Para cada producto/ubicación, ingresa el <span class="font-semibold">conteo físico</span>.
+        <p class="text-[11px] text-slate-500">
+            Para cada producto/ubicación, ingresa el
+            <span class="font-semibold">conteo físico</span>.
             El sistema calculará automáticamente los ajustes necesarios.
         </p>
 
@@ -44,31 +45,36 @@
                 {% set i = loop.index0 %}
                 <!-- Fila de conteo -->
                 <div class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
+
                     <!-- Hidden fields para el backend -->
                     <input type="hidden" name="producto_{{ i }}" value="{{ item.producto }}">
                     <input type="hidden" name="zona_{{ i }}" value="{{ item.zona }}">
 
                     <div class="flex justify-between items-start gap-2">
                         <div>
-                            <div class="text-[11px] font-semibold text-gray-800">
+                            <div class="text-[11px] font-semibold text-slate-800">
                                 {{ item.producto }}
                             </div>
                             <div class="text-[10px] text-slate-500">
                                 Ubicación: <span class="font-mono">{{ item.zona }}</span>
                             </div>
-                            <div class="mt-1 text-[10px] text-gray-500">
+                            <div class="mt-1 text-[10px] text-slate-500">
                                 Stock teórico:
-                                <span class="font-semibold text-slate-800">{{ item.stock_actual }}</span>
+                                <span class="font-semibold text-slate-800">
+                                    {{ item.stock_actual }}
+                                </span>
                             </div>
                         </div>
+
                         <div class="w-20">
-                            <label class="block text-[10px] text-gray-500 mb-1">
+                            <label class="block text-[10px] text-slate-500 mb-1">
                                 Conteo
                             </label>
                             <input type="number"
                                    name="conteo_{{ i }}"
                                    min="0"
-                                   class="w-full rounded-lg border border-gray-300 px-2 py-1 text-[11px] text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                   class="w-full rounded-lg border border-slate-300 px-2 py-1 text-right text-[11px]
+                                          focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                    placeholder="{{ item.stock_actual }}" />
                         </div>
                     </div>
@@ -79,11 +85,13 @@
             <!-- Botones -->
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/dashboard"
-                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-300 text-slate-700 hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
                     Registrar ajustes
                 </button>
             </div>
@@ -95,7 +103,7 @@
 
     <!-- Volver (móvil) -->
     <a href="/dashboard"
-       class="block text-center text-xs text-gray-500 sm:hidden">
+       class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
         ← Volver al dashboard
     </a>
 

@@ -1,25 +1,29 @@
 ﻿{% extends "base.html" %}
-{% block title %}Transferencia - Mini WMS{% endblock %}
+{% block title %}Transferencia interna - Mini WMS{% endblock %}
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
 
-    <div class="bg-white shadow-lg rounded-2xl p-5">
-        <!-- Encabezado -->
-        <div class="flex items-center justify-between mb-3">
-            <h1 class="text-lg font-bold text-gray-800">Transferir Stock</h1>
-            <a href="/dashboard" class="text-[11px] text-gray-500 hover:underline">
-                ← Menú
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-slate-900">
+                    Transferencia interna
+                </h1>
+                <p class="text-xs text-slate-500">
+                    Mueve stock entre ubicaciones dentro de {{ user.negocio }}.
+                </p>
+            </div>
+            <a href="/movimientos"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Movimientos
             </a>
         </div>
 
-        <p class="text-xs text-gray-500 mb-4">
-            Mueve productos de un slot a otro. Esto simula una operación real de reposición o reubicación interna.
-        </p>
-
-        <!-- Mensaje de error -->
         {% if error %}
-        <div class="mb-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2 text-xs">
+        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
             {{ error }}
         </div>
         {% endif %}
@@ -28,13 +32,59 @@
 
             <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
-                <select name="producto"
-                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Producto
+                </label>
+                <select name="producto_id"
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        required>
+                    <option value="">Selecciona un producto</option>
                     {% for p in productos %}
-                    <option value="{{ p.nombre }}"
-                            {% if producto is defined and producto == p.nombre %}selected{% endif %}>
-                        {{ p.nombre }} ({{ p.unidad }})
+                    <option value="{{ p.id }}"
+                            {% if producto_id is defined and producto_id= =p.id %}selected{% endif %}>
+                        {{ p.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Origen -->
+            <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Desde (slot origen)
+                </label>
+                <select name="slot_origen_id"
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        required>
+                    <option value="">Selecciona zona / ubicación / slot</option>
+                    {% for s in slots_origen %}
+                    <option value="{{ s.id }}"
+                            {% if slot_origen_id is defined and slot_origen_id= =s.id %}selected{% endif %}>
+                        {{ s.zona_nombre }} · {{ s.ubicacion_nombre }} · {{ s.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-[10px] text-slate-400">
+                    Sólo podrás transferir hasta el stock disponible en el slot origen.
+                </p>
+            </div>
+
+            <!-- Destino -->
+            <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Hacia (slot destino)
+                </label>
+                <select name="slot_destino_id"
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        required>
+                    <option value="">Selecciona zona / ubicación / slot</option>
+                    {% for s in slots_destino %}
+                    <option value="{{ s.id }}"
+                            {% if slot_destino_id is defined and slot_destino_id= =s.id %}selected{% endif %}>
+                        {{ s.zona_nombre }} · {{ s.ubicacion_nombre }} · {{ s.nombre }}
                     </option>
                     {% endfor %}
                 </select>
@@ -42,62 +92,65 @@
 
             <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Cantidad a transferir
+                </label>
                 <input type="number"
                        name="cantidad"
                        min="1"
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                       placeholder="1">
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Debe existir stock suficiente en el slot de origen.
-                </p>
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="Ej: 5" />
             </div>
 
-            <!-- Slot origen -->
+            <!-- Fecha -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Desde (slot origen)</label>
-                <select name="slot_origen"
-                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                    {% for s in slots %}
-                    <option value="{{ s.id }}"
-                            {% if slot_origen is defined and slot_origen == s.id %}selected{% endif %}>
-                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Fecha de transferencia
+                </label>
+                <input type="date"
+                       name="fecha"
+                       required
+                       value="{{ fecha or '' }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
             </div>
 
-            <!-- Slot destino -->
+            <!-- Comentario -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Hacia (slot destino)</label>
-                <select name="slot_destino"
-                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                    {% for s in slots %}
-                    <option value="{{ s.id }}"
-                            {% if slot_destino is defined and slot_destino == s.id %}selected{% endif %}>
-                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <p class="text-[10px] text-gray-400 mt-1">
-                    No puedes transferir al mismo slot de origen.
-                </p>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Comentario (opcional)
+                </label>
+                <textarea name="comentario"
+                          rows="2"
+                          class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Ej: Reorganización de stock, consolidación de producto...">{% if comentario is defined %}{{ comentario }}{% endif %}</textarea>
             </div>
 
-            <!-- Botón -->
-            <button type="submit"
-                    class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-[0.98]">
-                Transferir
-            </button>
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+                <a href="/movimientos"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                    Registrar transferencia
+                </button>
+            </div>
         </form>
 
+        <!-- Volver (móvil) -->
         <a href="/movimientos"
-           class="block mt-4 text-center text-xs text-indigo-600 hover:underline">
-            Ver movimientos
+           class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
+            ← Volver a movimientos
         </a>
-    </div>
 
+    </div>
 </div>
 {% endblock %}

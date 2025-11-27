@@ -1,41 +1,52 @@
 ﻿{% extends "base.html" %}
-{% block title %}Salida - Mini WMS{% endblock %}
+{% block title %}Registrar salida - Mini WMS{% endblock %}
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
         <!-- Header -->
-        <div class="flex items-center justify-between mb-3">
-            <h1 class="text-lg font-bold text-gray-800">Registrar salida</h1>
-            <a href="/dashboard"
-               class="text-[11px] text-gray-500 hover:underline">
-                ← Menú
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-slate-900">
+                    Registrar salida
+                </h1>
+                <p class="text-xs text-slate-500">
+                    Salida de mercadería desde el inventario de {{ user.negocio }}.
+                </p>
+            </div>
+            <a href="/movimientos"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Movimientos
             </a>
         </div>
 
-        <p class="text-xs text-gray-500 mb-4">
-            Registra ventas o consumos desde una ubicación específica del almacén.
-        </p>
-
-        <!-- Mensaje de error (si aplica) -->
         {% if error %}
-        <div class="mb-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
-            {{ error }}
+        <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 mb-1">
+            <p class="text-[11px] text-red-700">
+                {{ error }}
+            </p>
         </div>
         {% endif %}
 
-        <form method="post" action="/movimientos/salida" class="space-y-4">
+        <form method="post"
+              action="/movimientos/salida"
+              class="space-y-4">
+
             <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Producto
                 </label>
                 <select name="producto"
-                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        required>
+                    <option value="">Selecciona un producto</option>
                     {% for p in productos %}
                     <option value="{{ p.nombre }}"
-                            {% if producto is defined and producto == p.nombre %}selected{% endif %}>
-                        {{ p.nombre }} ({{ p.unidad }})
+                            {% if producto is defined and producto= =p.nombre %}selected{% endif %}>
+                        {{ p.nombre }}
                     </option>
                     {% endfor %}
                 </select>
@@ -43,7 +54,7 @@
 
             <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="block text-sm font-medium text-slate-700 mb-1">
                     Cantidad
                 </label>
                 <input type="number"
@@ -51,43 +62,86 @@
                        min="1"
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-brand-500"
                        placeholder="1" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Debe ser menor o igual al stock disponible en la ubicación seleccionada.
-                </p>
             </div>
 
             <!-- Ubicación / Slot -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Ubicación
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Ubicación (slot)
                 </label>
                 <select name="slot_id"
-                        class="w-full rounded-xl border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        required>
+                    <option value="">Selecciona zona / ubicación / slot</option>
                     {% for s in slots %}
                     <option value="{{ s.id }}"
-                            {% if slot_id is defined and slot_id == s.id %}selected{% endif %}>
-                        {{ s.codigo_full }} — {{ s.ubicacion.zona.nombre }} / {{ s.ubicacion.nombre }}
+                            {% if slot_id is defined and slot_id= =s.id %}selected{% endif %}>
+                        {{ s.codigo_full }}
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Slot desde donde saldrá la mercadería.
+            </div>
+
+            <!-- Motivo de salida -->
+            <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">
+                    Motivo de salida
+                </label>
+                <select name="motivo_salida"
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Selecciona motivo (opcional)</option>
+                    <option value="venta">Venta / salida normal</option>
+                    <option value="merma">Merma / producto vencido</option>
+                    <option value="consumo_personal">Consumo personal</option>
+                    <option value="donacion">Donación</option>
+                    <option value="ajuste_manual">Ajuste manual</option>
+                </select>
+                <p class="mt-1 text-[10px] text-slate-400">
+                    Esta etiqueta se usará luego para calcular pérdidas por merma y otros análisis.
                 </p>
             </div>
 
-            <!-- Botón submit -->
+            <!-- Comentario -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Comentario (opcional)
+                </label>
+                <textarea name="comentario"
+                          rows="2"
+                          class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          placeholder="Ej: Consumo familiar, ajuste de inventario, etc.">{% if comentario is defined %}{{ comentario }}{% endif %}</textarea>
+            </div>
+
+            <!-- Fecha (opcional por ahora, backend no la usa aún) -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">
+                    Fecha de salida
+                </label>
+                <input type="date"
+                       name="fecha"
+                       value="{{ fecha or '' }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+
             <button type="submit"
-                    class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-[0.98]">
+                    class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
+                           bg-brand-500 hover:bg-brand-600 text-white shadow-sm active:scale-[0.98]">
                 Registrar salida
             </button>
         </form>
 
         <a href="/movimientos"
-           class="block mt-4 text-center text-xs text-indigo-600 hover:underline">
-            Ver movimientos
+           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
+            ← Volver a movimientos
         </a>
+
     </div>
 </div>
 {% endblock %}

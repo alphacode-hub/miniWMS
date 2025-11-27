@@ -33,8 +33,178 @@
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen antialiased">
 
-    <!-- Contenido específico de cada vista -->
-    {% block content %}{% endblock %}
+    <div class="max-w-6xl mx-auto px-4 py-6">
+
+        <!-- HEADER CORPORATIVO -->
+        <header class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-sky-600 flex items-center justify-center shadow-md">
+                    <span class="text-white font-bold text-lg">W</span>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-semibold text-slate-900 tracking-tight">
+                        Mini WMS <span class="text-sky-600">SaaS</span>
+                    </h1>
+                    <p class="text-xs md:text-sm text-slate-500">
+                        Control ejecutivo de inventario y operaciones
+                    </p>
+                </div>
+            </div>
+
+            {% if user %}
+            <div class="text-right">
+                <p class="text-xs md:text-sm text-slate-500">
+                    Sesión:
+                    <span class="font-medium text-slate-800">{{ user.email }}</span>
+                </p>
+                {% if user.negocio %}
+                <p class="text-xs md:text-sm text-slate-500">
+                    Negocio:
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-900 text-[11px] md:text-xs font-medium text-sky-100">
+                        {{ user.negocio }}
+                    </span>
+                </p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </header>
+
+        <!-- NAV UNIFICADO POR ROL -->
+        {% if user %}
+        <nav class="mt-5 flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white/80 backdrop-blur-sm rounded-2xl px-3 py-2 shadow-sm">
+            <div class="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm">
+
+                {% if user.rol == 'superadmin' %}
+                <!-- NAV SUPERADMIN -->
+                <a href="/superadmin/dashboard"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/superadmin/dashboard') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Dashboard global
+                </a>
+
+                <a href="/superadmin/negocios"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/superadmin/negocios') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Negocios
+                </a>
+
+                <a href="/superadmin/alertas"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/superadmin/alertas') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Alertas globales
+                </a>
+
+                <a href="/dashboard"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path == '/dashboard' %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Ver como negocio
+                </a>
+
+                {% else %}
+                <!-- NAV ADMIN / OPERADOR -->
+                <a href="/dashboard"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path == '/dashboard' %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Dashboard
+                </a>
+
+                <a href="/stock"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/stock') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Stock
+                </a>
+
+                <a href="/movimientos"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/movimientos') and not request.url.path.startswith('/movimientos/historial') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Movimientos
+                </a>
+
+                <a href="/movimientos/historial"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/movimientos/historial') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Historial
+                </a>
+
+                <a href="/productos"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/productos') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Productos
+                </a>
+
+                <a href="/inventario"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/inventario') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Inventario
+                </a>
+
+                <a href="/alertas"
+                   class="px-3 py-1.5 rounded-full border text-xs md:text-sm
+                              {% if request.url.path.startswith('/alertas') %}
+                                  bg-slate-900 text-sky-50 border-slate-900
+                              {% else %}
+                                  bg-white text-slate-700 border-slate-200 hover:bg-slate-50
+                              {% endif %}">
+                    Alertas
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="/logout"
+                   class="inline-flex items-center px-3 py-1.5 rounded-full text-xs md:text-sm font-medium
+                          bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
+                    Cerrar sesión
+                </a>
+            </div>
+        </nav>
+        {% endif %}
+
+        <!-- CONTENIDO ESPECÍFICO DE CADA VISTA -->
+        <main class="mt-6">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
     <!-- Scripts adicionales por página (Chart.js, etc.) -->
     {% block scripts_extra %}{% endblock %}

@@ -37,6 +37,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
+    <Content Include="templates\alertas.html" />
     <Content Include="templates\auditoria.html" />
     <Content Include="templates\base.html" />
     <Content Include="templates\dashboard.html" />
@@ -48,13 +49,20 @@
     <Content Include="templates\productos.html" />
     <Content Include="templates\producto_editar.html" />
     <Content Include="templates\producto_nuevo.html" />
+    <Content Include="templates\registrar_negocio.html" />
     <Content Include="templates\salida.html" />
     <Content Include="templates\slots.html" />
     <Content Include="templates\slot_nuevo.html" />
     <Content Include="templates\stock.html" />
+    <Content Include="templates\superadmin_alertas.html" />
+    <Content Include="templates\superadmin_dashboard.html" />
+    <Content Include="templates\superadmin_negocios.html" />
+    <Content Include="templates\superadmin_negocio_detalle.html" />
     <Content Include="templates\transferencia.html" />
     <Content Include="templates\ubicaciones.html" />
     <Content Include="templates\ubicacion_nueva.html" />
+    <Content Include="templates\usuarios.html" />
+    <Content Include="templates\usuarios_nuevo.html" />
     <Content Include="templates\zonas.html" />
     <Content Include="templates\zona_nueva.html" />
   </ItemGroup>

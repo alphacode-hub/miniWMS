@@ -74,11 +74,20 @@
         <!-- Nota opcional de entorno de pruebas -->
         <div class="mt-3 border-t border-slate-100 pt-3">
             <p class="text-[10px] text-slate-400 leading-snug">
-                Este entorno es de pruebas. Los usuarios y roles se configuran desde el backend
-                (FAKE_USERS) mientras se desarrolla la versión final multi-negocio.
+                Este entorno es de pruebas. Los usuarios se crean desde el registro de negocio
+                o por el administrador del sistema.
             </p>
+        </div>
+        <div class="border-t border-slate-800 pt-3 mt-2 flex justify-between items-center">
+            <p class="text-[10px] text-slate-500">
+                ¿Aún no tienes negocio creado?
+            </p>
+            <a href="/registrar-negocio" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium">
+                Crear negocio y cuenta admin
+            </a>
         </div>
 
     </div>
+   
 </div>
 {% endblock %}

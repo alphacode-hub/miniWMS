@@ -3,129 +3,141 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Editar producto
                 </h1>
-                <p class="text-xs text-gray-500">
-                    Modifica los datos del SKU seleccionado de {{ user.negocio }}.
+                <p class="text-xs text-slate-500">
+                    Ajusta la información de este SKU de {{ user.negocio }}.
                 </p>
             </div>
             <a href="/productos"
-               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
-                ← Volver a productos
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Productos
             </a>
         </div>
 
-        <!-- Error -->
+        <!-- Info producto -->
+        <div class="text-[11px] text-slate-500">
+            <span class="font-semibold text-slate-800">ID:</span>
+            <span class="font-mono">{{ producto.id }}</span>
+        </div>
+
         {% if error %}
-        <div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-            <p class="text-[11px] text-red-700">
-                {{ error }}
-            </p>
+        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+            {{ error }}
         </div>
         {% endif %}
 
-        <!-- Formulario -->
-        <form method="post"
-              action="/productos/{{ producto.id }}/editar"
-              class="space-y-4">
+        <form method="post" action="/productos/{{ producto.id }}/editar" class="space-y-4">
 
             <!-- Nombre -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="nombre" class="block text-xs font-medium text-slate-700 mb-1">
                     Nombre del producto
                 </label>
-                <input type="text"
+                <input id="nombre"
                        name="nombre"
-                       value="{{ producto.nombre }}"
+                       type="text"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Ej: Arroz 1kg, Yogurt chirimoya, Pan de molde" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Cambia solo si necesitas corregir el nombre o hacerlo más claro.
-                </p>
+                       value="{{ producto.nombre }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
             </div>
 
             <!-- Unidad -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Unidad
+                <label for="unidad" class="block text-xs font-medium text-slate-700 mb-1">
+                    Unidad de medida
                 </label>
-                <input type="text"
+                <input id="unidad"
                        name="unidad"
-                       value="{{ producto.unidad or 'unidad' }}"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Ej: unidad, pack, caja, kg, lt" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Solo es una referencia para cómo cuentas este producto.
-                </p>
+                       type="text"
+                       value="{{ producto.unidad }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
             </div>
 
-            <!-- Stock mínimo -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Stock mínimo (opcional)
-                </label>
-                <input type="number"
-                       name="stock_min"
-                       min="0"
-                       value="{{ producto.stock_min if producto.stock_min is not none else '' }}"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Ej: 5" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Bajo este valor, el producto se mostrará como
-                    <span class="font-semibold text-red-600">Crítico</span> en el stock.
+            <!-- Min / Max -->
+            <div class="border border-slate-200 rounded-2xl px-3 py-3 bg-slate-50">
+                <p class="text-[11px] font-semibold text-slate-700 mb-1">
+                    Stock mínimo / máximo
                 </p>
+                <p class="text-[10px] text-slate-500 mb-2">
+                    Si dejas un campo vacío, ese límite no se usará para el cálculo de estados.
+                </p>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="stock_min" class="block text-[10px] text-slate-600 mb-1">
+                            Stock mínimo
+                        </label>
+                        <input id="stock_min"
+                               name="stock_min"
+                               type="number"
+                               min="0"
+                               value="{{ producto.stock_min if producto.stock_min is not none else '' }}"
+                               class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+
+                    <div>
+                        <label for="stock_max" class="block text-[10px] text-slate-600 mb-1">
+                            Stock máximo
+                        </label>
+                        <input id="stock_max"
+                               name="stock_max"
+                               type="number"
+                               min="0"
+                               value="{{ producto.stock_max if producto.stock_max is not none else '' }}"
+                               class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+                </div>
             </div>
 
-            <!-- Stock máximo -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Stock máximo (opcional)
-                </label>
-                <input type="number"
-                       name="stock_max"
-                       min="0"
-                       value="{{ producto.stock_max if producto.stock_max is not none else '' }}"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Ej: 50" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Sobre este valor, el producto se marcará como
-                    <span class="font-semibold text-amber-600">Sobre-stock</span>.
-                </p>
+            <!-- Estado (sólo lectura visual, toggle sigue en productos.html) -->
+            <div class="border border-slate-200 rounded-2xl px-3 py-2 flex items-center justify-between bg-slate-50">
+                <div class="text-[11px] text-slate-600">
+                    Estado actual:
+                    <span class="font-semibold">
+                        {% if producto.activo == 1 %}
+                        Activo
+                        {% else %}
+                        Inactivo
+                        {% endif %}
+                    </span>
+                </div>
+                <a href="/productos"
+                   class="text-[10px] text-indigo-600 hover:underline">
+                    Cambiar estado desde listado
+                </a>
             </div>
 
             <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/productos"
-                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                  rounded-xl text-xs font-semibold border border-gray-300 text-gray-700
-                  hover:bg-gray-50">
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-300 text-slate-700 hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                 rounded-xl text-xs font-semibold bg-sky-600 text-white
-                 hover:bg-sky-700 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
                     Guardar cambios
                 </button>
             </div>
 
         </form>
 
-        <!-- Volver móvil -->
+        <!-- Volver (móvil) -->
         <a href="/productos"
-           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
-            ← Volver al listado de productos
+           class="block mt-2 text-center text-xs text-slate-500 sm:hidden">
+            ← Volver a productos
         </a>
 
     </div>

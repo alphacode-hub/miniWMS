@@ -1,0 +1,109 @@
+﻿{% extends "base.html" %}
+{% block title %}Equipo - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4 py-4">
+
+    <div class="space-y-5">
+
+        <!-- HEADER SUPERIOR -->
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500">Negocio</p>
+                <p class="text-sm font-semibold text-gray-800">{{ user.negocio }}</p>
+                <p class="text-[11px] text-gray-500">Usuario: {{ user.email }}</p>
+            </div>
+
+            <a href="/logout"
+               class="text-xs text-red-500 border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">
+                Cerrar sesión
+            </a>
+        </div>
+
+        <!-- CARD EQUIPO -->
+        <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-base font-semibold text-gray-900">
+                        Equipo del negocio
+                    </h1>
+                    <p class="text-xs text-gray-500">
+                        Admins y operadores que pueden usar el miniWMS.
+                    </p>
+                </div>
+
+                <a href="/usuarios/nuevo"
+                   class="text-xs bg-brand-500 text-white px-3 py-1.5 rounded-full shadow-sm hover:bg-brand-600">
+                    + Agregar operador
+                </a>
+            </div>
+
+            {% if usuarios|length == 0 %}
+            <p class="text-xs text-gray-400">
+                Aún no tienes usuarios creados. Usa el botón "Agregar operador" para invitar al primero.
+            </p>
+            {% else %}
+            <div class="border border-slate-100 rounded-xl overflow-hidden">
+                <table class="w-full border-collapse">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="text-[11px] text-left px-3 py-2 text-gray-500 font-medium">Nombre</th>
+                            <th class="text-[11px] text-left px-3 py-2 text-gray-500 font-medium">Correo</th>
+                            <th class="text-[11px] text-left px-3 py-2 text-gray-500 font-medium">Rol</th>
+                            <th class="text-[11px] text-center px-3 py-2 text-gray-500 font-medium">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for u in usuarios %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-3 py-2 align-top">
+                                <p class="text-xs text-gray-800">
+                                    {{ u.nombre_mostrado or "—" }}
+                                </p>
+                            </td>
+                            <td class="px-3 py-2 align-top">
+                                <p class="text-xs text-gray-800">
+                                    {{ u.email }}
+                                </p>
+                            </td>
+                            <td class="px-3 py-2 align-top">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium
+                                        {% if u.rol == 'superadmin' %}
+                                            bg-purple-100 text-purple-700
+                                        {% elif u.rol == 'admin' %}
+                                            bg-indigo-100 text-indigo-700
+                                        {% else %}
+                                            bg-emerald-100 text-emerald-700
+                                        {% endif %}">
+                                    {{ u.rol }}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 align-top text-center">
+                                {% if u.activo == 1 %}
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
+                                                     bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    ● Activo
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
+                                                     bg-slate-50 text-slate-500 border border-slate-100">
+                                    ● Inactivo
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+        <a href="/dashboard"
+           class="block text-center text-[11px] text-indigo-600 underline">
+            ← Volver al dashboard
+        </a>
+
+    </div>
+</div>
+{% endblock %}

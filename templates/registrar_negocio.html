@@ -1,0 +1,149 @@
+﻿{% extends "base.html" %}
+{% block title %}Registrar negocio - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md mx-auto px-4 py-6">
+
+    <div class="space-y-5">
+
+        <!-- HEADER SUPERIOR (similar al dashboard pero adaptado) -->
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500">Mini WMS</p>
+                <p class="text-sm font-semibold text-gray-800">
+                    Crear negocio y cuenta admin
+                </p>
+                <p class="text-[11px] text-gray-500">
+                    Completa los datos para empezar a usar tu mini WMS.
+                </p>
+            </div>
+
+            <a href="/login"
+               class="text-xs text-indigo-600 border border-indigo-100 px-3 py-1 rounded-full hover:bg-indigo-50">
+                Ya tengo cuenta
+            </a>
+        </div>
+
+        <!-- CARD FORMULARIO -->
+        <div class="bg-white shadow-lg rounded-2xl p-5 space-y-5">
+
+            <!-- Título card -->
+            <div class="space-y-1">
+                <h1 class="text-base font-semibold text-gray-900">
+                    Registrar nuevo negocio
+                </h1>
+                <p class="text-xs text-gray-500 leading-snug">
+                    Crearemos tu negocio y un usuario administrador. Luego podrás configurar
+                    productos, zonas y agregar operadores.
+                </p>
+            </div>
+
+            <!-- Errores -->
+            {% if errores and errores|length > 0 %}
+            <div class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2 space-y-1">
+                <p class="font-semibold text-[11px]">Revisa los siguientes puntos:</p>
+                <ul class="list-disc list-inside space-y-0.5">
+                    {% for err in errores %}
+                    <li>{{ err }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Formulario -->
+            <form method="post" class="space-y-4">
+
+                <!-- Nombre negocio -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-gray-700">
+                        Nombre de fantasía del negocio
+                    </label>
+                    <input type="text"
+                           name="nombre_negocio"
+                           value="{{ nombre_negocio }}"
+                           required
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                           placeholder="Ej: Despensa Hogar" />
+                    <p class="text-[10px] text-gray-400">
+                        Este nombre aparecerá en el dashboard y reportes.
+                    </p>
+                </div>
+
+                <!-- WhatsApp -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-gray-700">
+                        WhatsApp para notificaciones (opcional)
+                    </label>
+                    <input type="text"
+                           name="whatsapp"
+                           value="{{ whatsapp }}"
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                           placeholder="+56 9 1234 5678" />
+                    <p class="text-[10px] text-gray-400">
+                        A futuro podrás recibir alertas de stock, vencimientos y sugerencias.
+                    </p>
+                </div>
+
+                <!-- Email admin -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-gray-700">
+                        Correo del administrador
+                    </label>
+                    <input type="email"
+                           name="email"
+                           value="{{ email }}"
+                           required
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                           placeholder="tucorreo@dominio.cl" />
+                    <p class="text-[10px] text-gray-400">
+                        Con este correo iniciarás sesión como administrador del negocio.
+                    </p>
+                </div>
+
+                <!-- Password -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-gray-700">
+                        Contraseña
+                    </label>
+                    <input type="password"
+                           name="password"
+                           required
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                           placeholder="Mínimo 8 caracteres" />
+                </div>
+
+                <!-- Repetir password -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-gray-700">
+                        Repetir contraseña
+                    </label>
+                    <input type="password"
+                           name="password2"
+                           required
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                           placeholder="Debe coincidir" />
+                </div>
+
+                <!-- Botón -->
+                <button type="submit"
+                        class="w-full inline-flex justify-center items-center rounded-xl px-3 py-2.5 text-sm font-semibold
+                           bg-brand-500 hover:bg-brand-600 text-white shadow-sm transition active:scale-[0.98]">
+                    Crear negocio y continuar
+                </button>
+            </form>
+
+        </div>
+
+        <!-- Pie pequeño -->
+        <p class="text-[10px] text-gray-400 text-center">
+            miniWMS · Control simple y móvil de inventarios.
+        </p>
+
+    </div>
+</div>
+{% endblock %}

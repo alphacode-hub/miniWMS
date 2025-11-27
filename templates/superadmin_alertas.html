@@ -1,0 +1,110 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Alertas - Superadmin{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-slate-50 py-6">
+    <div class="max-w-6xl mx-auto px-4">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6">
+            <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">
+                        Alertas globales
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-1">
+                        Alertas generadas por reglas de stock, vencimientos y otros eventos en todos los negocios.
+                    </p>
+                </div>
+
+                <!-- Navegación superadmin -->
+                <nav class="flex flex-wrap gap-2 justify-start sm:justify-end">
+                    <a href="/superadmin/dashboard"
+                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                        Dashboard
+                    </a>
+                    <a href="/superadmin/negocios"
+                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                        Negocios
+                    </a>
+                    <a href="/superadmin/alertas"
+                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-amber-200 text-amber-700 bg-amber-50">
+                        Alertas
+                    </a>
+                </nav>
+            </header>
+
+            {% if alertas %}
+            <div class="overflow-x-auto -mx-4 sm:mx-0">
+                <table class="min-w-full text-sm text-left border-separate border-spacing-y-1">
+                    <thead>
+                        <tr class="text-xs font-medium text-slate-500 uppercase">
+                            <th class="px-4 py-2">Negocio</th>
+                            <th class="px-4 py-2">Tipo</th>
+                            <th class="px-4 py-2">Mensaje</th>
+                            <th class="px-4 py-2">Estado</th>
+                            <th class="px-4 py-2">Creación</th>
+                            <th class="px-4 py-2">Envío</th>
+                            <th class="px-4 py-2">Origen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in alertas %}
+                        <tr class="bg-slate-50/60 hover:bg-slate-100 transition-colors">
+                            <td class="px-4 py-2 align-middle">
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-slate-900">
+                                        {{ a.negocio.nombre_fantasia if a.negocio else "—" }}
+                                    </span>
+                                    <span class="text-xs text-slate-500">
+                                        ID {{ a.negocio_id }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-2 align-middle text-xs text-slate-700">
+                                {{ a.tipo }}
+                            </td>
+                            <td class="px-4 py-2 align-middle text-sm text-slate-800">
+                                {{ a.mensaje }}
+                            </td>
+                            <td class="px-4 py-2 align-middle">
+                                {% if a.estado == "pendiente" %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                                    Pendiente
+                                </span>
+                                {% elif a.estado == "enviada" or a.estado == "leida" %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    {{ a.estado|capitalize }}
+                                </span>
+                                {% elif a.estado == "error" %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                                    Error
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-100">
+                                    {{ a.estado|capitalize }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-2 align-middle text-xs text-slate-500">
+                                {{ a.fecha_creacion.strftime("%d-%m-%Y %H:%M") if a.fecha_creacion else "—" }}
+                            </td>
+                            <td class="px-4 py-2 align-middle text-xs text-slate-500">
+                                {{ a.fecha_envio.strftime("%d-%m-%Y %H:%M") if a.fecha_envio else "—" }}
+                            </td>
+                            <td class="px-4 py-2 align-middle text-xs text-slate-500">
+                                {{ a.origen or "—" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-500">
+                No se han generado alertas aún.
+            </p>
+            {% endif %}
+        </section>
+    </div>
+</main>
+{% endblock %}

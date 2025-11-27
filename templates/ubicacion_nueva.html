@@ -3,96 +3,87 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
+
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Nueva ubicación
                 </h1>
-                <p class="text-xs text-gray-500">
-                    Dentro de la zona <span class="font-semibold">{{ zona.nombre }}</span>.
-                    Piensa en repisas, estantes o módulos.
+                <p class="text-xs text-slate-500">
+                    Zona: {{ zona.nombre }}{% if zona.sigla %} ({{ zona.sigla }}){% endif %}
                 </p>
             </div>
             <a href="/zonas/{{ zona.id }}/ubicaciones"
-               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
-                ← Volver
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Ubicaciones
             </a>
         </div>
 
-        <!-- Error -->
         {% if error %}
-        <div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-            <p class="text-[11px] text-red-700">
-                {{ error }}
-            </p>
+        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+            {{ error }}
         </div>
         {% endif %}
 
-        <!-- Formulario -->
         <form method="post"
               action="/zonas/{{ zona.id }}/ubicaciones/nueva"
               class="space-y-4">
 
             <!-- Nombre -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="nombre" class="block text-xs font-medium text-slate-700 mb-1">
                     Nombre de la ubicación
                 </label>
-                <input type="text"
+                <input id="nombre"
                        name="nombre"
-                       value="{{ nombre or '' }}"
+                       type="text"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Ej: Repisa A, Repisa B, Estante 1" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Usa nombres que te hagan sentido al buscar cosas en el día a día.
-                </p>
+                       value="{{ nombre|default('', true) }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="Ej: Estante alto, Puerta, Cajón 1..." />
             </div>
 
             <!-- Sigla -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="sigla" class="block text-xs font-medium text-slate-700 mb-1">
                     Sigla (opcional)
                 </label>
-                <input type="text"
+                <input id="sigla"
                        name="sigla"
-                       value="{{ sigla or '' }}"
-                       maxlength="8"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 uppercase tracking-wide
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Ej: RA, RB, E1" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Si la dejas vacía, se generará a partir del nombre
-                    (por ejemplo, "Repisa A" → <strong>RA</strong>).
+                       type="text"
+                       maxlength="5"
+                       value="{{ sigla|default('', true) }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="Ej: EA, PT, C1" />
+                <p class="mt-1 text-[10px] text-slate-400">
+                    Si lo dejas en blanco, puedes usar sólo el nombre completo.
                 </p>
             </div>
 
             <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/zonas/{{ zona.id }}/ubicaciones"
-                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                  rounded-xl text-xs font-semibold border border-gray-300 text-gray-700
-                  hover:bg-gray-50">
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-300 text-slate-700 hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                 rounded-xl text-xs font-semibold bg-emerald-600 text-white
-                 hover:bg-emerald-700 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
                     Crear ubicación
                 </button>
             </div>
 
         </form>
 
-        <!-- Volver móvil -->
+        <!-- Volver (móvil) -->
         <a href="/zonas/{{ zona.id }}/ubicaciones"
-           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
+           class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
             ← Volver al listado de ubicaciones
         </a>
 

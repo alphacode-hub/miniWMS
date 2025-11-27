@@ -3,104 +3,101 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-gray-800">
+                <h1 class="text-lg font-bold text-slate-900">
                     Nuevo slot
                 </h1>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-slate-500">
                     Ubicación:
-                    <span class="font-semibold">{{ ubicacion.nombre }}</span><br>
-                    Zona:
-                    <span class="font-semibold">{{ ubicacion.zona.nombre }}</span>
+                    <span class="font-semibold text-slate-800">{{ ubicacion.nombre }}</span>
                 </p>
-                <p class="text-[11px] text-gray-400 mt-1">
-                    Los slots son posiciones específicas como <strong>C1, C2, C3</strong>.
+                <p class="text-[10px] text-slate-400">
+                    Zona: {{ ubicacion.zona.nombre }} ({{ ubicacion.zona.sigla }})
                 </p>
             </div>
-            <a href="/ubicaciones/{{ ubicacion.id }}/slots"
-               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
-                ← Volver
+
+            <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+                ← Ubicaciones
             </a>
         </div>
 
-        <!-- Error -->
         {% if error %}
-        <div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-            <p class="text-[11px] text-red-700">
-                {{ error }}
-            </p>
+        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+            {{ error }}
         </div>
         {% endif %}
 
-        <!-- Formulario -->
         <form method="post"
               action="/ubicaciones/{{ ubicacion.id }}/slots/nuevo"
               class="space-y-4">
 
-            <!-- Código corto -->
+            <!-- Código del slot -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="codigo" class="block text-xs font-medium text-slate-700 mb-1">
                     Código del slot
                 </label>
-                <input type="text"
+                <input id="codigo"
                        name="codigo"
-                       value="{{ codigo or '' }}"
+                       type="text"
                        required
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 uppercase tracking-wide
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Ej: C1, C2, C3" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Solo el código interno de la ubicación. El sistema generará algo como
-                    <strong>{{ ubicacion.zona.sigla or 'Z' }}-{{ ubicacion.sigla or 'UB' }}-C1</strong>.
+                       value="{{ codigo|default('', true) }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="Ej: A1, B2, 01, 02, etc." />
+                <p class="mt-1 text-[10px] text-slate-400">
+                    Se usará junto con la zona y la ubicación para formar el código completo.
                 </p>
             </div>
 
-            <!-- Capacidad -->
+            <!-- Capacidad (opcional) -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="capacidad" class="block text-xs font-medium text-slate-700 mb-1">
                     Capacidad (opcional)
                 </label>
-                <input type="number"
+                <input id="capacidad"
                        name="capacidad"
-                       min="1"
-                       value="{{ capacidad or '' }}"
-                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Ej: 20" />
-                <p class="text-[10px] text-gray-400 mt-1">
-                    Puedes usarlo para controlar el <strong>% de ocupación</strong> del slot.
-                    Si lo dejas vacío, no se aplicará límite.
+                       type="number"
+                       min="0"
+                       value="{{ capacidad|default('', true) }}"
+                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       placeholder="Ej: 50 (unidades máximas)" />
+                <p class="mt-1 text-[10px] text-slate-400">
+                    Si lo dejas vacío, el slot no tendrá límite de capacidad.
                 </p>
             </div>
 
             <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/ubicaciones/{{ ubicacion.id }}/slots"
-                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                  rounded-xl text-xs font-semibold border border-gray-300 text-gray-700
-                  hover:bg-gray-50">
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-300 text-slate-700 hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2
-                 rounded-xl text-xs font-semibold bg-emerald-600 text-white
-                 hover:bg-emerald-700 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
                     Crear slot
                 </button>
             </div>
-
         </form>
 
-        <!-- Volver móvil -->
-        <a href="/ubicaciones/{{ ubicacion.id }}/slots"
-           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
-            ← Volver al listado de slots
-        </a>
+        <!-- Volver (móvil) -->
+        <div class="mt-2 sm:hidden space-y-1">
+            <a href="/ubicaciones/{{ ubicacion.id }}/slots"
+               class="block text-center text-xs text-slate-500">
+                ← Volver al listado de slots
+            </a>
+            <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
+               class="block text-center text-[11px] text-slate-500">
+                ← Volver a ubicaciones
+            </a>
+        </div>
 
     </div>
 </div>

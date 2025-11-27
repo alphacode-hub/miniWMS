@@ -3,69 +3,84 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
+    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+
         <!-- Header -->
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-1">
             <div>
-                <h2 class="text-lg font-bold text-gray-800">Zonas de almacenamiento</h2>
-                <p class="text-xs text-gray-500">
+                <h1 class="text-lg font-bold text-slate-900">
+                    Zonas de almacenamiento
+                </h1>
+                <p class="text-xs text-slate-500">
                     Diseña las áreas principales de tu almacén
                     (ej: Despensa, Refrigerador, Congelador).
                 </p>
             </div>
             <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-gray-500 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
                 ← Dashboard
             </a>
         </div>
 
         <!-- Botón nueva zona -->
-        <a href="/zonas/nueva"
-           class="inline-flex items-center justify-center mb-3 px-3 py-2 rounded-xl text-xs font-semibold
-                  bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]">
-            + Nueva zona
-        </a>
+        <div class="flex justify-end">
+            <a href="/zonas/nueva"
+               class="inline-flex items-center px-3 py-1.5 rounded-xl text-[11px] font-semibold
+                      bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                + Nueva zona
+            </a>
+        </div>
 
         {% if zonas|length == 0 %}
-        <p class="text-sm text-gray-500 mt-2">
-            Aún no tienes zonas definidas. Comienza creando una, por ejemplo <span class="font-semibold">"Despensa"</span>.
+        <p class="mt-3 text-sm text-slate-500">
+            Aún no has creado zonas. Comienza creando tu primera zona de almacenamiento.
         </p>
         {% else %}
-        <div class="mt-2 max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+
+        <!-- Lista de zonas -->
+        <div class="max-h-[460px] overflow-y-auto border border-slate-200 rounded-2xl mt-2">
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
-                    <tr class="text-left text-gray-500 border-b">
-                        <th class="py-1 px-2">Zona</th>
-                        <th class="py-1 px-2 w-24">Sigla</th>
-                        <th class="py-1 px-2 w-32 text-right">Acciones</th>
+                    <tr class="text-left text-slate-500 border-b">
+                        <th class="py-1.5 px-2">Zona</th>
+                        <th class="py-1.5 px-2">Sigla</th>
+                        <th class="py-1.5 px-2 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for z in zonas %}
                     <tr class="border-b last:border-0">
+                        <!-- Nombre -->
                         <td class="py-1.5 px-2 align-top">
-                            <div class="font-semibold text-gray-800">
+                            <div class="text-[11px] font-semibold text-slate-900">
                                 {{ z.nombre }}
                             </div>
-                            <div class="text-[10px] text-gray-400">
-                                ID: {{ z.id }}
+                            <div class="text-[10px] text-slate-400">
+                                ID: <span class="font-mono">{{ z.id }}</span>
                             </div>
                         </td>
+
+                        <!-- Sigla -->
                         <td class="py-1.5 px-2 align-top">
                             {% if z.sigla %}
-                            <span class="inline-flex items-center justify-center px-2 py-[2px] rounded-full
-                                                 text-[10px] font-semibold bg-slate-100 text-slate-700">
+                            <span class="inline-flex items-center justify-center px-2 py-[2px]
+                                             rounded-full text-[10px] font-semibold
+                                             bg-slate-900 text-white">
                                 {{ z.sigla }}
                             </span>
                             {% else %}
-                            <span class="text-[10px] text-gray-400">–</span>
+                            <span class="text-[10px] text-slate-400 italic">
+                                (sin sigla)
+                            </span>
                             {% endif %}
                         </td>
+
+                        <!-- Acciones -->
                         <td class="py-1.5 px-2 align-top text-right">
                             <a href="/zonas/{{ z.id }}/ubicaciones"
-                               class="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
-                                          bg-slate-100 text-slate-700 hover:bg-slate-200">
-                                Configurar ubicaciones
+                               class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                                      bg-slate-100 text-slate-700 hover:bg-slate-200">
+                                Ver ubicaciones
                             </a>
                         </td>
                     </tr>
@@ -73,13 +88,21 @@
                 </tbody>
             </table>
         </div>
+
         {% endif %}
 
-        <!-- Volver (móvil) -->
-        <a href="/dashboard"
-           class="block mt-4 text-center text-sm text-gray-500 sm:hidden">
-            ← Volver al menú
-        </a>
+        <!-- Navegación móvil -->
+        <div class="mt-3 space-y-1 sm:hidden">
+            <a href="/zonas/nueva"
+               class="block text-center text-xs text-indigo-600 underline">
+                + Crear nueva zona
+            </a>
+            <a href="/dashboard"
+               class="block text-center text-xs text-slate-500">
+                ← Volver al menú
+            </a>
+        </div>
+
     </div>
 </div>
 {% endblock %}
