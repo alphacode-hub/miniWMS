@@ -5,13 +5,13 @@
 <div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-4">
 
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-3">
         <div>
             <h1 class="text-xl font-bold text-slate-900">
                 Stock por ubicación
             </h1>
             <p class="text-xs text-slate-500">
-                Vista consolidada de productos por zona / ubicación / slot.
+                Vista consolidada de productos por zona, ubicación y slot.
             </p>
         </div>
         <a href="/dashboard"
@@ -23,35 +23,136 @@
     <!-- Resumen estados -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div class="bg-red-50 border border-red-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-red-700 font-semibold">Críticos</div>
-            <div class="text-lg font-bold text-red-800">{{ resumen["Crítico"] }}</div>
+            <p class="text-[11px] text-red-700 font-semibold">Críticos</p>
+            <p class="text-lg font-bold text-red-800">
+                {{ resumen["Crítico"] }}
+            </p>
         </div>
         <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-yellow-700 font-semibold">Bajo</div>
-            <div class="text-lg font-bold text-yellow-800">{{ resumen["Bajo"] }}</div>
+            <p class="text-[11px] text-yellow-700 font-semibold">Bajo</p>
+            <p class="text-lg font-bold text-yellow-800">
+                {{ resumen["Bajo"] }}
+            </p>
         </div>
         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-emerald-700 font-semibold">Óptimo</div>
-            <div class="text-lg font-bold text-emerald-800">{{ resumen["Óptimo"] }}</div>
+            <p class="text-[11px] text-emerald-700 font-semibold">Óptimo</p>
+            <p class="text-lg font-bold text-emerald-800">
+                {{ resumen["Óptimo"] }}
+            </p>
         </div>
         <div class="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2">
-            <div class="text-[11px] text-slate-700 font-semibold">Sobre stock</div>
-            <div class="text-lg font-bold text-slate-800">{{ resumen["Sobre stock"] }}</div>
+            <p class="text-[11px] text-slate-700 font-semibold">Sobre stock</p>
+            <p class="text-lg font-bold text-slate-800">
+                {{ resumen["Sobre stock"] }}
+            </p>
         </div>
     </div>
 
+    <!-- Bloque filtros -->
+    <div class="bg-white shadow-sm rounded-2xl p-4 border border-slate-100">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Filtros de stock
+                </h2>
+                <p class="text-[11px] text-slate-500">
+                    Combina filtros para encontrar productos en zonas, estados o vencimientos específicos.
+                </p>
+            </div>
+        </div>
+
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <!-- Producto (texto libre) -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Producto
+                </label>
+                <input type="text"
+                       name="producto"
+                       value="{{ f_producto }}"
+                       placeholder="Ej: Arroz"
+                       class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs
+                              focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900" />
+            </div>
+
+            <!-- Zona -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Zona
+                </label>
+                <select name="zona"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todas</option>
+                    {% for z in zonas_list %}
+                    <option value="{{ z }}" {% if f_zona == z %}selected{% endif %}>
+                        {{ z }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Estado stock -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Estado stock
+                </label>
+                <select name="estado"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todos</option>
+                    {% for e in estados_list %}
+                    <option value="{{ e }}" {% if f_estado == e %}selected{% endif %}>
+                        {{ e }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Estado vencimiento -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Vencimiento
+                </label>
+                <select name="vencimiento"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todos</option>
+                    {% for v in venc_list %}
+                    <option value="{{ v }}" {% if f_vencimiento == v %}selected{% endif %}>
+                        {{ v }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Botones filtros -->
+            <div class="md:col-span-4 flex justify-end gap-2 mt-1">
+                <a href="/stock"
+                   class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs border border-slate-200
+                          text-slate-600 hover:bg-slate-50">
+                    Limpiar filtros
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold
+                               bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+                    Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+
     <!-- Tabla principal -->
-    <div class="bg-white shadow-lg rounded-2xl p-4">
+    <div class="bg-white shadow-lg rounded-2xl p-4 border border-slate-100">
         <div class="flex items-center justify-between mb-3">
             <div>
                 <h2 class="text-sm font-semibold text-slate-900">
                     Detalle por producto y ubicación
                 </h2>
                 <p class="text-[11px] text-slate-500">
-                    Ordenado por zona, ubicación y slot.
+                    Ordenado por zona, ubicación y slot. Cada fila representa un producto en un slot específico.
                 </p>
             </div>
-            <!-- (opcional) filtros o export -->
         </div>
 
         <div class="overflow-x-auto border border-slate-200 rounded-xl">
@@ -71,11 +172,21 @@
                 <tbody class="divide-y divide-slate-100">
                     {% for fila in filas %}
                     <tr class="hover:bg-slate-50">
-                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.zona }}</td>
-                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.ubicacion }}</td>
-                        <td class="py-1.5 px-2 text-[11px] text-slate-800">{{ fila.slot }}</td>
-                        <td class="py-1.5 px-2 text-[11px] text-slate-900 font-semibold">{{ fila.producto }}</td>
-                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">{{ fila.stock }}</td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">
+                            {{ fila.zona_nombre }}
+                        </td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">
+                            {{ fila.ubicacion_nombre }}
+                        </td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-800">
+                            {{ fila.slot_codigo }}
+                        </td>
+                        <td class="py-1.5 px-2 text-[11px] text-slate-900 font-semibold">
+                            {{ fila.producto }}
+                        </td>
+                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
+                            {{ fila.stock_total }}
+                        </td>
                         <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
                             {{ fila.stock_min if fila.stock_min is not none else "–" }}
                         </td>

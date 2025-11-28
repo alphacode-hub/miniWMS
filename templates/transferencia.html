@@ -1,154 +1,165 @@
 ﻿{% extends "base.html" %}
-{% block title %}Transferencia interna - Mini WMS{% endblock %}
+{% block title %}Transferencia - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-
+<div class="w-full max-w-3xl mx-auto px-4 py-4">
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between">
+        <!-- Paso / guía -->
+        <div class="flex items-start justify-between gap-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Transferencia interna
-                </h1>
-                <p class="text-xs text-slate-500">
-                    Mueve stock entre ubicaciones dentro de {{ user.negocio }}.
+                <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Paso 3 de 4 · Movimientos
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Usa esta vista para mover stock entre slots ya configurados,
+                    sin modificar el stock total del producto.
                 </p>
             </div>
-            <a href="/movimientos"
+            <a href="/stock"
                class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Movimientos
+                ← Volver a stock
             </a>
         </div>
 
+        <!-- Header principal -->
+        <div>
+            <h1 class="text-lg font-bold text-slate-900">
+                Transferencia entre slots
+            </h1>
+            <p class="text-xs text-slate-500">
+                Mueve stock del slot origen al slot destino dentro de {{ user.negocio }}.
+            </p>
+        </div>
+
+        <!-- Error -->
         {% if error %}
-        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+        <div class="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-xs text-rose-700">
             {{ error }}
         </div>
         {% endif %}
 
-        <form method="post" action="/transferencia" class="space-y-4">
+        <!-- Form -->
+        <form method="post" class="space-y-4">
 
-            <!-- Producto -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Producto
-                </label>
-                <select name="producto_id"
-                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        required>
-                    <option value="">Selecciona un producto</option>
-                    {% for p in productos %}
-                    <option value="{{ p.id }}"
-                            {% if producto_id is defined and producto_id= =p.id %}selected{% endif %}>
-                        {{ p.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <!-- Producto + cantidad -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <!-- Producto -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Producto
+                    </label>
+                    <select name="producto"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                            required>
+                        <option value="">Selecciona producto</option>
+                        {% for p in productos %}
+                        <option value="{{ p.nombre }}"
+                                {% if producto == p.nombre %}selected{% endif %}>
+                            {{ p.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        Sólo se permitirá transferir si hay stock suficiente en el slot origen.
+                    </p>
+                </div>
+
+                <!-- Cantidad -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Cantidad a transferir
+                    </label>
+                    <input type="number"
+                           name="cantidad"
+                           min="1"
+                           value="{{ cantidad or '' }}"
+                           required
+                           class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                           placeholder="Ej: 10" />
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        Esta cantidad se restará del slot origen y se sumará al slot destino.
+                    </p>
+                </div>
             </div>
 
-            <!-- Origen -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Desde (slot origen)
-                </label>
-                <select name="slot_origen_id"
-                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        required>
-                    <option value="">Selecciona zona / ubicación / slot</option>
-                    {% for s in slots_origen %}
-                    <option value="{{ s.id }}"
-                            {% if slot_origen_id is defined and slot_origen_id= =s.id %}selected{% endif %}>
-                        {{ s.zona_nombre }} · {{ s.ubicacion_nombre }} · {{ s.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <p class="mt-1 text-[10px] text-slate-400">
-                    Sólo podrás transferir hasta el stock disponible en el slot origen.
-                </p>
-            </div>
+            <!-- Slots -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <!-- Slot origen -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Desde slot (origen)
+                    </label>
+                    <select name="slot_origen_id"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                            required>
+                        <option value="">Selecciona slot origen</option>
+                        {% for s in slots %}
+                        <option value="{{ s.id }}"
+                                {% if slot_origen_id and slot_origen_id|int == s.id %}selected{% endif %}>
+                            {{ s.ubicacion.zona.nombre if s.ubicacion and s.ubicacion.zona else "-" }}
+                            /
+                            {{ s.ubicacion.nombre if s.ubicacion else "-" }}
+                            /
+                            {{ s.codigo }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        Slot desde donde saldrá el stock.
+                    </p>
+                </div>
 
-            <!-- Destino -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Hacia (slot destino)
-                </label>
-                <select name="slot_destino_id"
-                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        required>
-                    <option value="">Selecciona zona / ubicación / slot</option>
-                    {% for s in slots_destino %}
-                    <option value="{{ s.id }}"
-                            {% if slot_destino_id is defined and slot_destino_id= =s.id %}selected{% endif %}>
-                        {{ s.zona_nombre }} · {{ s.ubicacion_nombre }} · {{ s.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Cantidad -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Cantidad a transferir
-                </label>
-                <input type="number"
-                       name="cantidad"
-                       min="1"
-                       required
-                       value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                       placeholder="Ej: 5" />
-            </div>
-
-            <!-- Fecha -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Fecha de transferencia
-                </label>
-                <input type="date"
-                       name="fecha"
-                       required
-                       value="{{ fecha or '' }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-            </div>
-
-            <!-- Comentario -->
-            <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">
-                    Comentario (opcional)
-                </label>
-                <textarea name="comentario"
-                          rows="2"
-                          class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                                 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          placeholder="Ej: Reorganización de stock, consolidación de producto...">{% if comentario is defined %}{{ comentario }}{% endif %}</textarea>
+                <!-- Slot destino -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        Hacia slot (destino)
+                    </label>
+                    <select name="slot_destino_id"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
+                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                            required>
+                        <option value="">Selecciona slot destino</option>
+                        {% for s in slots %}
+                        <option value="{{ s.id }}"
+                                {% if slot_destino_id and slot_destino_id|int == s.id %}selected{% endif %}>
+                            {{ s.ubicacion.zona.nombre if s.ubicacion and s.ubicacion.zona else "-" }}
+                            /
+                            {{ s.ubicacion.nombre if s.ubicacion else "-" }}
+                            /
+                            {{ s.codigo }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        Slot donde quedará físicamente el stock después de la transferencia.
+                    </p>
+                </div>
             </div>
 
             <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
-                <a href="/movimientos"
-                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+                <a href="/stock"
+                   class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px]
+                          border border-slate-200 text-slate-600 hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-[11px] font-semibold
+                               bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.97]">
                     Registrar transferencia
                 </button>
             </div>
+
         </form>
 
-        <!-- Volver (móvil) -->
-        <a href="/movimientos"
+        <!-- Volver móvil -->
+        <a href="/stock"
            class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
-            ← Volver a movimientos
+            ← Volver al stock
         </a>
 
     </div>

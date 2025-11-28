@@ -4,74 +4,89 @@
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
 
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-1">
+        <!-- HEADER -->
+        <header class="flex items-start justify-between gap-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
+                    Paso 1 de 4 · Diseño de almacén
+                </p>
+
+                <h1 class="text-lg font-semibold text-slate-900">
                     Nueva ubicación
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Zona: {{ zona.nombre }}{% if zona.sigla %} ({{ zona.sigla }}){% endif %}
+
+                <p class="text-xs text-slate-500 mt-1">
+                    Zona:
+                    <span class="font-semibold text-slate-800">
+                        {{ zona.nombre }}{% if zona.sigla %} ({{ zona.sigla }}){% endif %}
+                    </span>
+                </p>
+
+                <p class="text-[11px] text-slate-500 mt-1">
+                    Las ubicaciones representan repisas, estantes, cajones o sectores dentro de esta zona.
                 </p>
             </div>
-            <a href="/zonas/{{ zona.id }}/ubicaciones"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Ubicaciones
-            </a>
-        </div>
 
+            <a href="/zonas/{{ zona.id }}/ubicaciones"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
+                ← Volver
+            </a>
+        </header>
+
+        <!-- ERROR -->
         {% if error %}
         <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
             {{ error }}
         </div>
         {% endif %}
 
+        <!-- FORMULARIO -->
         <form method="post"
               action="/zonas/{{ zona.id }}/ubicaciones/nueva"
               class="space-y-4">
 
             <!-- Nombre -->
             <div>
-                <label for="nombre" class="block text-xs font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Nombre de la ubicación
                 </label>
-                <input id="nombre"
-                       name="nombre"
+                <input name="nombre"
                        type="text"
                        required
                        value="{{ nombre|default('', true) }}"
                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                       placeholder="Ej: Estante alto, Puerta, Cajón 1..." />
+                       placeholder="Ej: Repisa A, Estante alto, Cajón 1" />
             </div>
 
             <!-- Sigla -->
             <div>
-                <label for="sigla" class="block text-xs font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Sigla (opcional)
                 </label>
-                <input id="sigla"
-                       name="sigla"
+                <input name="sigla"
                        type="text"
                        maxlength="5"
                        value="{{ sigla|default('', true) }}"
                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                       placeholder="Ej: EA, PT, C1" />
+                       placeholder="Ej: RA, EA, C1" />
+
                 <p class="mt-1 text-[10px] text-slate-400">
-                    Si lo dejas en blanco, puedes usar sólo el nombre completo.
+                    Puedes dejarla en blanco si usarás el nombre completo.
                 </p>
             </div>
 
-            <!-- Botones -->
+            <!-- BOTONES -->
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/zonas/{{ zona.id }}/ubicaciones"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
                           border border-slate-300 text-slate-700 hover:bg-slate-50">
                     Cancelar
                 </a>
+
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
                                bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
@@ -81,12 +96,12 @@
 
         </form>
 
-        <!-- Volver (móvil) -->
+        <!-- VOLVER MÓVIL -->
         <a href="/zonas/{{ zona.id }}/ubicaciones"
            class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
             ← Volver al listado de ubicaciones
         </a>
 
-    </div>
+    </section>
 </div>
 {% endblock %}

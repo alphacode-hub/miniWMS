@@ -2,82 +2,334 @@
 {% block title %}Movimientos - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+<div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between">
+    <!-- Header principal -->
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">
+                Movimientos
+            </h1>
+            <p class="text-xs text-slate-500">
+                Historial de entradas, salidas, ajustes y transferencias de {{ user.negocio }} (máx. 500 registros).
+            </p>
+        </div>
+        <a href="/dashboard"
+           class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+            ← Dashboard
+        </a>
+    </div>
+
+    <!-- Acciones rápidas movimientos -->
+    <div class="bg-white border border-slate-100 rounded-2xl shadow-sm p-3">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-[11px] font-semibold text-slate-700">
+                Acciones rápidas de inventario
+            </p>
+            <p class="hidden sm:block text-[10px] text-slate-400">
+                Usa estas acciones para registrar nuevos movimientos.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <!-- Entrada -->
+            <a href="/movimientos/entrada"
+               class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold
+                      bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                <span class="mr-1.5 text-sm">⬆️</span>
+                Registrar entrada
+            </a>
+
+            <!-- Salida -->
+            <a href="/movimientos/salida"
+               class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold
+                      bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.97]">
+                <span class="mr-1.5 text-sm">⬇️</span>
+                Registrar salida
+            </a>
+
+            <!-- Transferencia -->
+            <a href="/transferencia"
+               class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold
+                      bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                <span class="mr-1.5 text-sm">↔️</span>
+                Transferir entre slots
+            </a>
+        </div>
+    </div>
+
+    <!-- KPIs de movimientos -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2">
+            <p class="text-[11px] text-slate-600 font-semibold">Movimientos totales</p>
+            <p class="text-lg font-bold text-slate-900">
+                {{ total_movimientos or 0 }}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Según filtros aplicados.
+            </p>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-3 py-2">
+            <p class="text-[11px] text-emerald-700 font-semibold">Entradas</p>
+            <p class="text-lg font-bold text-emerald-900">
+                {{ total_entradas or 0 }}
+            </p>
+        </div>
+        <div class="bg-rose-50 border border-rose-200 rounded-2xl px-3 py-2">
+            <p class="text-[11px] text-rose-700 font-semibold">Salidas</p>
+            <p class="text-lg font-bold text-rose-900">
+                {{ total_salidas or 0 }}
+            </p>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+            <p class="text-[11px] text-amber-700 font-semibold">Ajustes / otros</p>
+            <p class="text-lg font-bold text-amber-900">
+                {{ total_ajustes or 0 }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Bloque filtros -->
+    <div class="bg-white shadow-sm rounded-2xl p-4 border border-slate-100">
+        <div class="flex items-center justify-between mb-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Movimientos
-                </h1>
-                <p class="text-xs text-slate-500">
-                    Entradas y salidas recientes de {{ user.negocio }}.
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Filtros de movimientos
+                </h2>
+                <p class="text-[11px] text-slate-500">
+                    Acota por fechas, tipo, producto o usuario para analizar periodos específicos.
                 </p>
             </div>
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Dashboard
-            </a>
         </div>
 
-        <!-- Acciones rápidas -->
-        <div class="flex items-center justify-between gap-2">
-            <a href="/movimientos/entrada"
-               class="inline-flex-1 inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold
-                      bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100">
-                + Entrada
-            </a>
-            <a href="/movimientos/salida"
-               class="inline-flex-1 inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold
-                      bg-red-50 text-red-700 border border-red-100 hover:bg-red-100">
-                - Salida
-            </a>
-            <a href="/transferencia"
-               class="hidden sm:inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold
-                      bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100">
-                Transferir
-            </a>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+            <!-- Fecha desde -->
+            <div class="min-w-0">
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Desde
+                </label>
+                <input type="date"
+                       name="desde"
+                       value="{{ f_desde }}"
+                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+              appearance-none" />
+            </div>
+
+            <!-- Fecha hasta -->
+            <div class="min-w-0">
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Hasta
+                </label>
+                <input type="date"
+                       name="hasta"
+                       value="{{ f_hasta }}"
+                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+              appearance-none" />
+            </div>
+
+
+            <!-- Tipo -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Tipo
+                </label>
+                <select name="tipo"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todos</option>
+                    {% for t in tipos_list %}
+                    <option value="{{ t }}" {% if f_tipo == t %}selected{% endif %}>
+                        {{ t|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Producto -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Producto
+                </label>
+                <select name="producto"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todos</option>
+                    {% for p in productos_list %}
+                    <option value="{{ p }}" {% if f_producto == p %}selected{% endif %}>
+                        {{ p }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Usuario -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Usuario
+                </label>
+                <select name="usuario"
+                        class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-xs bg-white
+                               focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                    <option value="">Todos</option>
+                    {% for u in usuarios_list %}
+                    <option value="{{ u }}" {% if f_usuario == u %}selected{% endif %}>
+                        {{ u }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="md:col-span-5 flex justify-end gap-2 mt-1">
+                <a href="/movimientos"
+                   class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs border border-slate-200
+                          text-slate-600 hover:bg-slate-50">
+                    Limpiar filtros
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold
+                               bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+                    Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white shadow-lg rounded-2xl p-4 border border-slate-100">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Detalle de movimientos
+                </h2>
+                <p class="text-[11px] text-slate-500">
+                    Máximo 500 registros según filtros aplicados.
+                </p>
+            </div>
         </div>
 
-        <!-- Historial -->
-        {% if movimientos|length == 0 %}
-        <p class="text-xs text-slate-500 mt-2">
-            Aún no tienes movimientos registrados.
-        </p>
-        {% else %}
-        <div class="mt-2 max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
-            <table class="w-full text-xs">
+        <div class="border border-slate-200 rounded-2xl overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead class="bg-slate-50 text-[11px] text-slate-500 uppercase tracking-wide">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Fecha</th>
+                        <th class="px-3 py-2 text-left">Tipo</th>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-right">Cantidad</th>
+                        <th class="px-3 py-2 text-left">Zona / Slot</th>
+                        <th class="px-3 py-2 text-left">Usuario</th>
+                        <th class="px-3 py-2 text-left">Motivo</th>
+                        <th class="px-3 py-2 text-left">Vencimiento</th>
+                    </tr>
+                </thead>
                 <tbody class="divide-y divide-slate-100">
                     {% for m in movimientos %}
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-3 py-2 align-top">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[11px] font-semibold text-slate-800">
-                                    {{ m.tipo|capitalize }} · {{ m.producto_nombre }}
-                                </span>
-                                <span class="text-[10px] text-slate-400">
-                                    {{ m.fecha.strftime("%d-%m-%Y") }}
-                                </span>
-                            </div>
-                            <div class="text-[11px] text-slate-500">
-                                {{ m.zona_nombre }} · {{ m.ubicacion_nombre }} · {{ m.slot_nombre }}
-                            </div>
-                            <div class="text-[10px] text-slate-400">
-                                Cantidad: {{ m.cantidad }}
-                            </div>
+                    {% set motivo = (m.motivo_salida or '')|lower %}
+                    <tr class="hover:bg-slate-50/70">
+                        <!-- Fecha -->
+                        <td class="px-3 py-2 text-slate-700">
+                            {{ m.fecha.strftime("%d-%m-%Y %H:%M") if m.fecha else "-" }}
+                        </td>
+
+                        <!-- Tipo -->
+                        <td class="px-3 py-2">
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                 {% if m.tipo == 'entrada' %}
+                                    bg-emerald-50 text-emerald-700 border border-emerald-100
+                                 {% elif m.tipo == 'salida' %}
+                                    bg-rose-50 text-rose-700 border border-rose-100
+                                 {% else %}
+                                    bg-slate-50 text-slate-700 border border-slate-100
+                                 {% endif %}">
+                                {{ m.tipo|capitalize }}
+                            </span>
+                        </td>
+
+                        <!-- Producto -->
+                        <td class="px-3 py-2 text-slate-700">
+                            {{ m.producto or "-" }}
+                        </td>
+
+                        <!-- Cantidad -->
+                        <td class="px-3 py-2 text-right text-slate-800">
+                            {{ m.cantidad or 0 }}
+                        </td>
+
+                        <!-- Zona -->
+                        <td class="px-3 py-2 text-slate-700">
+                            {{ m.zona or "-" }}
+                        </td>
+
+                        <!-- Usuario -->
+                        <td class="px-3 py-2 text-slate-500">
+                            {{ m.usuario or "-" }}
+                        </td>
+
+                        <!-- Motivo (con badge especial para ajustes) -->
+                        <td class="px-3 py-2">
+                            {% if motivo == 'ajuste_inventario' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-violet-50 text-violet-700 border border-violet-100">
+                                Ajuste inventario
+                            </span>
+                            {% elif motivo == 'venta' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                Venta
+                            </span>
+                            {% elif motivo == 'merma' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-amber-50 text-amber-700 border border-amber-100">
+                                Merma / vencido
+                            </span>
+                            {% elif motivo == 'consumo_personal' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-sky-50 text-sky-700 border border-sky-100">
+                                Consumo personal
+                            </span>
+                            {% elif motivo == 'donacion' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-teal-50 text-teal-700 border border-teal-100">
+                                Donación
+                            </span>
+                            {% elif motivo == 'ajuste_manual' %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-slate-50 text-slate-700 border border-slate-100">
+                                Ajuste manual
+                            </span>
+                            {% elif motivo %}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium
+                                     bg-slate-50 text-slate-600 border border-slate-100">
+                                {{ m.motivo_salida }}
+                            </span>
+                            {% else %}
+                            <span class="text-[11px] text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Vencimiento -->
+                        <td class="px-3 py-2 text-slate-500">
+                            {% if m.fecha_vencimiento %}
+                            {{ m.fecha_vencimiento.strftime("%d-%m-%Y") }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="px-3 py-4 text-center text-slate-400 text-xs">
+                            No hay movimientos registrados para este negocio.
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% endif %}
 
-        <a href="/dashboard"
-           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
-            ← Volver al dashboard
-        </a>
     </div>
+
 </div>
 {% endblock %}

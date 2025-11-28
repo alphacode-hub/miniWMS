@@ -3,41 +3,60 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
 
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-1">
+        <!-- HEADER -->
+        <header class="flex items-start justify-between gap-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Ubicaciones
+                <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
+                    Paso 1 de 4 · Diseño de almacén
+                </p>
+                <h1 class="text-lg font-semibold text-slate-900">
+                    Ubicaciones en {{ zona.nombre }}
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Zona: {{ zona.nombre }}{% if zona.sigla %} ({{ zona.sigla }}){% endif %}
+                <p class="text-xs text-slate-500 mt-1">
+                    Define estanterías, repisas o sectores dentro de la zona
+                    <span class="font-semibold text-slate-800">
+                        {{ zona.nombre }}{% if zona.sigla %} ({{ zona.sigla }}){% endif %}
+                    </span>.
+                    Luego podrás crear <strong>slots</strong> dentro de cada ubicación.
                 </p>
             </div>
+
             <a href="/zonas"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
                 ← Zonas
             </a>
-        </div>
+        </header>
 
-        <!-- Botón nueva ubicación -->
-        <div class="flex justify-end">
+        <!-- CTA NUEVA UBICACIÓN -->
+        <div class="flex sm:block">
             <a href="/zonas/{{ zona.id }}/ubicaciones/nueva"
-               class="inline-flex items-center px-3 py-1.5 rounded-xl text-[11px] font-semibold
-                      bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
-                + Nueva ubicación
+               class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold
+              bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97] w-full sm:w-auto">
+                <span class="mr-1.5 text-sm">＋</span>
+                Nueva ubicación
             </a>
         </div>
 
         {% if ubicaciones|length == 0 %}
-        <p class="mt-3 text-sm text-slate-500">
-            Esta zona aún no tiene ubicaciones configuradas.
-        </p>
+
+        <!-- ESTADO VACÍO -->
+        <div class="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3">
+            <p class="text-xs text-slate-600 font-medium">
+                Aún no has creado ubicaciones en esta zona.
+            </p>
+            <p class="text-[11px] text-slate-500 mt-1">
+                Ejemplos: <span class="font-semibold">Repisa A</span>,
+                <span class="font-semibold">Repisa B</span>,
+                <span class="font-semibold">Sector Frontal</span>.
+                Comienza creando la primera ubicación para luego definir sus slots.
+            </p>
+        </div>
+
         {% else %}
 
-        <!-- Lista de ubicaciones -->
+        <!-- LISTA DE UBICACIONES -->
         <div class="max-h-[460px] overflow-y-auto border border-slate-200 rounded-2xl mt-2">
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
@@ -49,7 +68,7 @@
                 </thead>
                 <tbody>
                     {% for u in ubicaciones %}
-                    <tr class="border-b last:border-0">
+                    <tr class="border-b last:border-0 hover:bg-slate-50/70">
                         <!-- Nombre -->
                         <td class="py-1.5 px-2 align-top">
                             <div class="text-[11px] font-semibold text-slate-900">
@@ -64,8 +83,8 @@
                         <td class="py-1.5 px-2 align-top">
                             {% if u.sigla %}
                             <span class="inline-flex items-center justify-center px-2 py-[2px]
-                                             rounded-full text-[10px] font-semibold
-                                             bg-slate-900 text-white">
+                                         rounded-full text-[10px] font-semibold
+                                         bg-slate-900 text-white">
                                 {{ u.sigla }}
                             </span>
                             {% else %}
@@ -91,18 +110,24 @@
 
         {% endif %}
 
-        <!-- Navegación móvil -->
-        <div class="mt-3 space-y-1 sm:hidden">
-            <a href="/zonas/{{ zona.id }}/ubicaciones/nueva"
-               class="block text-center text-xs text-indigo-600 underline">
-                + Crear nueva ubicación
-            </a>
-            <a href="/zonas"
-               class="block text-center text-xs text-slate-500">
-                ← Volver a zonas
-            </a>
+        <!-- NAVEGACIÓN / PIE -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    definir slots (C1, C2, etc.)
+                </span> en cada ubicación para tener un mapa completo de tu almacén.
+            </p>
+
+            <!-- Navegación móvil -->
+            <div class="sm:hidden mt-1 space-y-1">
+                <a href="/zonas"
+                   class="block text-center text-xs text-slate-500">
+                    ← Volver a zonas
+                </a>
+            </div>
         </div>
 
-    </div>
+    </section>
 </div>
 {% endblock %}

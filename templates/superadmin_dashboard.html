@@ -1,98 +1,86 @@
 ﻿{% extends "base.html" %}
 
-{% block title %}Consola Superadmin{% endblock %}
+{% block title %}Consola Superadmin - Mini WMS{% endblock %}
 
 {% block content %}
-<main class="min-h-screen bg-slate-50 py-6">
-    <div class="max-w-6xl mx-auto px-4">
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6">
-            <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-                <div>
-                    <h1 class="text-xl sm:text-2xl font-semibold text-slate-900 flex items-center gap-2">
-                        Consola Superadmin
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                            {{ user.email }}
-                        </span>
-                    </h1>
-                    <p class="text-sm text-slate-500 mt-1">
-                        Visión ejecutiva de todos los negocios y su actividad en miniWMS.
-                    </p>
-                </div>
+<div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-4">
 
-                <!-- Navegación superadmin -->
-                <nav class="flex flex-wrap gap-2 justify-start sm:justify-end">
-                    <a href="/superadmin/dashboard"
-                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100">
-                        Dashboard
-                    </a>
-                    <a href="/superadmin/negocios"
-                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-                        Negocios
-                    </a>
-                    <a href="/superadmin/alertas"
-                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100">
-                        Alertas
-                    </a>
-                    <a href="/logout"
-                       class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100">
-                        Cerrar sesión
-                    </a>
-                </nav>
-            </header>
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6 space-y-6">
 
-            <!-- Resumen ejecutivo -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="bg-slate-50 rounded-xl border border-slate-100 p-4">
-                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                        Negocios totales
-                    </p>
-                    <p class="text-2xl font-semibold text-slate-900">
-                        {{ total_negocios or 0 }}
-                    </p>
-                </div>
-                <div class="bg-emerald-50 rounded-xl border border-emerald-100 p-4">
-                    <p class="text-xs font-medium text-emerald-700 uppercase tracking-wide mb-1">
-                        Negocios activos
-                    </p>
-                    <p class="text-2xl font-semibold text-emerald-900">
-                        {{ negocios_activos or 0 }}
-                    </p>
-                </div>
-                <div class="bg-amber-50 rounded-xl border border-amber-100 p-4">
-                    <p class="text-xs font-medium text-amber-700 uppercase tracking-wide mb-1">
-                        Negocios suspendidos
-                    </p>
-                    <p class="text-2xl font-semibold text-amber-900">
-                        {{ negocios_suspendidos or 0 }}
-                    </p>
-                </div>
-                <div class="bg-indigo-50 rounded-xl border border-indigo-100 p-4">
-                    <p class="text-xs font-medium text-indigo-700 uppercase tracking-wide mb-1">
-                        Alertas pendientes
-                    </p>
-                    <p class="text-2xl font-semibold text-indigo-900">
-                        {{ alertas_pendientes or 0 }}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Últimos negocios activos (si quieres, puedes no usar esto aún) -->
-            <div class="border-t border-slate-100 pt-4 mt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-sm font-semibold text-slate-900">
-                        Actividad reciente de negocios
-                    </h2>
-                    <a href="/superadmin/negocios"
-                       class="text-xs font-medium text-indigo-600 hover:text-indigo-700">
-                        Ver todos
-                    </a>
-                </div>
-                <p class="text-xs text-slate-500">
-                    Aquí puedes destacar, por ejemplo, los negocios con mayor movimiento en los últimos días.
-                    Si aún no calculas estos datos en backend, esta sección igual se verá limpia.
+        <!-- Encabezado de la vista -->
+        <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
+                    Consola Superadmin
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                               bg-slate-900 text-sky-50">
+                        Vista global
+                    </span>
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Visión ejecutiva de todos los negocios, su estado y alertas en Mini WMS.
                 </p>
             </div>
-        </section>
-    </div>
-</main>
+        </header>
+
+        <!-- Resumen ejecutivo -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-1">
+                    Negocios totales
+                </p>
+                <p class="text-2xl font-semibold text-slate-900">
+                    {{ total_negocios or 0 }}
+                </p>
+            </div>
+
+            <div class="bg-emerald-50 rounded-xl border border-emerald-100 p-4">
+                <p class="text-[11px] font-medium text-emerald-700 uppercase tracking-wide mb-1">
+                    Negocios activos
+                </p>
+                <p class="text-2xl font-semibold text-emerald-900">
+                    {{ negocios_activos or 0 }}
+                </p>
+            </div>
+
+            <div class="bg-amber-50 rounded-xl border border-amber-100 p-4">
+                <p class="text-[11px] font-medium text-amber-700 uppercase tracking-wide mb-1">
+                    Negocios suspendidos
+                </p>
+                <p class="text-2xl font-semibold text-amber-900">
+                    {{ negocios_suspendidos or 0 }}
+                </p>
+            </div>
+
+            <div class="bg-indigo-50 rounded-xl border border-indigo-100 p-4">
+                <p class="text-[11px] font-medium text-indigo-700 uppercase tracking-wide mb-1">
+                    Alertas pendientes (global)
+                </p>
+                <p class="text-2xl font-semibold text-indigo-900">
+                    {{ alertas_pendientes or 0 }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Bloque de actividad reciente / placeholder -->
+        <div class="border-t border-slate-100 pt-4">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Actividad reciente de negocios
+                </h2>
+                <a href="/superadmin/negocios"
+                   class="text-xs font-medium text-sky-700 hover:text-sky-800 hover:underline">
+                    Ver todos los negocios
+                </a>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 leading-snug">
+                Aquí podrás destacar, en futuras versiones, indicadores como negocios con mayor
+                movimiento, últimos accesos o uso de capacidad. Por ahora se mantiene como bloque
+                informativo para que la vista se vea completa y coherente.
+            </p>
+        </div>
+
+    </section>
+
+</div>
 {% endblock %}

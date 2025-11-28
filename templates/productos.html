@@ -3,152 +3,166 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-3">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+
+        <!-- HEADER -->
+        <header class="flex items-start justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
+                    Paso 2 de 4 · Catálogo de productos
+                </p>
+
+                <h1 class="text-lg font-semibold text-slate-900">
                     Productos
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Catálogo de SKUs del negocio {{ user.negocio }}.
+
+                <p class="text-xs text-slate-500 mt-1">
+                    Gestiona los SKUs de tu negocio.
+                    Estos productos se usarán en entradas, salidas, transferencias y alertas.
                 </p>
             </div>
+
             <a href="/dashboard"
                class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
                 ← Dashboard
             </a>
+        </header>
+
+        <!-- Acción + contador -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+
+            <!-- Botón CTA -->
+            <a href="/productos/nuevo"
+               class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold
+              bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]
+              w-full sm:w-auto">
+                <span class="mr-1.5 text-base leading-none">＋</span>
+                Nuevo producto
+            </a>
         </div>
 
-        <!-- Botón nuevo producto + contador -->
-        <div class="flex justify-between items-center mb-3">
-            <a href="/productos/nuevo"
-               class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-semibold
-                      bg-brand-500 text-white hover:bg-brand-600 active:scale-[0.98]">
-                + Nuevo producto
-            </a>
-            <span class="text-[11px] text-slate-400">
-                Total: {{ productos|length }} SKU(s)
-            </span>
-        </div>
 
         {% if productos|length == 0 %}
-        <p class="text-sm text-slate-500 mt-2">
-            Aún no tienes productos registrados.
-            Crea tu primer SKU para comenzar a registrar entradas y salidas.
+        <p class="text-sm text-slate-500 mt-3">
+            Aún no hay productos registrados.
+            Crea tu primer SKU para comenzar a registrar movimientos.
         </p>
+
         {% else %}
-        <!-- Tabla de productos -->
-        <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl mt-2">
+
+        <!-- TABLA -->
+        <div class="max-h-[460px] overflow-y-auto border border-slate-200 rounded-2xl mt-3">
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr class="text-left text-slate-500 border-b">
                         <th class="py-1.5 px-2">Producto</th>
                         <th class="py-1.5 px-2 w-16">Unidad</th>
-                        <th class="py-1.5 px-2 w-20 text-center">Stock min</th>
-                        <th class="py-1.5 px-2 w-20 text-center">Stock max</th>
+                        <th class="py-1.5 px-2 w-20 text-center">Min</th>
+                        <th class="py-1.5 px-2 w-20 text-center">Max</th>
                         <th class="py-1.5 px-2 w-20 text-center">Estado</th>
-                        <th class="py-1.5 px-2 w-28 text-right">Acciones</th>
+                        <th class="py-1.5 px-2 w-24 text-right">Acciones</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for p in productos %}
                     <tr class="border-b last:border-0">
-                        <!-- Nombre -->
+
+                        <!-- NOMBRE -->
                         <td class="py-1.5 px-2 align-top">
                             <div class="font-semibold text-slate-900">
                                 {{ p.nombre }}
                             </div>
+
                             <div class="text-[10px] text-slate-400">
                                 ID: {{ p.id }}
                             </div>
                         </td>
 
-                        <!-- Unidad -->
+                        <!-- UNIDAD -->
                         <td class="py-1.5 px-2 align-top">
                             <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
-                                             bg-slate-100 text-slate-700">
+                                         bg-slate-100 text-slate-700">
                                 {{ p.unidad or 'unidad' }}
                             </span>
                         </td>
 
-                        <!-- Stock mínimo -->
+                        <!-- MIN -->
                         <td class="py-1.5 px-2 align-top text-center">
                             {% if p.stock_min is not none %}
-                            <span class="text-[11px] text-slate-800">
-                                {{ p.stock_min }}
-                            </span>
+                            <span class="text-[11px] text-slate-800">{{ p.stock_min }}</span>
                             {% else %}
                             <span class="text-[10px] text-slate-400">–</span>
                             {% endif %}
                         </td>
 
-                        <!-- Stock máximo -->
+                        <!-- MAX -->
                         <td class="py-1.5 px-2 align-top text-center">
                             {% if p.stock_max is not none %}
-                            <span class="text-[11px] text-slate-800">
-                                {{ p.stock_max }}
-                            </span>
+                            <span class="text-[11px] text-slate-800">{{ p.stock_max }}</span>
                             {% else %}
                             <span class="text-[10px] text-slate-400">–</span>
                             {% endif %}
                         </td>
 
-                        <!-- Estado -->
+                        <!-- ESTADO -->
                         <td class="py-1.5 px-2 align-top text-center">
                             {% if p.activo %}
                             <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
-                                                 bg-emerald-100 text-emerald-700">
+                                         bg-emerald-100 text-emerald-700">
                                 Activo
                             </span>
                             {% else %}
                             <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
-                                                 bg-slate-100 text-slate-500">
+                                         bg-slate-100 text-slate-500">
                                 Inactivo
                             </span>
                             {% endif %}
                         </td>
 
-                        <!-- Acciones -->
+                        <!-- ACCIONES -->
                         <td class="py-1.5 px-2 align-top text-right">
                             <div class="flex flex-col items-end gap-1">
+
                                 <!-- Editar -->
                                 <a href="/productos/{{ p.id }}/editar"
                                    class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold
-                                              bg-slate-100 text-slate-700 hover:bg-slate-200">
+                                          bg-slate-100 text-slate-700 hover:bg-slate-200">
                                     Editar
                                 </a>
 
-                                <!-- Activar / desactivar -->
+                                <!-- Activar / Desactivar -->
                                 <form method="post"
                                       action="/productos/{{ p.id }}/toggle"
                                       class="inline">
                                     <button type="submit"
                                             class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold
-                                                       {% if p.activo %}
-                                                           bg-red-50 text-red-600 hover:bg-red-100
-                                                       {% else %}
-                                                           bg-emerald-50 text-emerald-700 hover:bg-emerald-100
-                                                       {% endif %}">
+                                                   {% if p.activo %}
+                                                       bg-red-50 text-red-600 hover:bg-red-100
+                                                   {% else %}
+                                                       bg-emerald-50 text-emerald-700 hover:bg-emerald-100
+                                                   {% endif %}">
                                         {% if p.activo %}Desactivar{% else %}Activar{% endif %}
                                     </button>
                                 </form>
                             </div>
                         </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
         {% endif %}
 
-        <!-- Volver (móvil) -->
+        <!-- NAV MÓVIL -->
         <a href="/dashboard"
-           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
+           class="block mt-4 text-center text-xs text-slate-500 sm:hidden">
             ← Volver al dashboard
         </a>
 
-    </div>
+    </section>
 </div>
 {% endblock %}

@@ -6,14 +6,14 @@
 
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-2">
+        <!-- Paso / guía -->
+        <div class="flex items-start justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Inventario físico
-                </h1>
-                <p class="text-xs text-slate-500">
-                    Compara el stock teórico con el conteo real en bodega.
+                <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Paso 4 de 4 · Inventario físico
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Después de registrar entradas y salidas, acá ajustas el stock según tu conteo real.
                 </p>
             </div>
             <a href="/dashboard"
@@ -22,18 +22,35 @@
             </a>
         </div>
 
-        <!-- Tarjeta principal -->
+        <!-- Header principal -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-bold text-slate-900">
+                    Inventario físico
+                </h1>
+                <p class="text-xs text-slate-500">
+                    Compara el stock teórico con el conteo real en bodega.
+                </p>
+            </div>
+        </div>
+
         {% if stock_items|length == 0 %}
-        <p class="text-xs text-slate-500">
-            No hay productos con movimientos aún. Registra entradas primero para poder hacer inventario.
+        <p class="text-xs text-slate-500 mt-1">
+            No hay productos con movimientos aún.
+            Primero registra <span class="font-semibold">entradas</span> para poder hacer inventario.
         </p>
         {% else %}
 
-        <p class="text-[11px] text-slate-500">
-            Para cada producto/ubicación, ingresa el
-            <span class="font-semibold">conteo físico</span>.
-            El sistema calculará automáticamente los ajustes necesarios.
-        </p>
+        <!-- Aviso / contexto -->
+        <div class="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2">
+            <p class="text-[11px] text-amber-800">
+                Para cada producto y ubicación, ingresa el
+                <span class="font-semibold">conteo físico</span>.
+                Si el valor difiere del stock teórico, se generará
+                automáticamente un movimiento de <span class="font-semibold">ajuste</span>
+                (entrada o salida) para cuadrar el inventario.
+            </p>
+        </div>
 
         <form method="post" action="/inventario" class="space-y-3">
 
@@ -43,6 +60,7 @@
             <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                 {% for item in stock_items %}
                 {% set i = loop.index0 %}
+
                 <!-- Fila de conteo -->
                 <div class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
 
@@ -56,7 +74,8 @@
                                 {{ item.producto }}
                             </div>
                             <div class="text-[10px] text-slate-500">
-                                Ubicación: <span class="font-mono">{{ item.zona }}</span>
+                                Ubicación:
+                                <span class="font-mono">{{ item.zona }}</span>
                             </div>
                             <div class="mt-1 text-[10px] text-slate-500">
                                 Stock teórico:
@@ -74,7 +93,8 @@
                                    name="conteo_{{ i }}"
                                    min="0"
                                    class="w-full rounded-lg border border-slate-300 px-2 py-1 text-right text-[11px]
-                                          focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                          focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                                          appearance-none"
                                    placeholder="{{ item.stock_actual }}" />
                         </div>
                     </div>
@@ -90,10 +110,13 @@
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                               bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl
+               text-[11px] font-semibold bg-slate-900 text-white shadow-sm
+               hover:bg-slate-800 active:scale-[0.97] transition">
                     Registrar ajustes
                 </button>
+
+
             </div>
 
         </form>

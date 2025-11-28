@@ -6,7 +6,7 @@
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-1">
             <div>
                 <h1 class="text-lg font-bold text-slate-900">
                     Registrar salida
@@ -35,17 +35,17 @@
 
             <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Producto
                 </label>
                 <select name="producto"
                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         required>
                     <option value="">Selecciona un producto</option>
                     {% for p in productos %}
                     <option value="{{ p.nombre }}"
-                            {% if producto is defined and producto= =p.nombre %}selected{% endif %}>
+                            {% if producto is defined and producto == p.nombre %}selected{% endif %}>
                         {{ p.nombre }}
                     </option>
                     {% endfor %}
@@ -54,7 +54,7 @@
 
             <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Cantidad
                 </label>
                 <input type="number"
@@ -63,23 +63,23 @@
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                        placeholder="1" />
             </div>
 
             <!-- Ubicación / Slot -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Ubicación (slot)
                 </label>
                 <select name="slot_id"
                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         required>
                     <option value="">Selecciona zona / ubicación / slot</option>
                     {% for s in slots %}
                     <option value="{{ s.id }}"
-                            {% if slot_id is defined and slot_id= =s.id %}selected{% endif %}>
+                            {% if slot_id is defined and slot_id == s.id %}selected{% endif %}>
                         {{ s.codigo_full }}
                     </option>
                     {% endfor %}
@@ -93,13 +93,28 @@
                 </label>
                 <select name="motivo_salida"
                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                     <option value="">Selecciona motivo (opcional)</option>
-                    <option value="venta">Venta / salida normal</option>
-                    <option value="merma">Merma / producto vencido</option>
-                    <option value="consumo_personal">Consumo personal</option>
-                    <option value="donacion">Donación</option>
-                    <option value="ajuste_manual">Ajuste manual</option>
+                    <option value="venta"
+                            {% if motivo_salida is defined and motivo_salida == 'venta' %}selected{% endif %}>
+                        Venta / salida normal
+                    </option>
+                    <option value="merma"
+                            {% if motivo_salida is defined and motivo_salida == 'merma' %}selected{% endif %}>
+                        Merma / producto vencido
+                    </option>
+                    <option value="consumo_personal"
+                            {% if motivo_salida is defined and motivo_salida == 'consumo_personal' %}selected{% endif %}>
+                        Consumo personal
+                    </option>
+                    <option value="donacion"
+                            {% if motivo_salida is defined and motivo_salida == 'donacion' %}selected{% endif %}>
+                        Donación
+                    </option>
+                    <option value="ajuste_manual"
+                            {% if motivo_salida is defined and motivo_salida == 'ajuste_manual' %}selected{% endif %}>
+                        Ajuste manual
+                    </option>
                 </select>
                 <p class="mt-1 text-[10px] text-slate-400">
                     Esta etiqueta se usará luego para calcular pérdidas por merma y otros análisis.
@@ -108,35 +123,40 @@
 
             <!-- Comentario -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Comentario (opcional)
                 </label>
                 <textarea name="comentario"
                           rows="2"
                           class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                                 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder="Ej: Consumo familiar, ajuste de inventario, etc.">{% if comentario is defined %}{{ comentario }}{% endif %}</textarea>
             </div>
 
-            <!-- Fecha (opcional por ahora, backend no la usa aún) -->
+            <!-- Fecha de salida -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label class="block text-xs font-medium text-slate-700 mb-1">
                     Fecha de salida
                 </label>
-                <input type="date"
+                <input id="fecha"
+                       type="date"
                        name="fecha"
                        value="{{ fecha or '' }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                              appearance-none" />
             </div>
 
+            <!-- Botón -->
             <button type="submit"
                     class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
-                           bg-brand-500 hover:bg-brand-600 text-white shadow-sm active:scale-[0.98]">
+               bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.98]">
                 Registrar salida
             </button>
+
         </form>
 
+        <!-- Volver móvil -->
         <a href="/movimientos"
            class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
             ← Volver a movimientos

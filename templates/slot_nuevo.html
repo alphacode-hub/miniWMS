@@ -3,28 +3,46 @@
 
 {% block content %}
 <div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-1">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
+
+        <!-- HEADER -->
+        <header class="flex items-start justify-between gap-3 mb-1">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
+                    Paso 1 de 4 · Diseño de almacén
+                </p>
+
+                <h1 class="text-lg font-semibold text-slate-900">
                     Nuevo slot
                 </h1>
+
+                <p class="text-xs text-slate-500 mt-1">
+                    Zona:
+                    <span class="font-semibold text-slate-800">
+                        {{ ubicacion.zona.nombre }}
+                        {% if ubicacion.zona.sigla %} ({{ ubicacion.zona.sigla }}){% endif %}
+                    </span>
+                </p>
                 <p class="text-xs text-slate-500">
                     Ubicación:
-                    <span class="font-semibold text-slate-800">{{ ubicacion.nombre }}</span>
+                    <span class="font-semibold text-slate-800">
+                        {{ ubicacion.nombre }}
+                        {% if ubicacion.sigla %} ({{ ubicacion.sigla }}){% endif %}
+                    </span>
                 </p>
-                <p class="text-[10px] text-slate-400">
-                    Zona: {{ ubicacion.zona.nombre }} ({{ ubicacion.zona.sigla }})
+
+                <p class="text-[11px] text-slate-500 mt-1">
+                    Crea posiciones específicas dentro de esta ubicación
+                    (por ejemplo: C1, C2, B1). Estas se usarán luego para las entradas de stock.
                 </p>
             </div>
 
-            <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Ubicaciones
+            <a href="/ubicaciones/{{ ubicacion.id }}/slots"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
+                ← Slots
             </a>
-        </div>
+        </header>
 
         {% if error %}
         <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
@@ -32,6 +50,7 @@
         </div>
         {% endif %}
 
+        <!-- FORMULARIO -->
         <form method="post"
               action="/ubicaciones/{{ ubicacion.id }}/slots/nuevo"
               class="space-y-4">
@@ -48,9 +67,10 @@
                        value="{{ codigo|default('', true) }}"
                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                       placeholder="Ej: A1, B2, 01, 02, etc." />
+                       placeholder="Ej: C1, C2, A1, B2, 01, 02..." />
                 <p class="mt-1 text-[10px] text-slate-400">
-                    Se usará junto con la zona y la ubicación para formar el código completo.
+                    Este código se combinará con la zona y la ubicación para formar el
+                    código completo (ej: D-RA-C1).
                 </p>
             </div>
 
@@ -72,7 +92,7 @@
                 </p>
             </div>
 
-            <!-- Botones -->
+            <!-- BOTONES -->
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/ubicaciones/{{ ubicacion.id }}/slots"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
@@ -87,18 +107,14 @@
             </div>
         </form>
 
-        <!-- Volver (móvil) -->
-        <div class="mt-2 sm:hidden space-y-1">
+        <!-- NAV MÓVIL -->
+        <div class="mt-2 sm:hidden">
             <a href="/ubicaciones/{{ ubicacion.id }}/slots"
                class="block text-center text-xs text-slate-500">
                 ← Volver al listado de slots
             </a>
-            <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
-               class="block text-center text-[11px] text-slate-500">
-                ← Volver a ubicaciones
-            </a>
         </div>
 
-    </div>
+    </section>
 </div>
 {% endblock %}

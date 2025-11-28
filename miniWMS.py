@@ -1,40 +1,39 @@
-﻿from pathlib import Path
-from datetime import datetime, date, timedelta
-import json
-import bcrypt
-import secrets
-
+﻿import os
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import TimestampSigner, BadSignature
+from pathlib import Path
+from datetime import datetime, date, timedelta
 
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Date,
-    ForeignKey,
-    func,
-    text,
-    Float,   # si quieres, puedes seguir usando FLOAT en vez de Float
-)
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, func, Date, text, FLOAT
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
 
+import json, bcrypt, secrets
+
 # ============================
-#   BASE DE DATOS (SQLite)
+#   CONFIGURACIÓN BÁSICA
 # ============================
 
 BASE_DIR = Path(__file__).resolve().parent
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{BASE_DIR / 'miniWMS.db'}"
+# Flag de entorno (desarrollo vs producción)
+DEBUG = os.getenv("MINIWMS_DEBUG", "true").lower() == "true"
+
+# Base de datos (permite sobreescribir en producción)
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "MINIWMS_DB_URL",
+    f"sqlite:///{BASE_DIR / 'miniWMS.db'}"
+)
+
+# Clave secreta para firmar cookies de sesión
+# ⚠️ En producción: export MINIWMS_SECRET_KEY="una-clave-larga-y-unica"
+SECRET_KEY = os.getenv("MINIWMS_SECRET_KEY", "dev-secret-change-me")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Necesario para SQLite en FastAPI
+    connect_args={"check_same_thread": False}  # Necesario para SQLite en FastAPI
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -82,6 +81,22 @@ PLANES_CONFIG = {
         "exportaciones_habilitadas": True,
     },
 }
+
+# ============================
+#   APP, TEMPLATES Y FIRMA
+# ============================
+
+app = FastAPI(
+    title="MiniWMS",
+    version="1.0.0",
+    debug=DEBUG,
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+signer = TimestampSigner(SECRET_KEY)
+
 
 # =======================
 # Seguridad: contraseñas con bcrypt directo
@@ -355,23 +370,6 @@ def seed_superadmin():
 
 Base.metadata.create_all(bind=engine)
 seed_superadmin()
-
-
-# ============================
-# FASTAPI, TEMPLATES Y SESIÓN
-# ============================
-
-app = FastAPI()
-
-# Servir archivos estáticos
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-templates = Jinja2Templates(directory="templates")
-
-# 🔑 Firmador simple para la cookie de sesión
-SECRET_KEY = "VeuoeH6L"   # TODO: mover a variable de entorno en producción
-signer = TimestampSigner(SECRET_KEY)
-
 
 # ============================
 # Dependencia de BD
@@ -682,154 +680,6 @@ def crear_alerta_interna(
     db.refresh(alerta)
     return alerta
 
-
-def generar_alertas_para_negocio(db: Session, negocio_id: int, negocio_nombre: str):
-    """
-    Recorre el inventario de un negocio y genera alertas internas
-    según reglas básicas de stock y vencimientos.
-
-    Esta función está pensada para ser llamada, por ejemplo, en /dashboard.
-    """
-    hoy = date.today()
-
-    # 1) Productos activos del negocio
-    productos = (
-        db.query(Producto)
-        .filter(
-            Producto.negocio == negocio_nombre,
-            Producto.activo == 1,
-        )
-        .all()
-    )
-    if not productos:
-        return
-
-    productos_by_name = {p.nombre.lower(): p for p in productos}
-
-    # 2) Movimientos del negocio
-    movimientos = (
-        db.query(Movimiento)
-        .filter(Movimiento.negocio == negocio_nombre)
-        .all()
-    )
-
-    # Totales por producto y vencimientos simplificados
-    totales_producto: dict[str, int] = {}
-    fv_min_por_producto: dict[str, date | None] = {}
-
-    for m in movimientos:
-        prod_name = (m.producto or "").strip()
-        if not prod_name:
-            continue
-
-        key = prod_name.lower()
-        qty = m.cantidad or 0
-
-        # misma lógica que usas en stock: salidas restan
-        if m.tipo == "salida" or (m.tipo == "ajuste" and qty < 0):
-            delta = -abs(qty)
-        else:
-            delta = abs(qty)
-
-        totales_producto[key] = totales_producto.get(key, 0) + delta
-
-        # vencimiento (simplificado: tomamos la fecha más cercana de entradas)
-        if m.fecha_vencimiento and delta > 0:
-            fv = m.fecha_vencimiento
-            actual = fv_min_por_producto.get(key)
-            if actual is None or fv < actual:
-                fv_min_por_producto[key] = fv
-
-    # 3) Reglas por producto → alertas
-    for key, producto in productos_by_name.items():
-        stock_total = totales_producto.get(key, 0)
-        stock_min = producto.stock_min
-        stock_max = producto.stock_max
-
-        # --- Regla: stock crítico ---
-        if stock_min is not None and stock_total < stock_min:
-            msg = (
-                f"Stock crítico de '{producto.nombre}': "
-                f"{stock_total} unidades (< mínimo configurado {stock_min})."
-            )
-            crear_alerta_interna(
-                db=db,
-                negocio_id=negocio_id,
-                tipo="stock_min",
-                mensaje=msg,
-                origen="regla_stock",
-                datos={
-                    "producto_id": producto.id,
-                    "nombre": producto.nombre,
-                    "stock_total": stock_total,
-                    "stock_min": stock_min,
-                },
-            )
-
-        # --- Regla: sobre-stock ---
-        if stock_max is not None and stock_total > stock_max:
-            msg = (
-                f"Sobre-stock de '{producto.nombre}': "
-                f"{stock_total} unidades (> máximo configurado {stock_max})."
-            )
-            crear_alerta_interna(
-                db=db,
-                negocio_id=negocio_id,
-                tipo="stock_max",
-                mensaje=msg,
-                origen="regla_stock",
-                datos={
-                    "producto_id": producto.id,
-                    "nombre": producto.nombre,
-                    "stock_total": stock_total,
-                    "stock_max": stock_max,
-                },
-            )
-
-        # --- Reglas por vencimiento ---
-        fv_min = fv_min_por_producto.get(key)
-        if fv_min is None:
-            continue
-
-        dias = (fv_min - hoy).days
-
-        # vencido
-        if dias < 0:
-            msg = (
-                f"Producto vencido: '{producto.nombre}' con lote que venció el {fv_min}."
-            )
-            crear_alerta_interna(
-                db=db,
-                negocio_id=negocio_id,
-                tipo="vencido",
-                mensaje=msg,
-                origen="regla_vencimiento",
-                datos={
-                    "producto_id": producto.id,
-                    "nombre": producto.nombre,
-                    "fecha_vencimiento": fv_min.isoformat(),
-                    "dias": dias,
-                },
-            )
-        # por vencer en menos de 7 días
-        elif dias <= 7:
-            msg = (
-                f"Producto por vencer (<7 días): '{producto.nombre}' "
-                f"vence el {fv_min} ({dias} día(s))."
-            )
-            crear_alerta_interna(
-                db=db,
-                negocio_id=negocio_id,
-                tipo="vencimiento_proximo",
-                mensaje=msg,
-                origen="regla_vencimiento",
-                datos={
-                    "producto_id": producto.id,
-                    "nombre": producto.nombre,
-                    "fecha_vencimiento": fv_min.isoformat(),
-                    "dias": dias,
-                },
-            )
 
 # ============================
 # ALERTAS (reglas de negocio)
@@ -1200,7 +1050,7 @@ async def login_page(request: Request):
 
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "error": None},
+        {"request": request, "error": None, "user": None},
     )
 
 
@@ -1223,7 +1073,7 @@ async def login_submit(
     if not usuario or usuario.activo != 1:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Correo o contraseña incorrectos."},
+            {"request": request, "error": "Correo o contraseña incorrectos.", "user": None},
             status_code=401,
         )
 
@@ -1231,7 +1081,7 @@ async def login_submit(
     if not verify_password(password, usuario.password_hash):
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Correo o contraseña incorrectos."},
+            {"request": request, "error": "Correo o contraseña incorrectos.", "user": None},
             status_code=401,
         )
 
@@ -1242,6 +1092,7 @@ async def login_submit(
             {
                 "request": request,
                 "error": "El negocio asociado a este usuario está suspendido.",
+                "user": None
             },
             status_code=403,
         )
@@ -1258,6 +1109,11 @@ async def login_submit(
     response = RedirectResponse(url=redirect_url, status_code=302)
     crear_cookie_sesion(response, usuario, token_sesion)
     return response
+
+@app.post("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=302)
 
 
 @app.get("/logout")
@@ -1588,14 +1444,6 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     if is_superadmin(user):
         return RedirectResponse("/superadmin/dashboard", status_code=302)
 
-    # Generar/actualizar alertas internas para el negocio actual
-    if user.get("negocio_id"):
-        generar_alertas_para_negocio(
-            db=db,
-            negocio_id=user["negocio_id"],
-            negocio_nombre=user["negocio"],
-        )
-
     hoy = date.today()
 
     # ============================
@@ -1620,7 +1468,32 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Totales por producto y lotes (para vencimiento FEFO simplificado)
+    # ===== FLAGS DE ONBOARDING =====
+    # ¿Tiene zonas?
+    tiene_zonas = (
+        db.query(Zona)
+        .filter(Zona.negocio == user["negocio"])
+        .count() > 0
+    )
+
+    # ¿Tiene slots?
+    tiene_slots = (
+        db.query(Slot)
+        .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
+        .join(Zona, Ubicacion.zona_id == Zona.id)
+        .filter(Zona.negocio == user["negocio"])
+        .count() > 0
+    )
+
+    # ¿Tiene productos?
+    tiene_productos = total_skus > 0
+
+    # ¿Tiene algún movimiento registrado?
+    tiene_movimientos = len(movimientos_all) > 0
+
+    # ============================
+    # 3) Totales por producto y lotes (FEFO simplificado)
+    # ============================
     totales_producto: dict[str, int] = {}        # producto -> qty total
     lotes_por_producto: dict[str, list[dict]] = {}  # producto -> [{fv, qty}, ...]
 
@@ -1667,7 +1540,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
             lotes[:] = [l for l in lotes if l["qty"] > 0]
 
     # ============================
-    # 3) Resumen de estados por producto (min/max)
+    # 4) Resumen de estados por producto (min/max)
     # ============================
     resumen_stock = {
         "Crítico": 0,
@@ -1704,7 +1577,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
             resumen_stock[est] += 1
 
     # ============================
-    # 4) Resumen de vencimientos por producto
+    # 5) Resumen de vencimientos por producto
     # ============================
     resumen_venc = {
         "Vencido": 0,
@@ -1741,7 +1614,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
                 resumen_venc["Normal"] += 1
 
     # ============================
-    # 5) Total unidades en stock (suma de positivos)
+    # 6) Total unidades en stock (suma de positivos)
     # ============================
     total_unidades = sum(q for q in totales_producto.values() if q > 0)
 
@@ -1778,7 +1651,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     perdidas_merma_30d = int(round(perdidas_merma_30d))
 
     # ============================
-    # 6) Últimos movimientos (tabla)
+    # 7) Últimos movimientos (tabla)
     # ============================
     movimientos_recientes = (
         db.query(Movimiento)
@@ -1789,7 +1662,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     )
 
     # ============================
-    # 7) Datos para gráfico últimos 7 días (entradas vs salidas)
+    # 8) Datos para gráfico últimos 7 días (entradas vs salidas)
     # ============================
     hace_7_dias = datetime.utcnow() - timedelta(days=7)
     mov_ultimos_7 = (
@@ -1827,7 +1700,7 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
     }
 
     # ============================
-    # 8) Alertas pendientes del negocio
+    # 9) Alertas pendientes del negocio
     # ============================
     alertas_pendientes = 0
     if user.get("negocio_id"):
@@ -1854,6 +1727,11 @@ async def dashboard_view(request: Request, db: Session = Depends(get_db)):
             "valor_inventario": valor_inventario,
             "perdidas_merma_30d": perdidas_merma_30d,
             "alertas_pendientes": alertas_pendientes,
+            # flags onboarding
+            "tiene_zonas": tiene_zonas,
+            "tiene_slots": tiene_slots,
+            "tiene_productos": tiene_productos,
+            "tiene_movimientos": tiene_movimientos,
         },
     )
 
@@ -2655,6 +2533,7 @@ async def producto_editar_submit(
                 "user": user,
                 "error": "El costo unitario debe ser un número válido.",
                 "producto": producto,
+                "costo_unitario": costo_str,
             },
             status_code=400,
         )
@@ -2667,6 +2546,7 @@ async def producto_editar_submit(
                 "user": user,
                 "error": "El nombre del producto no puede estar vacío.",
                 "producto": producto,
+                "costo_unitario": costo_str,
             },
             status_code=400,
         )
@@ -2689,6 +2569,7 @@ async def producto_editar_submit(
                 "user": user,
                 "error": f"Ya existe otro producto con el nombre '{nombre}'.",
                 "producto": producto,
+                "costo_unitario": costo_str,
             },
             status_code=400,
         )
@@ -2719,22 +2600,24 @@ async def producto_editar_submit(
 
     return RedirectResponse(url="/productos", status_code=302)
 
+# ============================
+#   PRODUCTOS - ACTIVAR / DESACTIVAR
+# ============================
 
-@app.post("/productos/{producto_id}/toggle-estado")
-async def producto_toggle_estado(
+@app.post("/productos/{producto_id}/toggle")
+async def producto_toggle(
     producto_id: int,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """
-    Activa / desactiva (soft delete) un producto del negocio actual.
-    """
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    require_role(user, ("admin", "superadmin"))
+    # En principio, sólo admin del negocio debería poder cambiar estado
+    require_role(user, ("admin",))
 
+    # Buscar producto que pertenezca al negocio del usuario
     producto = (
         db.query(Producto)
         .filter(
@@ -2743,27 +2626,19 @@ async def producto_toggle_estado(
         )
         .first()
     )
-    if not producto:
-        return RedirectResponse(url="/productos", status_code=302)
 
-    estado_anterior = producto.activo or 0
-    producto.activo = 0 if estado_anterior == 1 else 1
+    if not producto:
+        # Si no lo encuentra, devolvemos 404 (y no un JSON raro)
+        raise HTTPException(status_code=404, detail="Producto no encontrado.")
+
+    # Toggle del estado
+    producto.activo = not bool(producto.activo)
 
     db.commit()
-    db.refresh(producto)
 
-    registrar_auditoria(
-        db,
-        user,
-        accion="producto_toggle_estado",
-        detalle={
-            "producto_id": producto.id,
-            "nombre": producto.nombre,
-            "nuevo_estado": "activo" if producto.activo == 1 else "inactivo",
-        },
-    )
+    # Volvemos al listado de productos
+    return RedirectResponse("/productos", status_code=302)
 
-    return RedirectResponse(url="/productos", status_code=302)
 
 
 # ============================
@@ -2834,6 +2709,32 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+        # ==========================
+    # KPIs sobre los movimientos
+    # ==========================
+    total_movimientos = len(movimientos)
+
+    def es_ajuste(m: Movimiento) -> bool:
+        """
+        Consideramos como 'ajuste' cualquier movimiento cuyo motivo_salida
+        sea 'ajuste_inventario' (los generados desde /inventario).
+        """
+        return (m.motivo_salida or "").strip().lower() == "ajuste_inventario"
+
+    # Ajustes (independiente de si suman o restan stock)
+    total_ajustes = sum(1 for m in movimientos if es_ajuste(m))
+
+    # Entradas y salidas 'operativas' (no ajustes)
+    total_entradas = sum(
+        1 for m in movimientos
+        if m.tipo == "entrada" and not es_ajuste(m)
+    )
+    total_salidas = sum(
+        1 for m in movimientos
+        if m.tipo == "salida" and not es_ajuste(m)
+    )
+
+
     # Para combos de filtro (selects)
     productos_distintos = (
         db.query(Movimiento.producto)
@@ -2877,8 +2778,14 @@ async def movimientos_view(request: Request, db: Session = Depends(get_db)):
             "f_tipo": tipo_filtro,
             "f_producto": producto_filtro,
             "f_usuario": usuario_filtro,
+            # KPIs
+            "total_movimientos": total_movimientos,
+            "total_entradas": total_entradas,
+            "total_salidas": total_salidas,
+            "total_ajustes": total_ajustes,
         },
     )
+
 
 # ============================
 #     MOVIMIENTO DE SALIDA
@@ -3665,6 +3572,8 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
         ubic = info["ubic"]
         zona_obj = info["zona"]
 
+        slot_codigo = slot.codigo if slot is not None else None
+
         capacidad = slot.capacidad if slot is not None else None
         ocupacion_pct = None
         if capacidad and capacidad > 0:
@@ -3712,6 +3621,7 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
                 "zona_nombre": zona_obj.nombre if zona_obj is not None else "-",
                 "ubicacion_nombre": ubic.nombre if ubic is not None else "-",
                 "codigo_full": slot.codigo_full if slot is not None else zona_str,
+                "slot_codigo": slot_codigo or "-",
                 "cantidad": cantidad_slot,
                 "stock_total": stock_total,
                 "stock_min": stock_min,
@@ -3756,6 +3666,7 @@ async def stock_view(request: Request, db: Session = Depends(get_db)):
                     "zona_nombre": "-",
                     "ubicacion_nombre": "-",
                     "codigo_full": "-",
+                    "slot_codigo": "-",
                     "cantidad": 0,
                     "stock_total": stock_total,
                     "stock_min": stock_min,
@@ -3983,6 +3894,7 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
         tipo_mov = "entrada" if diff > 0 else "salida"
         cantidad_ajuste = abs(diff)
 
+        # 🔹 Marcamos este movimiento explícitamente como AJUSTE DE INVENTARIO
         movimiento = Movimiento(
             negocio=user["negocio"],
             usuario=user["email"],
@@ -3991,7 +3903,32 @@ async def inventario_submit(request: Request, db: Session = Depends(get_db)):
             cantidad=cantidad_ajuste,
             zona=zona,
             fecha=datetime.utcnow(),
+            motivo_salida="ajuste_inventario",
         )
+        db.add(movimiento)
+        ajustes_realizados += 1
+
+        print(
+            f">>> AJUSTE INVENTARIO: {tipo_mov} {cantidad_ajuste} x '{producto}' en {zona} "
+            f"(teórico={stock_teorico}, conteo={conteo})"
+        )
+
+        # Opcional pero útil: registramos en auditoría
+        registrar_auditoria(
+            db,
+            user,
+            accion="ajuste_inventario",
+            detalle={
+                "producto": producto,
+                "zona": zona,
+                "tipo_mov": tipo_mov,
+                "cantidad_ajuste": cantidad_ajuste,
+                "stock_teorico": stock_teorico,
+                "conteo": conteo,
+                "motivo": "ajuste_inventario",
+            },
+        )
+
         db.add(movimiento)
         ajustes_realizados += 1
 
@@ -4151,4 +4088,10 @@ async def alerta_marcar_leida(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("miniWMS:app", host="0.0.0.0", port=8000, reload=True)
+
+    uvicorn.run(
+        "miniWMS:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=DEBUG,  # reload solo en desarrollo
+    )

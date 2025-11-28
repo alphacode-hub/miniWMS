@@ -5,20 +5,30 @@
 <div class="w-full max-w-md mx-auto px-4 py-4">
     <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between">
+        <!-- Paso / guía -->
+        <div class="flex items-start justify-between mb-1">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Registrar entrada
-                </h1>
-                <p class="text-xs text-slate-500">
-                    Ingreso de mercadería al inventario de {{ user.negocio }}.
+                <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Paso 3 de 4 · Movimientos
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Registra entradas de mercadería en los slots que ya definiste.
                 </p>
             </div>
             <a href="/movimientos"
                class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Movimientos
+                ← Volver a movimientos
             </a>
+        </div>
+
+        <!-- Header principal -->
+        <div>
+            <h1 class="text-lg font-bold text-slate-900">
+                Registrar entrada
+            </h1>
+            <p class="text-xs text-slate-500">
+                Ingreso de mercadería al inventario de {{ user.negocio }}.
+            </p>
         </div>
 
         <!-- Error -->
@@ -37,12 +47,13 @@
 
             <!-- Producto -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label for="producto" class="block text-xs font-medium text-slate-700 mb-1">
                     Producto
                 </label>
-                <select name="producto"
+                <select id="producto"
+                        name="producto"
                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         required>
                     <option value="">Selecciona un producto</option>
                     {% for p in productos %}
@@ -56,27 +67,29 @@
 
             <!-- Cantidad -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label for="cantidad" class="block text-xs font-medium text-slate-700 mb-1">
                     Cantidad
                 </label>
-                <input type="number"
+                <input id="cantidad"
+                       type="number"
                        name="cantidad"
                        min="1"
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                        placeholder="1" />
             </div>
 
             <!-- Ubicación / Slot -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
-                    Ubicación (slot)
+                <label for="slot_id" class="block text-xs font-medium text-slate-700 mb-1">
+                    Ubicación
                 </label>
-                <select name="slot_id"
+                <select id="slot_id"
+                        name="slot_id"
                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-500"
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         required>
                     <option value="">Selecciona zona / ubicación / slot</option>
                     {% for s in slots %}
@@ -87,48 +100,55 @@
                     {% endfor %}
                 </select>
                 <p class="text-[10px] text-slate-400 mt-1">
-                    Recuerda mantener FEFO si estás manejando vencimientos.
+                    Asegúrate de usar siempre el mismo slot para el mismo tipo de producto si quieres un control más ordenado.
                 </p>
             </div>
 
             <!-- Fecha de vencimiento -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
-                    Fecha de vencimiento (opcional)
+                <label for="fecha_vencimiento" class="block text-xs font-medium text-slate-700 mb-1">
+                    Fecha de vencimiento <span class="font-normal text-slate-400">(opcional)</span>
                 </label>
-                <input type="date"
+                <input id="fecha_vencimiento"
+                       type="date"
                        name="fecha_vencimiento"
                        value="{% if fecha_vencimiento is defined %}{{ fecha_vencimiento }}{% endif %}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+              appearance-none" />
                 <p class="text-[10px] text-slate-400 mt-1">
                     Si la dejas vacía, el lote ingresará sin fecha de vencimiento.
                 </p>
             </div>
 
-            <!-- Fecha de entrada (visual / futuro) -->
+            <!-- Fecha de entrada -->
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label for="fecha" class="block text-xs font-medium text-slate-700 mb-1">
                     Fecha de entrada
                 </label>
-                <input type="date"
+                <input id="fecha"
+                       type="date"
                        name="fecha"
                        value="{{ fecha or '' }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+              appearance-none" />
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Si no eliges una fecha, se usará la fecha y hora actuales.
+                </p>
             </div>
 
             <!-- Botón -->
             <button type="submit"
                     class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
-                           bg-brand-500 hover:bg-brand-600 text-white shadow-sm active:scale-[0.98]">
+                           bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.98]">
                 Registrar entrada
             </button>
         </form>
 
         <!-- Volver móvil -->
         <a href="/movimientos"
-           class="block mt-4 text-center text-sm text-slate-500 sm:hidden">
+           class="block mt-4 text-center text-xs text-slate-500 sm:hidden">
             ← Volver a movimientos
         </a>
 
