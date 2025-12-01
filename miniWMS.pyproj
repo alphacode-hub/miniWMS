@@ -22,7 +22,30 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="config.py" />
+    <Compile Include="database.py" />
     <Compile Include="miniWMS.py" />
+    <Compile Include="models.py" />
+    <Compile Include="plans.py" />
+    <Compile Include="routes_alerts.py" />
+    <Compile Include="routes_audit.py" />
+    <Compile Include="routes_auth.py" />
+    <Compile Include="routes_dashboard.py" />
+    <Compile Include="routes_inventory.py" />
+    <Compile Include="routes_locations.py" />
+    <Compile Include="routes_movements.py" />
+    <Compile Include="routes_products.py" />
+    <Compile Include="routes_register_business.py" />
+    <Compile Include="routes_slots.py" />
+    <Compile Include="routes_stock.py" />
+    <Compile Include="routes_superadmin.py" />
+    <Compile Include="routes_users.py" />
+    <Compile Include="routes_zones.py" />
+    <Compile Include="security.py" />
+    <Compile Include="services_alerts.py" />
+    <Compile Include="services_audit.py" />
+    <Compile Include="services_plan_limits.py" />
+    <Compile Include="services_slots.py" />
   </ItemGroup>
   <ItemGroup>
     <Interpreter Include="env\">
@@ -36,6 +59,7 @@
     </Interpreter>
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".env" />
     <Content Include="requirements.txt" />
     <Content Include="templates\alertas.html" />
     <Content Include="templates\auditoria.html" />

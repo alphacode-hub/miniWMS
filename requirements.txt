@@ -7,3 +7,5 @@ python-multipart
 itsdangerous
 sqlalchemy
 passlib[bcrypt]
+python-dotenv
+pydantic-settings
