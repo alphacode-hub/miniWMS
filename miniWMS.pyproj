@@ -73,6 +73,7 @@
     <Content Include=".env.staging" />
     <Content Include="Dockerfile" />
     <Content Include="requirements.txt" />
+    <Content Include="static\.keep" />
     <Content Include="templates\alertas.html" />
     <Content Include="templates\auditoria.html" />
     <Content Include="templates\base.html" />
