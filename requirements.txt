@@ -1,5 +1,3 @@
-pip
-setuptools
 fastapi
 uvicorn
 jinja2
@@ -9,3 +7,5 @@ sqlalchemy
 passlib[bcrypt]
 python-dotenv
 pydantic-settings
+openpyxl
+psycopg2-binary

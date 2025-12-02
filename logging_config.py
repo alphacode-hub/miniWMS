@@ -34,7 +34,7 @@ def setup_logging() -> None:
                 },
             },
             "root": {
-                "level": "INFO" if not settings.DEBUG else "DEBUG",
+                "level": "INFO" if not settings.APP_DEBUG else "DEBUG",
                 "handlers": ["file", "console"],
             },
         }

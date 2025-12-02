@@ -24,6 +24,8 @@ from routes.routes_inventory import router as inventory_router
 from routes.routes_audit import router as audit_router
 from routes.routes_alerts import router as alerts_router
 from routes.routes_health import router as health_router
+from routes.routes_backups import router as backups_router
+from routes.routes_export import router as export_router
 
 
 
@@ -60,7 +62,9 @@ templates = Jinja2Templates(directory="templates")
 #   INCLUIR ROUTERS
 # ============================
 
+
 app.include_router(health_router)
+app.include_router(backups_router)
 app.include_router(auth_router)
 app.include_router(superadmin_router)
 app.include_router(register_business_router)
@@ -75,6 +79,7 @@ app.include_router(stock_router)
 app.include_router(inventory_router)
 app.include_router(audit_router)
 app.include_router(alerts_router)
+app.include_router(export_router)
 
 
 # ============================

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db
+from logging_config import logger  # 👈 añadimos logging
 
 router = APIRouter(
     tags=["health"],
@@ -36,10 +37,12 @@ async def health_db(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
     except Exception as e:
-        # Si falla, devolvemos 503 (Service Unavailable)
+        # Logueamos el error real para monitoreo
+        logger.error(f"[HEALTH_DB] Error en health check de BD: {e}")
+        # Y devolvemos un mensaje genérico al cliente
         raise HTTPException(
             status_code=503,
-            detail=f"Database not healthy: {e}",
+            detail="Database not healthy",
         )
 
     return {

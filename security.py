@@ -1,5 +1,5 @@
 ﻿# security.py
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import bcrypt
 import secrets
@@ -10,12 +10,14 @@ from itsdangerous import TimestampSigner, BadSignature
 from sqlalchemy.orm import Session
 
 from config import settings
-from database import SessionLocal   # ✅ ahora sí, sin ciclo
+from database import SessionLocal
 from models import Usuario, SesionUsuario
-
 
 BCRYPT_MAX_LENGTH = 72
 signer = TimestampSigner(settings.APP_SECRET_KEY)
+
+# Tiempo máximo de inactividad de la sesión (en segundos)
+SESSION_INACTIVITY_SECONDS = settings.SESSION_EXPIRATION_MINUTES * 60
 
 
 def hash_password(password: str) -> str:
@@ -50,6 +52,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def crear_sesion_db(db: Session, usuario: Usuario) -> str:
+    # Invalidar sesiones activas previas de este usuario
     db.query(SesionUsuario).filter(
         SesionUsuario.usuario_id == usuario.id,
         SesionUsuario.activo == 1
@@ -57,10 +60,12 @@ def crear_sesion_db(db: Session, usuario: Usuario) -> str:
 
     token_sesion = secrets.token_urlsafe(settings.SESSION_TOKEN_BYTES)
 
+    ahora = datetime.utcnow()
     nueva_sesion = SesionUsuario(
         usuario_id=usuario.id,
         token_sesion=token_sesion,
         activo=1,
+        last_seen_at=ahora,  # aseguramos que no quede en NULL
     )
     db.add(nueva_sesion)
     db.commit()
@@ -69,24 +74,29 @@ def crear_sesion_db(db: Session, usuario: Usuario) -> str:
 
 
 def crear_cookie_sesion(response: RedirectResponse, usuario: Usuario, token_sesion: str):
+    """
+    Crea la cookie firmada de sesión.
+
+    Nota: dejamos solo los datos mínimos para no exponer de más en la cookie.
+    El resto se obtiene siempre desde la BD.
+    """
     payload = {
         "user_id": usuario.id,
-        "email": usuario.email,
-        "rol": usuario.rol,
-        "negocio_id": usuario.negocio_id,
-        "negocio": usuario.negocio.nombre_fantasia if usuario.negocio else None,
         "token_sesion": token_sesion,
         "ts": datetime.utcnow().isoformat(),
     }
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     signed = signer.sign(data).decode("utf-8")
 
+    # Importante: max_age debería estar alineado con la expiración de la sesión
+    max_age = settings.SESSION_MAX_AGE_SECONDS or SESSION_INACTIVITY_SECONDS
+
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=signed,
         httponly=True,
         samesite=settings.SESSION_COOKIE_SAMESITE,
-        max_age=settings.SESSION_MAX_AGE_SECONDS,
+        max_age=max_age,
         secure=settings.SESSION_COOKIE_SECURE,
     )
 
@@ -96,8 +106,10 @@ def get_current_user(request: Request):
     if not cookie:
         return None
 
+    # 1) Verificamos firma Y vencimiento (max_age)
     try:
-        data = signer.unsign(cookie).decode("utf-8")
+        # Esto hace que la cookie NO sea válida después de X segundos
+        data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
         payload = json.loads(data)
     except (BadSignature, json.JSONDecodeError):
         return None
@@ -109,6 +121,7 @@ def get_current_user(request: Request):
 
     db: Session = SessionLocal()
     try:
+        # 2) Buscamos la sesión en BD
         sesion = (
             db.query(SesionUsuario)
             .filter(
@@ -121,6 +134,17 @@ def get_current_user(request: Request):
         if not sesion:
             return None
 
+        # 3) Validamos inactividad por last_seen_at
+        ahora = datetime.utcnow()
+        if sesion.last_seen_at:
+            delta = ahora - sesion.last_seen_at
+            if delta.total_seconds() > SESSION_INACTIVITY_SECONDS:
+                # Sesión expirada por inactividad -> la marcamos como inactiva
+                sesion.activo = 0
+                db.commit()
+                return None
+
+        # 4) Usuario activo
         usuario = db.query(Usuario).filter(
             Usuario.id == user_id,
             Usuario.activo == 1,
@@ -128,7 +152,8 @@ def get_current_user(request: Request):
         if not usuario:
             return None
 
-        sesion.last_seen_at = datetime.utcnow()
+        # 5) Actualizamos last_seen_at
+        sesion.last_seen_at = ahora
         db.commit()
 
         negocio_nombre = (
@@ -137,6 +162,7 @@ def get_current_user(request: Request):
             else settings.SUPERADMIN_BUSINESS_NAME
         )
 
+        # ⚠️ Aquí sí devolvemos info rica, pero solo en memoria.
         return {
             "id": usuario.id,
             "email": usuario.email,

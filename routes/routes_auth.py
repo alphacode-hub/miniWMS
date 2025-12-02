@@ -133,17 +133,15 @@ async def login_submit(
 
 @router.api_route("/logout", methods=["GET", "POST"])
 async def logout(request: Request, db: Session = Depends(get_db)):
-    # 1) Leer cookie firmada
     cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
 
     if cookie:
         try:
-            data = signer.unsign(cookie).decode("utf-8")
+            data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
             payload = json.loads(data)
             user_id = payload.get("user_id")
             token_sesion = payload.get("token_sesion")
 
-            # 2) Marcar sesión como inactiva en BD
             if user_id and token_sesion:
                 db.query(SesionUsuario).filter(
                     SesionUsuario.usuario_id == user_id,
@@ -151,11 +149,15 @@ async def logout(request: Request, db: Session = Depends(get_db)):
                     SesionUsuario.activo == 1,
                 ).update({SesionUsuario.activo: 0})
                 db.commit()
-        except (BadSignature, json.JSONDecodeError):
-            # Si la cookie es inválida, simplemente seguimos y la borramos igual
+        except Exception:
+            # Cookie inválida o expirada: la ignoramos y seguimos
             pass
 
-    # 3) Redirigir a login y borrar cookie
     response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie(settings.SESSION_COOKIE_NAME)
+    # Nos aseguramos de borrar la cookie en el path raíz
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        path="/",
+    )
     return response
+

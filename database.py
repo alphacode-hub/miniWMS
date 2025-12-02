@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 from config import settings
+from logging_config import logger  # 👈 usamos el logger global
 
 # ============================
 # ENGINE, SESSION, BASE
@@ -15,6 +16,8 @@ if settings.DATABASE_URL.startswith("sqlite"):
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
+    pool_pre_ping=True,               # 👈 evita conexiones muertas en motores externos
+    echo=settings.APP_DEBUG,          # 👈 solo logea SQL en modo debug
 )
 
 SessionLocal = sessionmaker(
@@ -47,7 +50,6 @@ def seed_superadmin():
     Crea un usuario superadmin si no existe, asociado a un negocio global.
     OJO: imports locales para evitar ciclos.
     """
-    from sqlalchemy.orm import Session
     from models import Usuario, Negocio
     from security import hash_password
 
@@ -58,12 +60,23 @@ def seed_superadmin():
         negocio_nombre = settings.SUPERADMIN_BUSINESS_NAME
 
         if not email_root or not password_root:
-            print("[SEED_SUPERADMIN] SUPERADMIN_EMAIL o SUPERADMIN_PASSWORD no configurados.")
+            logger.warning(
+                "[SEED_SUPERADMIN] SUPERADMIN_EMAIL o SUPERADMIN_PASSWORD no configurados. "
+                "No se creará superadmin por defecto."
+            )
             return
+
+        # Aviso si en producción se dejó una clave insegura
+        if settings.APP_ENV == "production" and password_root == "12345678":
+            logger.warning(
+                "[SEED_SUPERADMIN] SUPERADMIN_PASSWORD tiene un valor débil por defecto "
+                "en entorno de producción. Cámbialo en el .env."
+            )
 
         # ¿Ya existe el superadmin?
         existing = db.query(Usuario).filter(Usuario.email == email_root).first()
         if existing:
+            logger.info(f"[SEED_SUPERADMIN] Superadmin ya existe: {email_root}")
             return
 
         # Buscar/crear negocio global
@@ -91,11 +104,11 @@ def seed_superadmin():
         )
         db.add(superadmin)
         db.commit()
-        print(f"Superadmin creado: {email_root} en negocio '{negocio_nombre}'")
+        logger.info(f"[SEED_SUPERADMIN] Superadmin creado: {email_root} en negocio '{negocio_nombre}'")
 
     except Exception as e:
         db.rollback()
-        print(f"[SEED_SUPERADMIN] Error al crear superadmin: {e}")
+        logger.error(f"[SEED_SUPERADMIN] Error al crear superadmin: {e}")
     finally:
         db.close()
 
@@ -112,5 +125,8 @@ def init_db() -> None:
     # Import local para registrar modelos en Base.metadata
     import models  # noqa: F401
 
+    logger.info("[INIT_DB] Creando tablas (si no existen)...")
     Base.metadata.create_all(bind=engine)
+    logger.info("[INIT_DB] Tablas creadas/verificadas. Ejecutando seed_superadmin()...")
     seed_superadmin()
+    logger.info("[INIT_DB] Proceso de inicialización de BD completado.")

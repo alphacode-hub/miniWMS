@@ -184,6 +184,59 @@ async def movimientos_view(
 
 
 # ============================
+#   HELPERS DE STOCK / VALIDACIÓN
+# ============================
+
+def _get_stock_actual(
+    db: Session,
+    negocio_id: int,
+    producto: str,
+    zona_str: str,
+) -> int:
+    """
+    Calcula el stock actual de un producto en una zona (slot.codigo_full)
+    a partir de la tabla de movimientos.
+    """
+    movimientos = (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.negocio_id == negocio_id,
+            func.lower(Movimiento.producto) == producto.lower(),
+            Movimiento.zona == zona_str,
+        )
+        .all()
+    )
+
+    entradas = sum((m.cantidad or 0) for m in movimientos if m.tipo == "entrada")
+    salidas = sum((m.cantidad or 0) for m in movimientos if m.tipo == "salida")
+    return entradas - salidas
+
+
+def _obtener_producto_negocio(
+    db: Session,
+    negocio_id: int,
+    nombre_producto: str,
+):
+    """
+    Busca el producto por nombre (case-insensitive) dentro del negocio.
+    Devuelve el objeto Producto o None.
+    """
+    nombre_norm = (nombre_producto or "").strip().lower()
+    if not nombre_norm:
+        return None
+
+    return (
+        db.query(Producto)
+        .filter(
+            Producto.negocio_id == negocio_id,
+            Producto.activo == 1,
+            func.lower(Producto.nombre) == nombre_norm,
+        )
+        .first()
+    )
+
+
+# ============================
 #     MOVIMIENTO DE SALIDA
 # ============================
 
@@ -233,7 +286,6 @@ async def salida_form(
         },
     )
 
-
 @router.post("/movimientos/salida", response_class=HTMLResponse)
 async def salida_submit(
     request: Request,
@@ -245,17 +297,68 @@ async def salida_submit(
     db: Session = Depends(get_db),
     user: dict = Depends(require_roles_dep("admin", "operador")),
 ):
-    """
-    Procesa el formulario de salida:
-    - valida stock disponible en la zona/slot
-    - registra el movimiento
-    - dispara auditoría y evaluación de alertas
-    """
     negocio_id = user["negocio_id"]
-
     producto = (producto or "").strip()
 
-    # Buscar slot + validar que pertenezca al negocio
+    # 0) Validar cantidad > 0
+    if cantidad <= 0:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "salida.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "La cantidad debe ser un número entero positivo.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_id": slot_id,
+            },
+            status_code=400,
+        )
+
+    # 1) Validar que el producto exista en el negocio
+    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    if not producto_obj:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "salida.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "El producto seleccionado no es válido para este negocio.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_id": slot_id,
+            },
+            status_code=400,
+        )
+
+    # Usar siempre el nombre canónico desde la BD
+    producto_nombre = producto_obj.nombre
+
+    # 2) Buscar slot + validar que pertenezca al negocio
     slot = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
@@ -285,7 +388,7 @@ async def salida_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": "La ubicación seleccionada no es válida.",
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
             },
@@ -294,25 +397,13 @@ async def salida_submit(
 
     zona_str = slot.codigo_full
 
-    # 1) Calcular stock actual de ese producto + zona + negocio
-    movimientos = (
-        db.query(Movimiento)
-        .filter(
-            Movimiento.negocio_id == negocio_id,
-            func.lower(Movimiento.producto) == producto.lower(),
-            Movimiento.zona == zona_str,
-        )
-        .all()
-    )
+    # 3) Calcular stock actual con helper
+    stock_actual = _get_stock_actual(db, negocio_id, producto_nombre, zona_str)
 
-    entradas = sum((m.cantidad or 0) for m in movimientos if m.tipo == "entrada")
-    salidas = sum((m.cantidad or 0) for m in movimientos if m.tipo == "salida")
-    stock_actual = entradas - salidas
-
-    # 2) Validar stock suficiente
+    # 4) Validar stock suficiente
     if cantidad > stock_actual:
         error_msg = (
-            f"No puedes registrar una salida de {cantidad} unidad(es) de '{producto}' "
+            f"No puedes registrar una salida de {cantidad} unidad(es) de '{producto_nombre}' "
             f"en {zona_str} porque el stock actual es {stock_actual}."
         )
         productos = (
@@ -333,19 +424,19 @@ async def salida_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": error_msg,
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
             },
             status_code=400,
         )
 
-    # 3) Registrar salida
+    # 5) Registrar salida
     movimiento = Movimiento(
         negocio_id=negocio_id,
         usuario=user["email"],
         tipo="salida",
-        producto=producto,
+        producto=producto_nombre,
         cantidad=cantidad,
         zona=zona_str,
         fecha=datetime.utcnow(),
@@ -363,7 +454,7 @@ async def salida_submit(
         accion="salida_creada",
         detalle={
             "movimiento_id": movimiento.id,
-            "producto": producto,
+            "producto": producto_nombre,
             "cantidad": cantidad,
             "zona": zona_str,
             "motivo_salida": motivo_salida or None,
@@ -371,18 +462,18 @@ async def salida_submit(
         },
     )
 
-    # Evaluar alertas (stub por ahora)
     evaluar_alertas_stock(
         db=db,
         user=user,
-        producto_nombre=producto,
+        producto_nombre=producto_nombre,
         origen="salida",
         motivo=(motivo_salida or None),
     )
 
-    print(">>> NUEVA SALIDA:", movimiento.id, producto, cantidad, "en", zona_str)
+    print(">>> NUEVA SALIDA:", movimiento.id, producto_nombre, cantidad, "en", zona_str)
 
     return RedirectResponse(url="/dashboard", status_code=302)
+
 
 # ============================
 #     MOVIMIENTO DE ENTRADA
@@ -446,17 +537,69 @@ async def entrada_submit(
     db: Session = Depends(get_db),
     user: dict = Depends(require_roles_dep("admin", "operador")),
 ):
-    """
-    Procesa el formulario de entrada:
-    - valida slot
-    - registra movimiento
-    - dispara auditoría y reglas de alertas (stock + vencimiento)
-    """
     negocio_id = user["negocio_id"]
-
     producto = (producto or "").strip()
 
-    # Buscar slot con su ubicación y zona, validando que pertenezca al negocio
+    # 0) Validar cantidad > 0
+    if cantidad <= 0:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "entrada.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "La cantidad debe ser un número entero positivo.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_id": slot_id,
+                "fecha_vencimiento": fecha_vencimiento,
+            },
+            status_code=400,
+        )
+
+    # 1) Validar producto del negocio
+    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    if not producto_obj:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "entrada.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "El producto seleccionado no es válido para este negocio.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_id": slot_id,
+                "fecha_vencimiento": fecha_vencimiento,
+            },
+            status_code=400,
+        )
+
+    producto_nombre = producto_obj.nombre
+
+    # 2) Slot válido del negocio
     slot = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
@@ -468,7 +611,6 @@ async def entrada_submit(
         .first()
     )
     if not slot:
-        # Slot inválido → volver al formulario con mensaje
         productos = (
             db.query(Producto)
             .filter(
@@ -487,7 +629,7 @@ async def entrada_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": "La ubicación seleccionada no es válida.",
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
                 "fecha_vencimiento": fecha_vencimiento,
@@ -497,22 +639,46 @@ async def entrada_submit(
 
     zona_str = slot.codigo_full
 
-    # Parsear fecha de vencimiento (si viene)
+    # 3) Parsear fecha de vencimiento (si viene)
     fv_date = None
     fv_str = (fecha_vencimiento or "").strip()
     if fv_str:
         try:
             fv_date = datetime.strptime(fv_str, "%Y-%m-%d").date()
         except ValueError:
-            # Si viene mal, la ignoramos en este MVP
-            fv_date = None
+            # Decisión: mostramos error en lugar de ignorar silenciosamente
+            productos = (
+                db.query(Producto)
+                .filter(
+                    Producto.negocio_id == negocio_id,
+                    Producto.activo == 1,
+                )
+                .order_by(Producto.nombre.asc())
+                .all()
+            )
+            slots = get_slots_negocio(db, negocio_id)
+            return templates.TemplateResponse(
+                "entrada.html",
+                {
+                    "request": request,
+                    "user": user,
+                    "productos": productos,
+                    "slots": slots,
+                    "error": "La fecha de vencimiento no tiene un formato válido (YYYY-MM-DD).",
+                    "producto": producto_nombre,
+                    "cantidad": cantidad,
+                    "slot_id": slot_id,
+                    "fecha_vencimiento": fecha_vencimiento,
+                },
+                status_code=400,
+            )
 
-    # Crear movimiento de entrada
+    # 4) Crear movimiento de entrada
     movimiento = Movimiento(
         negocio_id=negocio_id,
         usuario=user["email"],
         tipo="entrada",
-        producto=producto,
+        producto=producto_nombre,
         cantidad=cantidad,
         zona=zona_str,
         fecha=datetime.utcnow(),
@@ -523,34 +689,31 @@ async def entrada_submit(
     db.commit()
     db.refresh(movimiento)
 
-    # Auditoría
     registrar_auditoria(
         db,
         user,
         accion="entrada_creada",
         detalle={
             "movimiento_id": movimiento.id,
-            "producto": producto,
+            "producto": producto_nombre,
             "cantidad": cantidad,
             "zona": zona_str,
             "fecha_vencimiento": str(fv_date) if fv_date else None,
         },
     )
 
-    # Evaluar alertas de stock tras la entrada
     evaluar_alertas_stock(
         db=db,
         user=user,
-        producto_nombre=producto,
+        producto_nombre=producto_nombre,
         origen="entrada",
         motivo=None,
     )
 
-    # Evaluar alertas de vencimiento (FEFO simplificado / futuro)
     evaluar_alertas_vencimiento(
         db=db,
         user=user,
-        producto_nombre=producto,
+        producto_nombre=producto_nombre,
         origen="entrada",
     )
 
@@ -566,6 +729,7 @@ async def entrada_submit(
     )
 
     return RedirectResponse(url="/dashboard", status_code=302)
+
 
 # ============================
 #     MOVIMIENTO DE TRANSFERENCIA
@@ -637,6 +801,65 @@ async def transferencia_submit(
     negocio_id = user["negocio_id"]
     producto = (producto or "").strip()
 
+    # 0) Validar cantidad > 0
+    if cantidad <= 0:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "transferencia.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "La cantidad debe ser un número entero positivo.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_origen_id": slot_origen_id,
+                "slot_destino_id": slot_destino_id,
+            },
+            status_code=400,
+        )
+
+    # Validar que el producto exista
+    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    if not producto_obj:
+        productos = (
+            db.query(Producto)
+            .filter(
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .order_by(Producto.nombre.asc())
+            .all()
+        )
+        slots = get_slots_negocio(db, negocio_id)
+        return templates.TemplateResponse(
+            "transferencia.html",
+            {
+                "request": request,
+                "user": user,
+                "productos": productos,
+                "slots": slots,
+                "error": "El producto seleccionado no es válido para este negocio.",
+                "producto": producto,
+                "cantidad": cantidad,
+                "slot_origen_id": slot_origen_id,
+                "slot_destino_id": slot_destino_id,
+            },
+            status_code=400,
+        )
+
+    producto_nombre = producto_obj.nombre
+
     # 1) Origen y destino no pueden ser el mismo
     if slot_origen_id == slot_destino_id:
         productos = (
@@ -657,7 +880,7 @@ async def transferencia_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": "El slot de origen y el de destino no pueden ser el mismo.",
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
@@ -706,7 +929,7 @@ async def transferencia_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": "Alguno de los slots seleccionados no es válido.",
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
@@ -718,23 +941,11 @@ async def transferencia_submit(
     zona_destino_str = slot_destino.codigo_full
 
     # 3) Calcular stock actual en el slot de origen para ese producto
-    movimientos_origen = (
-        db.query(Movimiento)
-        .filter(
-            Movimiento.negocio_id == negocio_id,
-            func.lower(Movimiento.producto) == producto.lower(),
-            Movimiento.zona == zona_origen_str,
-        )
-        .all()
-    )
-
-    entradas = sum((m.cantidad or 0) for m in movimientos_origen if m.tipo == "entrada")
-    salidas = sum((m.cantidad or 0) for m in movimientos_origen if m.tipo == "salida")
-    stock_origen = entradas - salidas
+    stock_origen = _get_stock_actual(db, negocio_id, producto_nombre, zona_origen_str)
 
     if cantidad > stock_origen:
         error_msg = (
-            f"No puedes transferir {cantidad} unidad(es) de '{producto}' "
+            f"No puedes transferir {cantidad} unidad(es) de '{producto_nombre}' "
             f"desde {zona_origen_str} porque el stock actual es {stock_origen}."
         )
 
@@ -757,7 +968,7 @@ async def transferencia_submit(
                 "productos": productos,
                 "slots": slots,
                 "error": error_msg,
-                "producto": producto,
+                "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
@@ -770,7 +981,7 @@ async def transferencia_submit(
         negocio_id=negocio_id,
         usuario=user["email"],
         tipo="salida",
-        producto=producto,
+        producto=producto_nombre,
         cantidad=cantidad,
         zona=zona_origen_str,
         fecha=datetime.utcnow(),
@@ -781,7 +992,7 @@ async def transferencia_submit(
         negocio_id=negocio_id,
         usuario=user["email"],
         tipo="entrada",
-        producto=producto,
+        producto=producto_nombre,
         cantidad=cantidad,
         zona=zona_destino_str,
         fecha=datetime.utcnow(),
@@ -793,13 +1004,12 @@ async def transferencia_submit(
     db.refresh(mov_salida)
     db.refresh(mov_entrada)
 
-    # Auditoría de la transferencia
     registrar_auditoria(
         db,
         user,
         accion="transferencia_creada",
         detalle={
-            "producto": producto,
+            "producto": producto_nombre,
             "cantidad": cantidad,
             "zona_origen": zona_origen_str,
             "zona_destino": zona_destino_str,
@@ -809,13 +1019,13 @@ async def transferencia_submit(
     )
 
     print(
-        f">>> TRANSFERENCIA: {cantidad} x '{producto}' "
+        f">>> TRANSFERENCIA: {cantidad} x '{producto_nombre}' "
         f"de {zona_origen_str} a {zona_destino_str} "
         f"(mov_salida={mov_salida.id}, mov_entrada={mov_entrada.id})"
     )
 
-    # Te llevo a stock para ver el efecto
     return RedirectResponse(url="/stock", status_code=302)
+
 
 # ============================
 #        HISTORIAL
@@ -861,6 +1071,3 @@ async def movimientos_historial(
             "movimientos": movimientos,
         },
     )
-
-
-
