@@ -14,14 +14,14 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Movimiento
 from security import require_roles_dep
-from services_audit import registrar_auditoria
+from services.services_audit import registrar_auditoria
 
 
 # ============================
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 

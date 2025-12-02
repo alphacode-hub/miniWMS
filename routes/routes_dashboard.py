@@ -3,27 +3,22 @@ import json
 from datetime import datetime, timedelta, date
 from pathlib import Path
 
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-)
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Producto, Movimiento, Zona, Slot, Ubicacion, Alerta
-from security import require_user_dep, is_superadmin
-
+from security import require_user_dep
 
 # ============================
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
 
 # ============================
 #   ROUTER DASHBOARD
@@ -33,7 +28,6 @@ router = APIRouter(
     prefix="",
     tags=["dashboard"],
 )
-
 
 # ============================
 #     DASHBOARD
@@ -57,7 +51,7 @@ async def dashboard_view(
     negocio_id = user["negocio_id"]
 
     # ============================
-    # 1) Productos
+    # 1) Productos del negocio
     # ============================
 
     productos = (
@@ -70,7 +64,7 @@ async def dashboard_view(
     total_skus = len(productos)
 
     # ============================
-    # 2) Movimientos
+    # 2) Movimientos del negocio
     # ============================
 
     movimientos_all = (
@@ -80,30 +74,44 @@ async def dashboard_view(
         .all()
     )
 
-    # Flags onboarding
-    tiene_zonas = (
+    # ============================
+    # 3) Flags de onboarding
+    # ============================
+
+    # Zonas
+    total_zonas = (
         db.query(Zona)
         .filter(Zona.negocio_id == negocio_id)
-        .count() > 0
+        .count()
     )
-
-    tiene_slots = (
+    # Slots
+    total_slots = (
         db.query(Slot)
         .join(Ubicacion, Slot.ubicacion_id == Ubicacion.id)
         .join(Zona, Ubicacion.zona_id == Zona.id)
         .filter(Zona.negocio_id == negocio_id)
-        .count() > 0
+        .count()
     )
 
-    tiene_productos = total_skus > 0
-    tiene_movimientos = len(movimientos_all) > 0
+    # Flags de faltante (como los usa el template)
+    faltan_zonas = (total_zonas == 0)
+    faltan_slots = (total_slots == 0)
+    faltan_productos = (total_skus == 0)
+    faltan_movimientos = (len(movimientos_all) == 0)
+
+    onboarding_completo = not (
+        faltan_zonas
+        or faltan_slots
+        or faltan_productos
+        or faltan_movimientos
+    )
 
     # ============================
-    # 3) Totales por producto y lotes (FEFO simplificado)
+    # 4) Totales por producto + FEFO
     # ============================
 
-    totales_producto = {}            # "producto" -> qty total
-    lotes_por_producto = {}          # "producto" -> [{fv, qty}]
+    totales_producto: dict[str, int] = {}   # "producto_key" -> qty total
+    lotes_por_producto: dict[str, list] = {}  # "producto" -> [{fv, qty}]
 
     for mov in movimientos_all:
         prod_name = mov.producto or ""
@@ -122,13 +130,13 @@ async def dashboard_view(
         # total por producto
         totales_producto[prod_key] = totales_producto.get(prod_key, 0) + signed_delta
 
-        # lotes
+        # Lotes por producto (simplificado, sin por-slot aquí)
         if signed_delta > 0:
             fv = mov.fecha_vencimiento
-            lotes_por_producto.setdefault(prod_name, []).append({"fv": fv, "qty": signed_delta})
-
+            lotes_por_producto.setdefault(prod_name, []).append(
+                {"fv": fv, "qty": signed_delta}
+            )
         elif signed_delta < 0:
-            # FEFO
             lotes = lotes_por_producto.setdefault(prod_name, [])
             qty_to_remove = -signed_delta
 
@@ -152,12 +160,17 @@ async def dashboard_view(
             lotes[:] = [l for l in lotes if l["qty"] > 0]
 
     # ============================
-    # 4) Resumen de estados por producto
+    # 5) Resumen de estados de stock
     # ============================
 
-    resumen_stock = {"Crítico": 0, "OK": 0, "Sobre-stock": 0, "Sin configuración": 0}
+    resumen_stock = {
+        "Crítico": 0,
+        "OK": 0,
+        "Sobre-stock": 0,
+        "Sin configuración": 0,
+    }
     prioridad = {"Crítico": 3, "Sobre-stock": 2, "OK": 1, "Sin configuración": 0}
-    estado_producto = {}
+    estado_producto: dict[str, str] = {}
 
     for p in productos:
         key = p.nombre.lower()
@@ -180,13 +193,22 @@ async def dashboard_view(
             estado_producto[p.nombre] = est
 
     for est in estado_producto.values():
-        resumen_stock[est] += 1
+        if est in resumen_stock:
+            resumen_stock[est] += 1
 
     # ============================
-    # 5) Resumen vencimientos
+    # 6) Resumen de vencimientos
     # ============================
 
-    resumen_venc = {"Vencido": 0, "<7": 0, "<15": 0, "<30": 0, "<60": 0, "Normal": 0, "Sin fecha": 0}
+    resumen_venc = {
+        "Vencido": 0,
+        "<7": 0,
+        "<15": 0,
+        "<30": 0,
+        "<60": 0,
+        "Normal": 0,
+        "Sin fecha": 0,
+    }
 
     for prod_name, lotes in lotes_por_producto.items():
         fv_min = None
@@ -213,7 +235,7 @@ async def dashboard_view(
                 resumen_venc["Normal"] += 1
 
     # ============================
-    # 6) Total unidades en stock + valor inventario
+    # 7) Total unidades en stock + valor inventario
     # ============================
 
     total_unidades = sum(q for q in totales_producto.values() if q > 0)
@@ -224,15 +246,16 @@ async def dashboard_view(
             continue
         p = productos_by_name.get(prod_key)
         if p and p.costo_unitario is not None:
-            valor_inventario += qty * p.costo_unitario
+            valor_inventario += qty * float(p.costo_unitario)
 
     valor_inventario = int(round(valor_inventario))
 
     # ============================
-    # 7) Pérdidas por merma últimos 30 días
+    # 8) Pérdidas por merma últimos 30 días
     # ============================
 
     desde_30 = hoy - timedelta(days=30)
+    desde_30_dt = datetime.combine(desde_30, datetime.min.time())
 
     salidas_merma = (
         db.query(Movimiento)
@@ -240,7 +263,7 @@ async def dashboard_view(
             Movimiento.negocio_id == negocio_id,
             Movimiento.tipo == "salida",
             Movimiento.motivo_salida == "merma",
-            Movimiento.fecha >= datetime.combine(desde_30, datetime.min.time()),
+            Movimiento.fecha >= desde_30_dt,
         )
         .all()
     )
@@ -249,63 +272,65 @@ async def dashboard_view(
     for m in salidas_merma:
         p = productos_by_name.get((m.producto or "").lower())
         if p and p.costo_unitario is not None:
-            perdidas_merma_30d += abs(m.cantidad or 0) * p.costo_unitario
+            perdidas_merma_30d += abs(m.cantidad or 0) * float(p.costo_unitario)
 
     perdidas_merma_30d = int(round(perdidas_merma_30d))
 
     # ============================
-    # 8) Últimos 5 movimientos
+    # 9) Últimos movimientos (para tabla)
     # ============================
 
     movimientos_recientes = (
         db.query(Movimiento)
         .filter(Movimiento.negocio_id == negocio_id)
         .order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
-        .limit(5)
+        .limit(10)
         .all()
     )
 
     # ============================
-    # 9) Gráfico últimos 7 días
+    # 10) Gráfico últimos 7 días (siempre 7 días)
     # ============================
 
-    hace_7 = datetime.utcnow() - timedelta(days=7)
+    hoy_dt = datetime.utcnow().date()
+    labels = []
+    entradas_data = []
+    salidas_data = []
 
-    mov_ultimos_7 = (
-        db.query(Movimiento)
-        .filter(
-            Movimiento.negocio_id == negocio_id,
-            Movimiento.fecha >= hace_7,
+    for i in range(6, -1, -1):
+        dia = hoy_dt - timedelta(days=i)
+        labels.append(dia.strftime("%d-%m"))
+
+        e_count = (
+            db.query(func.coalesce(func.sum(Movimiento.cantidad), 0))
+            .filter(
+                Movimiento.negocio_id == negocio_id,
+                Movimiento.tipo == "entrada",
+                func.date(Movimiento.fecha) == dia,
+            )
+            .scalar()
         )
-        .order_by(Movimiento.fecha.asc())
-        .all()
-    )
+        s_count = (
+            db.query(func.coalesce(func.sum(Movimiento.cantidad), 0))
+            .filter(
+                Movimiento.negocio_id == negocio_id,
+                Movimiento.tipo == "salida",
+                func.date(Movimiento.fecha) == dia,
+            )
+            .scalar()
+        )
 
-    serie_por_dia = {}
-
-    for m in mov_ultimos_7:
-        dia = m.fecha.date()
-        if dia not in serie_por_dia:
-            serie_por_dia[dia] = {"entrada": 0, "salida": 0}
-
-        if m.tipo == "salida":
-            serie_por_dia[dia]["salida"] += m.cantidad or 0
-        else:
-            serie_por_dia[dia]["entrada"] += m.cantidad or 0
-
-    dias_ordenados = sorted(serie_por_dia.keys())
-    chart_labels = [d.strftime("%d-%m") for d in dias_ordenados]
-    chart_entradas = [serie_por_dia[d]["entrada"] for d in dias_ordenados]
-    chart_salidas = [serie_por_dia[d]["salida"] for d in dias_ordenados]
+        entradas_data.append(int(e_count or 0))
+        salidas_data.append(int(s_count or 0))
 
     chart_data = {
-        "labels": chart_labels,
-        "entradas": chart_entradas,
-        "salidas": chart_salidas,
+        "labels": labels,
+        "entradas": entradas_data,
+        "salidas": salidas_data,
     }
 
     # ============================
-    # 10) Alertas pendientes
+    # 11) Alertas pendientes
     # ============================
 
     alertas_pendientes = (
@@ -335,10 +360,11 @@ async def dashboard_view(
             "valor_inventario": valor_inventario,
             "perdidas_merma_30d": perdidas_merma_30d,
             "alertas_pendientes": alertas_pendientes,
-            # onboarding flags
-            "tiene_zonas": tiene_zonas,
-            "tiene_slots": tiene_slots,
-            "tiene_productos": tiene_productos,
-            "tiene_movimientos": tiene_movimientos,
+            # Onboarding flags (como los usa el template)
+            "faltan_zonas": faltan_zonas,
+            "faltan_slots": faltan_slots,
+            "faltan_productos": faltan_productos,
+            "faltan_movimientos": faltan_movimientos,
+            "onboarding_completo": onboarding_completo,
         },
     )

@@ -30,7 +30,7 @@ from security import (
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # ============================
@@ -133,11 +133,7 @@ async def login_submit(
 
 @router.api_route("/logout", methods=["GET", "POST"])
 async def logout(request: Request, db: Session = Depends(get_db)):
-    # 1) Limpiar sesión de Starlette (si la estás usando)
-    if hasattr(request, "session"):
-        request.session.clear()
-
-    # 2) Leer cookie firmada
+    # 1) Leer cookie firmada
     cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
 
     if cookie:
@@ -147,7 +143,7 @@ async def logout(request: Request, db: Session = Depends(get_db)):
             user_id = payload.get("user_id")
             token_sesion = payload.get("token_sesion")
 
-            # 3) Marcar sesión como inactiva en BD
+            # 2) Marcar sesión como inactiva en BD
             if user_id and token_sesion:
                 db.query(SesionUsuario).filter(
                     SesionUsuario.usuario_id == user_id,
@@ -159,7 +155,7 @@ async def logout(request: Request, db: Session = Depends(get_db)):
             # Si la cookie es inválida, simplemente seguimos y la borramos igual
             pass
 
-    # 4) Redirigir a login y borrar cookie
+    # 3) Redirigir a login y borrar cookie
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie(settings.SESSION_COOKIE_NAME)
     return response

@@ -16,9 +16,9 @@ from sqlalchemy import func
 from database import get_db
 from models import Movimiento, Producto, Slot, Ubicacion, Zona
 from security import require_roles_dep
-from services_slots import get_slots_negocio
-from services_audit import registrar_auditoria
-from services_alerts import evaluar_alertas_stock, evaluar_alertas_vencimiento
+from services.services_slots import get_slots_negocio
+from services.services_audit import registrar_auditoria
+from services.services_alerts import evaluar_alertas_stock, evaluar_alertas_vencimiento
 
 
 
@@ -26,7 +26,7 @@ from services_alerts import evaluar_alertas_stock, evaluar_alertas_vencimiento
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
@@ -377,6 +377,7 @@ async def salida_submit(
         user=user,
         producto_nombre=producto,
         origen="salida",
+        motivo=(motivo_salida or None),
     )
 
     print(">>> NUEVA SALIDA:", movimiento.id, producto, cantidad, "en", zona_str)
@@ -542,6 +543,7 @@ async def entrada_submit(
         user=user,
         producto_nombre=producto,
         origen="entrada",
+        motivo=None,
     )
 
     # Evaluar alertas de vencimiento (FEFO simplificado / futuro)

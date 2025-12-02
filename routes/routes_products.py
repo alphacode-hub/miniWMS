@@ -15,15 +15,15 @@ from sqlalchemy import func
 from database import get_db
 from models import Producto
 from security import require_roles_dep
-from services_plan_limits import check_plan_limit
-from services_audit import registrar_auditoria
+from services.services_plan_limits import check_plan_limit
+from services.services_audit import registrar_auditoria
 
 
 # ============================
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 

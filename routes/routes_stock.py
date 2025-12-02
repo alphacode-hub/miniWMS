@@ -1,6 +1,6 @@
 ﻿# routes_stock.py
 from pathlib import Path
-from datetime import datetime, date
+from datetime import date
 
 from fastapi import (
     APIRouter,
@@ -10,18 +10,18 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from database import get_db
 from models import Movimiento, Producto, Slot, Ubicacion, Zona
 from security import require_roles_dep
+from services.services_stock import calcular_estado_stock, estado_css
 
 
 # ============================
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
@@ -90,7 +90,7 @@ async def stock_view(
         .all()
     )
 
-    totales_producto: dict[str, int] = {}   # prod_key -> qty total
+    totales_producto: dict[str, int] = {}      # prod_key -> qty total
     stock_por_slot: dict[tuple[str, str], dict] = {}
     lotes_por_slot: dict[tuple[str, str], list] = {}
 
@@ -100,7 +100,7 @@ async def stock_view(
             continue
 
         prod_key = prod_name.lower()
-        zona_str = mov.zona  # D-RA-C1, etc.
+        zona_str = mov.zona  # código full del slot
 
         qty = mov.cantidad or 0
         # salidas/ajustes negativos restan, el resto suma
@@ -177,22 +177,9 @@ async def stock_view(
         stock_min = prod.stock_min if prod else None
         stock_max = prod.stock_max if prod else None
 
-        # Estado por min/max (a nivel producto total)
-        estado = "Sin configuración"
-        estado_css = "bg-slate-200 text-slate-700"
-
-        if stock_min is None and stock_max is None:
-            estado = "Sin configuración"
-        else:
-            if stock_min is not None and stock_total < stock_min:
-                estado = "Crítico"
-                estado_css = "bg-red-100 text-red-700 border border-red-200"
-            elif stock_max is not None and stock_total > stock_max:
-                estado = "Sobre-stock"
-                estado_css = "bg-amber-100 text-amber-700 border border-amber-200"
-            else:
-                estado = "OK"
-                estado_css = "bg-emerald-100 text-emerald-700 border border-emerald-200"
+        # Estado por min/max (a nivel producto total, usando service)
+        estado_val = calcular_estado_stock(stock_total, stock_min, stock_max)
+        estado_css_val = estado_css(estado_val)
 
         slot = info["slot"]
         ubic = info["ubic"]
@@ -252,8 +239,8 @@ async def stock_view(
                 "stock_total": stock_total,
                 "stock_min": stock_min,
                 "stock_max": stock_max,
-                "estado": estado,
-                "estado_css": estado_css,
+                "estado": estado_val,
+                "estado_css": estado_css_val,
                 "capacidad": capacidad,
                 "ocupacion_pct": ocupacion_pct,
                 "vencimiento_fecha": fv_min,
@@ -271,19 +258,8 @@ async def stock_view(
             stock_max = p.stock_max
             stock_total = 0
 
-            if stock_min is None and stock_max is None:
-                estado = "Sin configuración"
-                estado_css = "bg-slate-200 text-slate-700"
-            else:
-                if stock_min is not None and stock_total < stock_min:
-                    estado = "Crítico"
-                    estado_css = "bg-red-100 text-red-700 border border-red-200"
-                elif stock_max is not None and stock_total > stock_max:
-                    estado = "Sobre-stock"
-                    estado_css = "bg-amber-100 text-amber-700 border border-amber-200"
-                else:
-                    estado = "OK"
-                    estado_css = "bg-emerald-100 text-emerald-700 border border-emerald-200"
+            estado_val = calcular_estado_stock(stock_total, stock_min, stock_max)
+            estado_css_val = estado_css(estado_val)
 
             filas_all.append(
                 {
@@ -297,8 +273,8 @@ async def stock_view(
                     "stock_total": stock_total,
                     "stock_min": stock_min,
                     "stock_max": stock_max,
-                    "estado": estado,
-                    "estado_css": estado_css,
+                    "estado": estado_val,
+                    "estado_css": estado_css_val,
                     "capacidad": None,
                     "ocupacion_pct": None,
                     "vencimiento_fecha": None,

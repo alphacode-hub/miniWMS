@@ -7,7 +7,7 @@
     <!-- =========================================
          1) ONBOARDING / CONFIGURACIÓN INICIAL
          ========================================= -->
-    {% if faltan_zonas or faltan_productos or faltan_slots or faltan_movimientos %}
+    {% if not onboarding_completo %}
     <!-- Modo guiado: pasos visibles -->
     <section class="bg-slate-900 text-sky-50 rounded-2xl p-4 space-y-3">
         <div class="flex items-start justify-between gap-3">
@@ -523,12 +523,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    // Cierre del mensaje de configuración completada (si existe)
+    // ============================
+    // Config box (onboarding completo)
+    // ============================
     const box = document.getElementById("config-completa-box");
     const closeBtn = document.getElementById("close-config-box");
 
+    // Usamos el negocio_id para que el "cerrado" sea por negocio y no global
+    const negocioId = {{ user.negocio_id or 0 }};
+    const storageKey = `config_box_hidden_${negocioId}`;
+
     if (box && closeBtn) {
-        const oculto = localStorage.getItem("config_box_hidden");
+        // Si alguna vez se cerró esta caja para ESTE negocio, se oculta
+        const oculto = localStorage.getItem(storageKey);
         if (oculto === "1") {
             box.style.display = "none";
         }
@@ -539,11 +546,13 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 box.style.display = "none";
             }, 300);
-            localStorage.setItem("config_box_hidden", "1");
+            localStorage.setItem(storageKey, "1");
         });
     }
 
+    // ============================
     // Gráfico movimientos últimos 7 días
+    // ============================
     const chartData = {{ chart_data_json | safe }};
     const canvas = document.getElementById('chartMovimientos');
     if (!canvas) return;
@@ -583,3 +592,4 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 {% endblock %}
+

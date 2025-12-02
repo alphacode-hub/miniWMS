@@ -29,21 +29,21 @@
             </p>
         </div>
         <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-3 py-2">
-            <p class="text-[11px] text-yellow-700 font-semibold">Bajo</p>
+            <p class="text-[11px] text-yellow-700 font-semibold">Sobre stock</p>
             <p class="text-lg font-bold text-yellow-800">
-                {{ resumen["Bajo"] }}
+                {{ resumen["Sobre-stock"] }}
             </p>
         </div>
         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-3 py-2">
             <p class="text-[11px] text-emerald-700 font-semibold">Óptimo</p>
             <p class="text-lg font-bold text-emerald-800">
-                {{ resumen["Óptimo"] }}
+                {{ resumen["OK"] }}
             </p>
         </div>
         <div class="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2">
-            <p class="text-[11px] text-slate-700 font-semibold">Sobre stock</p>
+            <p class="text-[11px] text-slate-700 font-semibold">Corregir</p>
             <p class="text-lg font-bold text-slate-800">
-                {{ resumen["Sobre stock"] }}
+                {{ resumen["Sin configuración"] }}
             </p>
         </div>
     </div>
@@ -163,7 +163,8 @@
                         <th class="py-1.5 px-2">Ubicación</th>
                         <th class="py-1.5 px-2">Slot</th>
                         <th class="py-1.5 px-2">Producto</th>
-                        <th class="py-1.5 px-2 text-center">Stock</th>
+                        <th class="py-1.5 px-2 text-center">Stock en Slot</th>
+                        <th class="py-1.5 px-2 text-center">Stock Total</th>
                         <th class="py-1.5 px-2 text-center">Stock min</th>
                         <th class="py-1.5 px-2 text-center">Stock max</th>
                         <th class="py-1.5 px-2 text-center">Estado</th>
@@ -185,6 +186,9 @@
                             {{ fila.producto }}
                         </td>
                         <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
+                            {{ fila.cantidad }}
+                        </td>
+                        <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
                             {{ fila.stock_total }}
                         </td>
                         <td class="py-1.5 px-2 text-center text-[11px] text-slate-800">
@@ -194,23 +198,9 @@
                             {{ fila.stock_max if fila.stock_max is not none else "–" }}
                         </td>
                         <td class="py-1.5 px-2 text-center">
-                            {% if fila.estado == "Crítico" %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
-                                Crítico
+                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold {{ fila.estado_css }}">
+                                {{ fila.estado }}
                             </span>
-                            {% elif fila.estado == "Bajo" %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">
-                                Bajo
-                            </span>
-                            {% elif fila.estado == "Óptimo" %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
-                                Óptimo
-                            </span>
-                            {% else %}
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
-                                Sobre stock
-                            </span>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
