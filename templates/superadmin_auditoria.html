@@ -1,0 +1,232 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Auditoría - {{ negocio.nombre_fantasia }}{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-4">
+
+    <!-- Encabezado + filtros -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 sm:px-6 sm:py-6 space-y-4">
+        <!-- Encabezado -->
+        <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Auditoría de negocio
+                </p>
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
+                    Auditoría de {{ negocio.nombre_fantasia }}
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Registro detallado de acciones realizadas en este negocio.
+                </p>
+
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-slate-200 bg-slate-50
+                                 text-[11px] font-medium text-slate-600">
+                        ID negocio: {{ negocio.id }}
+                    </span>
+                    <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-indigo-200 bg-indigo-50
+                                 text-[11px] font-medium text-indigo-700">
+                        Plan: {{ negocio.plan_tipo|upper }}
+                    </span>
+                    <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-emerald-200 bg-emerald-50
+                                 text-[11px] font-medium text-emerald-700">
+                        Estado: {{ negocio.estado|capitalize }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-2">
+                <a href="/superadmin/negocios/{{ negocio.id }}"
+                   class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                    ← Volver al detalle
+                </a>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <form method="get"
+              class="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+            <!-- Texto libre -->
+            <div class="sm:col-span-2 space-y-1">
+                <label class="text-[11px] font-semibold text-slate-700">
+                    Buscar (usuario, acción, detalle)
+                </label>
+                <div class="relative">
+                    <input type="text"
+                           name="q"
+                           value="{{ filtros.q }}"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-8 py-2 text-xs sm:text-sm text-slate-900
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                           placeholder="Ej: usuario@mail.com, producto_creado, etc.">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <span class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300
+                                     text-[9px] text-slate-400">
+                            ⌕
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desde -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-700">Desde</label>
+                <input type="date"
+                       name="desde"
+                       value="{{ filtros.desde }}"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <!-- Hasta -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-700">Hasta</label>
+                <input type="date"
+                       name="hasta"
+                       value="{{ filtros.hasta }}"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <!-- Nivel -->
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-700">Nivel</label>
+                <select name="nivel"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm text-slate-900
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="" {% if not filtros.nivel %}selected{% endif %}>Todos</option>
+                    <option value="critico" {% if filtros.nivel == "critico" %}selected{% endif %}>Crítico</option>
+                    <option value="warning" {% if filtros.nivel == "warning" %}selected{% endif %}>Advertencia</option>
+                    <option value="info" {% if filtros.nivel == "info" %}selected{% endif %}>Informativo</option>
+                    <option value="normal" {% if filtros.nivel == "normal" %}selected{% endif %}>Normal</option>
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="sm:col-span-5 flex justify-end gap-2">
+                <a href="/superadmin/negocios/{{ negocio.id }}/auditoria"
+                   class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-medium
+                          border border-slate-200 text-slate-600 bg-white hover:bg-slate-50">
+                    Limpiar filtros
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-1.5 rounded-xl text-xs font-semibold
+                               text-white bg-slate-900 hover:bg-slate-800 shadow-sm active:scale-[0.98]">
+                    Aplicar filtros
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Lista de registros -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 sm:px-6 sm:py-6 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+            <p class="text-xs sm:text-sm text-slate-500">
+                Registros encontrados:
+                <span class="font-semibold text-slate-900">{{ registros|length }}</span>
+                {% if filtros.desde or filtros.hasta or filtros.nivel %}
+                ·
+                {% if filtros.desde or filtros.hasta %}
+                Rango:
+                <span class="font-medium">
+                    {{ filtros.desde or "inicio" }} → {{ filtros.hasta or "hoy" }}
+                </span>
+                {% endif %}
+                {% if filtros.nivel %}
+                · Nivel:
+                <span class="font-medium">
+                    {% if filtros.nivel == "critico" %}
+                    Crítico
+                    {% elif filtros.nivel == "warning" %}
+                    Advertencia
+                    {% elif filtros.nivel == "info" %}
+                    Informativo
+                    {% else %}
+                    Normal
+                    {% endif %}
+                </span>
+                {% endif %}
+                {% endif %}
+            </p>
+        </div>
+
+        {% if registros and registros|length > 0 %}
+        <div class="border border-slate-200 rounded-2xl overflow-x-auto">
+            <table class="min-w-full text-xs sm:text-sm">
+                <thead class="bg-slate-50">
+                    <tr class="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        <th class="px-3 sm:px-4 py-2 text-left whitespace-nowrap">Fecha</th>
+                        <th class="px-3 sm:px-4 py-2 text-left">Usuario</th>
+                        <th class="px-3 sm:px-4 py-2 text-left">Acción</th>
+                        <th class="px-3 sm:px-4 py-2 text-left">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for r in registros %}
+                    {% set nivel = r.nivel if r.nivel is defined else "normal" %}
+                    <tr class="hover:bg-slate-50/70 align-top">
+                        <!-- Fecha -->
+                        <td class="px-3 sm:px-4 py-2 text-[11px] text-slate-500 whitespace-nowrap">
+                            {% if r.fecha %}
+                            {{ r.fecha.strftime("%d-%m-%Y %H:%M") }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+
+                        <!-- Usuario -->
+                        <td class="px-3 sm:px-4 py-2 text-[11px] sm:text-xs text-slate-700 whitespace-nowrap">
+                            {{ r.usuario or "—" }}
+                        </td>
+
+                        <!-- Acción + nivel -->
+                        <td class="px-3 sm:px-4 py-2">
+                            {% if nivel == "critico" %}
+                            {% set badge_classes = "bg-rose-50 text-rose-700 border-rose-200" %}
+                            {% set label_nivel = "Crítico" %}
+                            {% elif nivel == "warning" %}
+                            {% set badge_classes = "bg-amber-50 text-amber-700 border-amber-200" %}
+                            {% set label_nivel = "Advertencia" %}
+                            {% elif nivel == "info" %}
+                            {% set badge_classes = "bg-sky-50 text-sky-700 border-sky-200" %}
+                            {% set label_nivel = "Info" %}
+                            {% else %}
+                            {% set badge_classes = "bg-slate-50 text-slate-700 border-slate-200" %}
+                            {% set label_nivel = "Normal" %}
+                            {% endif %}
+
+                            <div class="flex flex-col gap-1">
+                                <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-semibold border {{ badge_classes }}>
+                                    {{ r.accion or "—" }}
+                                </span>
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wide">
+                                    {{ label_nivel }}
+                                </span>
+                            </div>
+                        </td>
+
+                        <!-- Detalle -->
+                        <td class="px-3 sm:px-4 py-2 text-[11px] sm:text-xs text-slate-600">
+                            {% if r.detalle %}
+                            <pre class="whitespace-pre-wrap break-words bg-slate-50 rounded-lg px-2 py-1 border border-slate-100 max-h-40 overflow-auto">
+{{ r.detalle }}
+                            </pre>
+                            {% else %}
+                            <span class="text-slate-400">Sin detalle</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm text-slate-500">
+            No se encontraron registros de auditoría con los filtros actuales.
+        </div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

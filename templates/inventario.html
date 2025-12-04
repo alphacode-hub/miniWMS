@@ -2,69 +2,54 @@
 {% block title %}Inventario - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
 
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
-        <!-- Paso / guía -->
-        <div class="flex items-start justify-between mb-1">
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     Paso 4 de 4 · Inventario físico
                 </p>
-                <p class="text-[11px] text-slate-500">
-                    Después de registrar entradas y salidas, acá ajustas el stock según tu conteo real.
-                </p>
-            </div>
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Dashboard
-            </a>
-        </div>
-
-        <!-- Header principal -->
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-lg font-bold text-slate-900">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Inventario físico
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Compara el stock teórico con el conteo real en bodega.
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Compara el stock teórico con el conteo real en bodega y ajusta diferencias automáticamente.
                 </p>
             </div>
-        </div>
+
+            <a href="/dashboard"
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
+                ← Volver al dashboard
+            </a>
+        </header>
 
         {% if stock_items|length == 0 %}
+
+        <!-- ESTADO VACÍO -->
         <p class="text-xs text-slate-500 mt-1">
             No hay productos con movimientos aún.
             Primero registra <span class="font-semibold">entradas</span> para poder hacer inventario.
         </p>
+
         {% else %}
 
-        <!-- Aviso / contexto -->
-        <div class="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2">
-            <p class="text-[11px] text-amber-800">
-                Para cada producto y ubicación, ingresa el
-                <span class="font-semibold">conteo físico</span>.
-                Si el valor difiere del stock teórico, se generará
-                automáticamente un movimiento de <span class="font-semibold">ajuste</span>
-                (entrada o salida) para cuadrar el inventario.
-            </p>
-        </div>
-
+        <!-- FORMULARIO INVENTARIO -->
         <form method="post" action="/inventario" class="space-y-3">
 
             <!-- total_items para el backend -->
             <input type="hidden" name="total_items" value="{{ stock_items|length }}" />
 
+            <!-- LISTA DE ITEMS -->
             <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                 {% for item in stock_items %}
                 {% set i = loop.index0 %}
 
-                <!-- Fila de conteo -->
                 <div class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
-
-                    <!-- Hidden fields para el backend -->
+                    <!-- Hidden fields -->
                     <input type="hidden" name="producto_{{ i }}" value="{{ item.producto }}">
                     <input type="hidden" name="zona_{{ i }}" value="{{ item.zona }}">
 
@@ -102,7 +87,7 @@
                 {% endfor %}
             </div>
 
-            <!-- Botones -->
+            <!-- BOTONES -->
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/dashboard"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
@@ -111,22 +96,29 @@
                 </a>
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl
-               text-[11px] font-semibold bg-slate-900 text-white shadow-sm
-               hover:bg-slate-800 active:scale-[0.97] transition">
+                               text-[11px] font-semibold bg-slate-900 text-white shadow-sm
+                               hover:bg-slate-800 active:scale-[0.97] transition">
                     Registrar ajustes
                 </button>
+            </div>
 
-
+            <!-- PIE / LEYENDA -->
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <p class="text-[11px] text-slate-500">
+                    Para cada producto y ubicación, ingresa el conteo físico. Si es distinto al stock teórico,
+                    se generará automáticamente un movimiento de <span class="font-semibold">ajuste</span> para cuadrar el inventario.
+                </p>
             </div>
 
         </form>
 
         {% endif %}
-    </div>
 
-    <!-- Volver (móvil) -->
+    </section>
+
+    <!-- VOLVER (MÓVIL) -->
     <a href="/dashboard"
-       class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
+       class="block mt-3 text-center text-xs text-slate-500 sm:hidden hover:text-slate-700">
         ← Volver al dashboard
     </a>
 

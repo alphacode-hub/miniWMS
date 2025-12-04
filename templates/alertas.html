@@ -3,156 +3,189 @@
 {% block title %}Alertas - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-4">
+<div class="w-full max-w-5xl mx-auto px-4 py-4 sm:py-6 space-y-4">
 
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+    {# ======================
+    HEADER PRINCIPAL (card)
+    ====================== #}
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                    px-4 py-4 sm:px-6 sm:py-5 space-y-2">
+        <h1 class="text-lg sm:text-xl font-bold text-slate-900">
+            Alertas del negocio
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-500">
+            Reglas internas y eventos relevantes sobre stock, vencimientos y operación en {{ user.negocio }}.
+        </p>
+    </section>
 
-        {# ======================
-        Header
-        ====================== #}
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    {# ======================
+    Resumen rápido
+    ====================== #}
+    {% set total = alertas|length %}
+    {% set pendientes = alertas|selectattr("estado", "equalto", "pendiente")|list|length %}
+    {% set leidas = alertas|selectattr("estado", "equalto", "leida")|list|length %}
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p class="text-[11px] text-slate-500 font-semibold">
+                Total alertas
+            </p>
+            <p class="mt-1 text-2xl font-semibold text-slate-900">
+                {{ total }}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Historial general del negocio.
+            </p>
+        </div>
+
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p class="text-[11px] text-amber-700 font-semibold">
+                Pendientes
+            </p>
+            <p class="mt-1 text-2xl font-semibold text-amber-800">
+                {{ pendientes }}
+            </p>
+            <p class="text-[10px] text-amber-700/80">
+                Requieren revisión o acción.
+            </p>
+        </div>
+
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p class="text-[11px] text-emerald-700 font-semibold">
+                Revisadas
+            </p>
+            <p class="mt-1 text-2xl font-semibold text-emerald-800">
+                {{ leidas }}
+            </p>
+            <p class="text-[10px] text-emerald-700/80">
+                Ya fueron marcadas como leídas.
+            </p>
+        </div>
+    </section>
+
+    {# ======================
+    Tabla de alertas
+    ====================== #}
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="border-b border-slate-100 px-4 py-3 flex items-center justify-between">
             <div>
-                <h1 class="text-lg md:text-xl font-bold text-slate-900">
-                    Alertas del negocio
-                </h1>
-                <p class="text-xs md:text-sm text-slate-500">
-                    Reglas internas y eventos relevantes sobre stock, vencimientos y operación.
-                </p>
-            </div>
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full border text-xs md:text-sm
-                      bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
-                ← Volver al dashboard
-            </a>
-        </div>
-
-        {# ======================
-        Resumen rápido
-        ====================== #}
-        {% set total = alertas|length %}
-        {% set pendientes = alertas|selectattr("estado", "equalto", "pendiente")|list|length %}
-        {% set leidas = alertas|selectattr("estado", "equalto", "leida")|list|length %}
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p class="text-[11px] text-slate-500">Total alertas</p>
-                <p class="mt-1 text-2xl font-semibold text-slate-900">{{ total }}</p>
-            </div>
-
-            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p class="text-[11px] text-amber-700">Pendientes</p>
-                <p class="mt-1 text-2xl font-semibold text-amber-800">{{ pendientes }}</p>
-            </div>
-
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <p class="text-[11px] text-emerald-700">Revisadas</p>
-                <p class="mt-1 text-2xl font-semibold text-emerald-800">{{ leidas }}</p>
-            </div>
-        </div>
-
-        {# ======================
-        Tabla de alertas
-        ====================== #}
-        <div class="rounded-2xl border border-slate-200 bg-white/90 shadow-sm overflow-hidden mt-2">
-            <div class="border-b border-slate-100 px-4 py-3 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-slate-900">
                     Historial de alertas
                 </h2>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-sky-50 font-medium">
-                    Últimas 200
-                </span>
+                <p class="text-[11px] text-slate-500">
+                    Se muestran las últimas 200 alertas generadas automáticamente por el sistema.
+                </p>
             </div>
-
-            {% if alertas %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-xs md:text-sm">
-                    <thead class="bg-slate-50">
-                        <tr class="text-left text-[11px] md:text-xs text-slate-500 uppercase tracking-wide">
-                            <th class="px-3 py-2">Estado</th>
-                            <th class="px-3 py-2">Tipo</th>
-                            <th class="px-3 py-2">Mensaje</th>
-                            <th class="px-3 py-2 hidden md:table-cell">Origen</th>
-                            <th class="px-3 py-2 hidden md:table-cell">Destino</th>
-                            <th class="px-3 py-2">Creación</th>
-                            <th class="px-3 py-2"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        {% for a in alertas %}
-                        <tr class="hover:bg-slate-50/80">
-                            <td class="px-3 py-2">
-                                {% if a.estado == 'pendiente' %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                             bg-amber-50 text-amber-700 border border-amber-200">
-                                    Pendiente
-                                </span>
-                                {% elif a.estado == 'leida' %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                             bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    Revisada
-                                </span>
-                                {% elif a.estado == 'enviada' %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                             bg-sky-50 text-sky-700 border border-sky-200">
-                                    Enviada
-                                </span>
-                                {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                             bg-slate-100 text-slate-600 border border-slate-200">
-                                    {{ a.estado }}
-                                </span>
-                                {% endif %}
-                            </td>
-
-                            <td class="px-3 py-2 text-[11px] md:text-xs text-slate-600">
-                                {{ a.tipo }}
-                            </td>
-
-                            <td class="px-3 py-2 text-xs text-slate-800">
-                                {{ a.mensaje }}
-                            </td>
-
-                            <td class="px-3 py-2 hidden md:table-cell text-[11px] text-slate-500">
-                                {{ a.origen or '-' }}
-                            </td>
-
-                            <td class="px-3 py-2 hidden md:table-cell text-[11px] text-slate-500">
-                                {{ a.destino or '-' }}
-                            </td>
-
-                            <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">
-                                {{ a.fecha_creacion.strftime('%d-%m-%Y %H:%M') if a.fecha_creacion else '-' }}
-                            </td>
-
-                            <td class="px-3 py-2 text-right">
-                                {% if a.estado == 'pendiente' %}
-                                <form method="post" action="/alertas/{{ a.id }}/marcar-leida">
-                                    <button type="submit"
-                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold
-                                                   bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
-                                        Marcar como leída
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="px-4 py-6 text-center text-sm text-slate-500">
-                Aún no hay alertas registradas para este negocio.
-            </div>
-            {% endif %}
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-sky-50 font-medium">
+                Últimas 200
+            </span>
         </div>
 
-        <!-- Volver (móvil) -->
-        <a href="/dashboard"
-           class="block mt-1 text-center text-xs text-slate-500 sm:hidden">
-            ← Volver al dashboard
-        </a>
-    </div>
+        {% if alertas %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs md:text-sm">
+                <thead class="bg-slate-50">
+                    <tr class="text-left text-[11px] md:text-xs text-slate-500 uppercase tracking-wide">
+                        <th class="px-3 py-2">Estado</th>
+                        <th class="px-3 py-2">Tipo</th>
+                        <th class="px-3 py-2">Mensaje</th>
+                        <th class="px-3 py-2 hidden md:table-cell">Origen</th>
+                        <th class="px-3 py-2 hidden md:table-cell">Destino</th>
+                        <th class="px-3 py-2">Creación</th>
+                        <th class="px-3 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for a in alertas %}
+                    <tr class="hover:bg-slate-50/80">
+                        <td class="px-3 py-2">
+                            {% if a.estado == 'pendiente' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-amber-50 text-amber-700 border border-amber-200">
+                                Pendiente
+                            </span>
+                            {% elif a.estado == 'leida' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Revisada
+                            </span>
+                            {% elif a.estado == 'enviada' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-sky-50 text-sky-700 border border-sky-200">
+                                Enviada
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-slate-100 text-slate-600 border border-slate-200">
+                                {{ a.estado }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-3 py-2 text-[11px] md:text-xs text-slate-600">
+                            {{ a.tipo }}
+                        </td>
+
+                        <td class="px-3 py-2 text-xs text-slate-800">
+                            {{ a.mensaje }}
+                        </td>
+
+                        <td class="px-3 py-2 hidden md:table-cell text-[11px] text-slate-500">
+                            {{ a.origen or '-' }}
+                        </td>
+
+                        <td class="px-3 py-2 hidden md:table-cell text-[11px] text-slate-500">
+                            {{ a.destino or '-' }}
+                        </td>
+
+                        <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">
+                            {{ a.fecha_creacion.strftime('%d-%m-%Y %H:%M') if a.fecha_creacion else '-' }}
+                        </td>
+
+                        <td class="px-3 py-2 text-right">
+                            {% if a.estado == 'pendiente' %}
+                            <form method="post" action="/alertas/{{ a.id }}/marcar-leida">
+                                <button type="submit"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold
+                                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                                    Marcar como leída
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="px-4 py-6 text-center text-sm text-slate-500">
+            Aún no hay alertas registradas para este negocio.
+        </div>
+        {% endif %}
+
+        {# Pie con siguiente paso + volver (desktop) #}
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 px-4 pb-3">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar los movimientos recientes
+                </span>
+                para entender cómo se generaron estas alertas.
+            </p>
+
+            <a href="/dashboard"
+               class="hidden sm:inline-block text-[11px] text-slate-500 hover:text-slate-700">
+                ← Volver al dashboard
+            </a>
+        </div>
+    </section>
+
+    {# Volver (móvil) #}
+    <a href="/dashboard"
+       class="block mt-2 text-center text-[11px] text-slate-500 sm:hidden">
+        ← Volver al dashboard
+    </a>
 
 </div>
 {% endblock %}

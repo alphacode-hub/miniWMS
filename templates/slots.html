@@ -2,22 +2,23 @@
 {% block title %}Slots - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
 
-    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
         <!-- HEADER -->
-        <header class="flex items-start justify-between gap-3">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
                     Paso 1 de 4 · Diseño de almacén
                 </p>
 
-                <h1 class="text-lg font-semibold text-slate-900">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Slots de ubicación
                 </h1>
 
-                <p class="text-xs text-slate-500 mt-1">
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
                     Zona:
                     <span class="font-semibold text-slate-800">
                         {{ ubicacion.zona.nombre }}
@@ -25,7 +26,7 @@
                     </span>
                 </p>
 
-                <p class="text-xs text-slate-500">
+                <p class="text-xs sm:text-sm text-slate-500">
                     Ubicación:
                     <span class="font-semibold text-slate-800">
                         {{ ubicacion.nombre }}
@@ -39,45 +40,47 @@
                 </p>
             </div>
 
-            <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
-                ← Volver
-            </a>
+            <!-- Acciones header: SOLO CTA principal -->
+            <div class="flex flex-col items-end gap-2">
+                <a href="/ubicaciones/{{ ubicacion.id }}/slots/nuevo"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold
+                          bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition">
+                    <span class="mr-1.5 text-sm">＋</span>
+                    Nuevo slot
+                </a>
+            </div>
         </header>
 
-        <!-- BOTÓN NUEVO SLOT -->
-        <div class="flex sm:block">
-            <a href="/ubicaciones/{{ ubicacion.id }}/slots/nuevo"
-               class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold
-       bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97] w-full sm:w-auto">
-                <span class="mr-1.5 text-sm">＋</span>
-                Nuevo slot
-            </a>
+        {% if slots|length == 0 %}
+
+        <!-- EMPTY STATE -->
+        <div class="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4">
+            <p class="text-xs text-slate-600 font-medium">
+                Esta ubicación aún no tiene slots configurados.
+            </p>
+            <p class="text-[11px] text-slate-500 mt-1">
+                Crea al menos un slot (ej: C1, C2, B1) para empezar a asignar stock dentro de esta ubicación.
+            </p>
         </div>
 
-        {% if slots|length == 0 %}
-        <!-- EMPTY STATE -->
-        <p class="mt-2 text-sm text-slate-500">
-            Esta ubicación aún no tiene slots configurados.
-            Crea al menos uno para empezar a asignar stock aquí.
-        </p>
         {% else %}
 
         <!-- LISTA DE SLOTS -->
-        <div class="max-h-[460px] overflow-y-auto border border-slate-200 rounded-2xl mt-2">
+        <div class="mt-2 max-h-[460px] overflow-y-auto overflow-x-auto border border-slate-200 rounded-2xl">
             <table class="w-full text-xs">
                 <thead class="bg-slate-50 sticky top-0 z-10">
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-1.5 px-2">Slot</th>
-                        <th class="py-1.5 px-2">Código completo</th>
-                        <th class="py-1.5 px-2 text-right">Capacidad</th>
+                    <tr class="text-left text-slate-500 border-b
+                               text-[11px] font-medium uppercase tracking-wide">
+                        <th class="py-1.5 px-3">Slot</th>
+                        <th class="py-1.5 px-3">Código completo</th>
+                        <th class="py-1.5 px-3 text-right">Capacidad</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for slot in slots %}
-                    <tr class="border-b last:border-0">
+                    <tr class="border-b last:border-0 hover:bg-slate-50/70">
                         <!-- Código corto -->
-                        <td class="py-1.5 px-2 align-top">
+                        <td class="py-1.5 px-3 align-top">
                             <span class="inline-flex items-center justify-center px-2 py-[2px]
                                          rounded-full text-[10px] font-semibold
                                          bg-slate-900 text-white">
@@ -86,14 +89,14 @@
                         </td>
 
                         <!-- Código full -->
-                        <td class="py-1.5 px-2 align-top">
+                        <td class="py-1.5 px-3 align-top">
                             <span class="font-mono text-[11px] text-slate-800">
                                 {{ slot.codigo_full }}
                             </span>
                         </td>
 
                         <!-- Capacidad -->
-                        <td class="py-1.5 px-2 align-top text-right">
+                        <td class="py-1.5 px-3 align-top text-right">
                             {% if slot.capacidad is not none %}
                             <span class="text-[11px] text-slate-800">
                                 {{ slot.capacidad }}
@@ -115,10 +118,18 @@
 
         {% endif %}
 
-        <!-- NAVEGACIÓN MÓVIL -->
-        <div class="mt-3 space-y-1 sm:hidden">
+        <!-- PIE / NAVEGACIÓN (igual patrón que Ubicaciones) -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    registrar entradas de stock
+                </span>
+                en estos slots desde el módulo de movimientos.
+            </p>
+
             <a href="/zonas/{{ ubicacion.zona.id }}/ubicaciones"
-               class="block text-center text-xs text-slate-500">
+               class="text-[11px] text-slate-500 hover:text-slate-700 text-center sm:text-right mt-1 sm:mt-0">
                 ← Volver a ubicaciones
             </a>
         </div>

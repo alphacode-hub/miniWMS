@@ -2,24 +2,32 @@
 {% block title %}Iniciar sesión | Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-6xl mx-auto px-4 py-6 flex justify-center">
+<div class="w-full max-w-6xl mx-auto px-4 py-8 flex justify-center">
     <div class="w-full max-w-md">
+
         <!-- Card -->
-        <div class="bg-white shadow-lg rounded-2xl px-6 py-6 sm:px-8 sm:py-8 space-y-4">
-            <!-- Título -->
-            <div class="text-center space-y-1">
+        <div class="bg-white shadow-lg rounded-2xl px-6 py-6 sm:px-8 sm:py-8 space-y-5">
+
+            <!-- Encabezado -->
+            <div class="text-center space-y-1.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Acceso seguro
+                </p>
                 <h1 class="text-xl font-semibold text-slate-900">
-                    Inicia sesión
+                    Inicia sesión en Mini WMS
                 </h1>
                 <p class="text-xs text-slate-500">
-                    Accede a tu Mini WMS desde cualquier dispositivo.
+                    Controla tu inventario y operaciones desde cualquier dispositivo.
                 </p>
             </div>
 
-            <!-- Error -->
+            <!-- Error local (además de los flash del base si los usas) -->
             {% if error %}
             <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-                <p class="text-[11px] text-rose-700">
+                <p class="text-[11px] font-semibold text-rose-700">
+                    Error al iniciar sesión
+                </p>
+                <p class="text-[11px] text-rose-700 mt-0.5">
                     {{ error }}
                 </p>
             </div>
@@ -37,7 +45,7 @@
                            type="email"
                            required
                            autocomplete="email"
-                           class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+                           class="w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
                                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
                                   placeholder:text-slate-400"
                            placeholder="usuario@tunegocio.cl" />
@@ -53,7 +61,7 @@
                            type="password"
                            required
                            autocomplete="current-password"
-                           class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
+                           class="w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
                                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
                                   placeholder:text-slate-400"
                            placeholder="••••••••" />
@@ -67,8 +75,8 @@
                 </button>
             </form>
 
-            <!-- Pie: crear negocio -->
-            <div class="pt-1 text-center space-y-1">
+            <!-- Pie: crear negocio / ayuda -->
+            <div class="pt-1 text-center space-y-1.5">
                 <p class="text-[11px] text-slate-400">
                     Los usuarios se crean automáticamente al registrar un negocio
                     o desde el panel de administración.
@@ -80,8 +88,12 @@
                         Crear negocio
                     </a>
                 </p>
+                <p class="text-[11px] text-slate-400">
+                    Si olvidaste tu contraseña, contacta al administrador de tu negocio.
+                </p>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}

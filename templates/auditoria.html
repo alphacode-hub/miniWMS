@@ -2,91 +2,119 @@
 {% block title %}Auditoría - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+<div class="w-full max-w-5xl mx-auto px-4 py-4 sm:py-6">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-2">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
-                    Auditoría
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
+                    Auditoría del negocio
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Registro de acciones realizadas en {{ user.negocio }}.
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Registro detallado de acciones realizadas en {{ user.negocio }}:
+                    creación, edición, eliminación y otros eventos relevantes.
+                </p>
+
+                <p class="mt-2 text-[11px] text-slate-500 space-x-2">
+                    <span>
+                        Admin:
+                        <span class="font-medium text-slate-800">{{ user.email }}</span>
+                    </span>
                 </p>
             </div>
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
-                ← Dashboard
-            </a>
-        </div>
+        </header>
 
-        {% if registros|length == 0 %}
-        <p class="text-sm text-slate-500">
-            No hay registros de auditoría aún.
-        </p>
-        {% else %}
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="space-y-3">
 
-        <!-- Caja scrollable -->
-        <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded-xl">
-            <table class="w-full text-xs">
-                <thead class="bg-slate-50 sticky top-0 z-10">
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-1.5 px-2">Fecha</th>
-                        <th class="py-1.5 px-2">Usuario</th>
-                        <th class="py-1.5 px-2">Acción</th>
-                        <th class="py-1.5 px-2">Detalle</th>
-                    </tr>
-                </thead>
+            {% if registros|length == 0 %}
+            <!-- Estado vacío -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center space-y-2">
+                <p class="text-sm font-medium text-slate-800">
+                    No hay registros de auditoría aún.
+                </p>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                    A medida que se creen, editen o eliminen datos en el sistema,
+                    verás aquí un historial detallado de las acciones realizadas por tu equipo.
+                </p>
+            </div>
 
-                <tbody>
-                    {% for r in registros %}
-                    <tr class="border-b last:border-0">
-                        <!-- Fecha -->
-                        <td class="py-1.5 px-2 align-top">
-                            <div class="text-[11px] text-slate-800">
-                                {{ r.fecha.strftime("%Y-%m-%d") }}
-                            </div>
-                            <div class="text-[10px] text-slate-400">
-                                {{ r.fecha.strftime("%H:%M:%S") }}
-                            </div>
-                        </td>
+            {% else %}
 
-                        <!-- Usuario -->
-                        <td class="py-1.5 px-2 align-top">
-                            <span class="text-[11px] text-slate-800">
-                                {{ r.usuario }}
-                            </span>
-                        </td>
+            <!-- Caja scrollable con tabla -->
+            <div class="max-h-[520px] overflow-y-auto border border-slate-200 rounded-2xl">
+                <table class="w-full text-xs border-collapse">
+                    <thead class="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-100">
+                        <tr class="text-left text-[11px] text-slate-500 uppercase tracking-wide">
+                            <th class="py-1.5 px-2">Fecha</th>
+                            <th class="py-1.5 px-2">Usuario</th>
+                            <th class="py-1.5 px-2">Acción</th>
+                            <th class="py-1.5 px-2">Detalle</th>
+                        </tr>
+                    </thead>
 
-                        <!-- Acción -->
-                        <td class="py-1.5 px-2 align-top">
-                            <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
-                                         bg-slate-100 text-slate-700">
-                                {{ r.accion }}
-                            </span>
-                        </td>
+                    <tbody class="bg-white divide-y divide-slate-100">
+                        {% for r in registros %}
+                        <tr class="hover:bg-slate-50/70">
+                            <!-- Fecha -->
+                            <td class="py-1.5 px-2 align-top whitespace-nowrap">
+                                <div class="text-[11px] text-slate-800">
+                                    {{ r.fecha.strftime("%Y-%m-%d") }}
+                                </div>
+                                <div class="text-[10px] text-slate-400">
+                                    {{ r.fecha.strftime("%H:%M:%S") }}
+                                </div>
+                            </td>
 
-                        <!-- Detalle -->
-                        <td class="py-1.5 px-2 align-top">
-                            <pre class="text-[10px] text-slate-700 whitespace-pre-wrap font-mono leading-tight">
+                            <!-- Usuario -->
+                            <td class="py-1.5 px-2 align-top">
+                                <span class="text-[11px] text-slate-800">
+                                    {{ r.usuario }}
+                                </span>
+                            </td>
+
+                            <!-- Acción -->
+                            <td class="py-1.5 px-2 align-top">
+                                <span class="inline-flex px-2 py-[2px] rounded-full text-[10px] font-semibold
+                                             bg-slate-50 text-slate-700 border border-slate-200">
+                                    {{ r.accion }}
+                                </span>
+                            </td>
+
+                            <!-- Detalle -->
+                            <td class="py-1.5 px-2 align-top">
+                                <pre class="text-[10px] text-slate-700 whitespace-pre-wrap font-mono leading-tight">
 {{ r.detalle }}
-                            </pre>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                </pre>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% endif %}
         </div>
 
-        {% endif %}
+        <!-- PIE / SIGUIENTE PASO -->
+        <footer class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar periódicamente esta auditoría
+                </span>
+                para detectar usos indebidos o errores operacionales.
+            </p>
 
-        <!-- Volver móvil -->
-        <a href="/dashboard"
-           class="block mt-2 text-center text-sm text-slate-500 sm:hidden">
-            ← Volver al dashboard
-        </a>
+            <a href="/dashboard"
+               class="block text-center sm:text-right text-[11px] text-slate-500 hover:text-slate-700">
+                ← Volver al dashboard
+            </a>
+        </footer>
 
-    </div>
+    </section>
 </div>
 {% endblock %}

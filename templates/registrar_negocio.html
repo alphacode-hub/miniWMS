@@ -2,144 +2,150 @@
 {% block title %}Registrar negocio - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-6">
+<div class="w-full max-w-6xl mx-auto px-4 py-8 flex justify-center">
+    <div class="w-full max-w-md">
 
-    <div class="space-y-5">
+        <div class="space-y-5">
 
-        <!-- HEADER SUPERIOR (par a par con login) -->
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <p class="text-[11px] text-slate-500">Mini WMS SaaS</p>
-                <p class="text-sm md:text-base font-semibold text-slate-900">
-                    Crear negocio y cuenta admin
-                </p>
-                <p class="text-[11px] text-slate-500">
-                    Completa los datos para empezar a usar tu Mini WMS.
-                </p>
+            <!-- HEADER SUPERIOR (coherente con login) -->
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                        Onboarding
+                    </p>
+                    <p class="text-sm md:text-base font-semibold text-slate-900">
+                        Crear negocio y cuenta admin
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        Completa los datos para empezar a usar tu Mini WMS.
+                    </p>
+                </div>
+
+                <a href="/login"
+                   class="text-[11px] md:text-xs inline-flex items-center px-3 py-1.5 rounded-full
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                    Ya tengo cuenta
+                </a>
             </div>
 
-            <a href="/login"
-               class="text-[11px] md:text-xs inline-flex items-center px-3 py-1.5 rounded-full
-                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-                Ya tengo cuenta
-            </a>
+            <!-- CARD FORMULARIO -->
+            <div class="bg-white shadow-lg rounded-2xl px-5 py-5 space-y-5">
+
+                <!-- Título card -->
+                <div class="space-y-1">
+                    <h1 class="text-base font-semibold text-slate-900">
+                        Registrar nuevo negocio
+                    </h1>
+                    <p class="text-xs text-slate-500 leading-snug">
+                        Crearemos tu negocio y un usuario administrador. Luego podrás configurar
+                        productos, zonas y agregar operadores.
+                    </p>
+                </div>
+
+                <!-- Errores -->
+                {% if errores and errores|length > 0 %}
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2 space-y-1">
+                    <p class="font-semibold text-[11px]">
+                        Revisa los siguientes puntos:
+                    </p>
+                    <ul class="list-disc list-inside space-y-0.5">
+                        {% for err in errores %}
+                        <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Formulario -->
+                <form method="post" class="space-y-4">
+
+                    <!-- Nombre negocio -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-700">
+                            Nombre de fantasía del negocio
+                        </label>
+                        <input type="text"
+                               name="nombre_negocio"
+                               value="{{ nombre_negocio }}"
+                               required
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               placeholder="Ej: Despensa Hogar" />
+                        <p class="text-[10px] text-slate-400">
+                            Este nombre aparecerá en el dashboard y reportes.
+                        </p>
+                    </div>
+
+                    <!-- WhatsApp -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-700">
+                            WhatsApp para notificaciones (opcional)
+                        </label>
+                        <input type="text"
+                               name="whatsapp"
+                               value="{{ whatsapp }}"
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               placeholder="+56 9 1234 5678" />
+                        <p class="text-[10px] text-slate-400">
+                            Más adelante podrás recibir alertas de stock, vencimientos y sugerencias.
+                        </p>
+                    </div>
+
+                    <!-- Email admin -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-700">
+                            Correo del administrador
+                        </label>
+                        <input type="email"
+                               name="email"
+                               value="{{ email }}"
+                               required
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               placeholder="admin@tunegocio.cl" />
+                        <p class="text-[10px] text-slate-400">
+                            Con este correo iniciarás sesión como administrador del negocio.
+                        </p>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-700">
+                            Contraseña
+                        </label>
+                        <input type="password"
+                               name="password"
+                               required
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               placeholder="Mínimo 8 caracteres" />
+                    </div>
+
+                    <!-- Repetir password -->
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-700">
+                            Repetir contraseña
+                        </label>
+                        <input type="password"
+                               name="password2"
+                               required
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               placeholder="Debe coincidir" />
+                    </div>
+
+                    <!-- Botón -->
+                    <button type="submit"
+                            class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
+                                   bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98] transition">
+                        Crear negocio y continuar
+                    </button>
+                </form>
+
+            </div>
+
         </div>
-
-        <!-- CARD FORMULARIO -->
-        <div class="bg-white shadow-lg rounded-2xl p-5 space-y-5">
-
-            <!-- Título card -->
-            <div class="space-y-1">
-                <h1 class="text-base font-semibold text-slate-900">
-                    Registrar nuevo negocio
-                </h1>
-                <p class="text-xs text-slate-500 leading-snug">
-                    Crearemos tu negocio y un usuario administrador. Luego podrás configurar
-                    productos, zonas y agregar operadores.
-                </p>
-            </div>
-
-            <!-- Errores -->
-            {% if errores and errores|length > 0 %}
-            <div class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2 space-y-1">
-                <p class="font-semibold text-[11px]">Revisa los siguientes puntos:</p>
-                <ul class="list-disc list-inside space-y-0.5">
-                    {% for err in errores %}
-                    <li>{{ err }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            <!-- Formulario -->
-            <form method="post" class="space-y-4">
-
-                <!-- Nombre negocio -->
-                <div class="space-y-1">
-                    <label class="block text-xs font-medium text-slate-700">
-                        Nombre de fantasía del negocio
-                    </label>
-                    <input type="text"
-                           name="nombre_negocio"
-                           value="{{ nombre_negocio }}"
-                           required
-                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                           placeholder="Ej: Despensa Hogar" />
-                    <p class="text-[10px] text-slate-400">
-                        Este nombre aparecerá en el dashboard y reportes.
-                    </p>
-                </div>
-
-                <!-- WhatsApp -->
-                <div class="space-y-1">
-                    <label class="block text-xs font-medium text-slate-700">
-                        WhatsApp para notificaciones (opcional)
-                    </label>
-                    <input type="text"
-                           name="whatsapp"
-                           value="{{ whatsapp }}"
-                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                           placeholder="+56 9 1234 5678" />
-                    <p class="text-[10px] text-slate-400">
-                        Más adelante podrás recibir alertas de stock, vencimientos y sugerencias.
-                    </p>
-                </div>
-
-                <!-- Email admin -->
-                <div class="space-y-1">
-                    <label class="block text-xs font-medium text-slate-700">
-                        Correo del administrador
-                    </label>
-                    <input type="email"
-                           name="email"
-                           value="{{ email }}"
-                           required
-                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                           placeholder="admin@tunegocio.cl" />
-                    <p class="text-[10px] text-slate-400">
-                        Con este correo iniciarás sesión como administrador del negocio.
-                    </p>
-                </div>
-
-                <!-- Password -->
-                <div class="space-y-1">
-                    <label class="block text-xs font-medium text-slate-700">
-                        Contraseña
-                    </label>
-                    <input type="password"
-                           name="password"
-                           required
-                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                           placeholder="Mínimo 8 caracteres" />
-                </div>
-
-                <!-- Repetir password -->
-                <div class="space-y-1">
-                    <label class="block text-xs font-medium text-slate-700">
-                        Repetir contraseña
-                    </label>
-                    <input type="password"
-                           name="password2"
-                           required
-                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                           placeholder="Debe coincidir" />
-                </div>
-
-                <!-- Botón -->
-                <button type="submit"
-                        class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
-                               bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98] transition">
-                    Crear negocio y continuar
-                </button>
-            </form>
-
-        </div>
-
     </div>
 </div>
 {% endblock %}

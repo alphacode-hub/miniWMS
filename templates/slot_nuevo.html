@@ -2,29 +2,30 @@
 {% block title %}Nuevo slot - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
 
-    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
         <!-- HEADER -->
-        <header class="flex items-start justify-between gap-3 mb-1">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
                     Paso 1 de 4 · Diseño de almacén
                 </p>
 
-                <h1 class="text-lg font-semibold text-slate-900">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Nuevo slot
                 </h1>
 
-                <p class="text-xs text-slate-500 mt-1">
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
                     Zona:
                     <span class="font-semibold text-slate-800">
                         {{ ubicacion.zona.nombre }}
                         {% if ubicacion.zona.sigla %} ({{ ubicacion.zona.sigla }}){% endif %}
                     </span>
                 </p>
-                <p class="text-xs text-slate-500">
+                <p class="text-xs sm:text-sm text-slate-500">
                     Ubicación:
                     <span class="font-semibold text-slate-800">
                         {{ ubicacion.nombre }}
@@ -33,19 +34,21 @@
                 </p>
 
                 <p class="text-[11px] text-slate-500 mt-1">
-                    Crea posiciones específicas dentro de esta ubicación
-                    (por ejemplo: C1, C2, B1). Estas se usarán luego para las entradas de stock.
+                    Crea posiciones específicas dentro de esta ubicación (por ejemplo: C1, C2, B1).
+                    Estas se usarán luego para las entradas de stock.
                 </p>
             </div>
 
+            <!-- Link volver -->
             <a href="/ubicaciones/{{ ubicacion.id }}/slots"
                class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
-                ← Slots
+                ← Volver a slots
             </a>
         </header>
 
+        <!-- ERROR -->
         {% if error %}
-        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2">
             {{ error }}
         </div>
         {% endif %}
@@ -56,8 +59,8 @@
               class="space-y-4">
 
             <!-- Código del slot -->
-            <div>
-                <label for="codigo" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="codigo" class="block text-xs font-medium text-slate-700">
                     Código del slot
                 </label>
                 <input id="codigo"
@@ -65,8 +68,8 @@
                        type="text"
                        required
                        value="{{ codigo|default('', true) }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: C1, C2, A1, B2, 01, 02..." />
                 <p class="mt-1 text-[10px] text-slate-400">
                     Este código se combinará con la zona y la ubicación para formar el
@@ -75,8 +78,8 @@
             </div>
 
             <!-- Capacidad (opcional) -->
-            <div>
-                <label for="capacidad" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="capacidad" class="block text-xs font-medium text-slate-700">
                     Capacidad (opcional)
                 </label>
                 <input id="capacidad"
@@ -84,8 +87,8 @@
                        type="number"
                        min="0"
                        value="{{ capacidad|default('', true) }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: 50 (unidades máximas)" />
                 <p class="mt-1 text-[10px] text-slate-400">
                     Si lo dejas vacío, el slot no tendrá límite de capacidad.
@@ -93,24 +96,32 @@
             </div>
 
             <!-- BOTONES -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/ubicaciones/{{ ubicacion.id }}/slots"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                               bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition">
                     Crear slot
                 </button>
             </div>
         </form>
 
-        <!-- NAV MÓVIL -->
-        <div class="mt-2 sm:hidden">
+        <!-- PIE -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    registrar entradas de stock
+                </span>
+                en estos slots desde el módulo de movimientos.
+            </p>
+
             <a href="/ubicaciones/{{ ubicacion.id }}/slots"
-               class="block text-center text-xs text-slate-500">
+               class="block text-center text-[11px] text-slate-500 hover:text-slate-700 sm:hidden">
                 ← Volver al listado de slots
             </a>
         </div>

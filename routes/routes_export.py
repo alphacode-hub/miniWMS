@@ -1,9 +1,11 @@
 ﻿# routes_export.py
+from pathlib import Path
 from datetime import date, datetime
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Request, Depends, Query
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 
@@ -14,12 +16,47 @@ from models import Movimiento
 
 import openpyxl
 from openpyxl.utils import get_column_letter
+from typing import Optional
 
+
+# ============================
+#   TEMPLATES
+# ============================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+# ============================
+#      ROUTER EXPORT
+# ============================
 
 router = APIRouter(
-    prefix="/export",
+    prefix="",          # igual que en routes_alerts
     tags=["export"],
 )
+
+
+# =====================================================
+# VISTA HTML: HOME DE EXPORTACIÓN
+# =====================================================
+
+@router.get("/exportar", response_class=HTMLResponse)
+async def export_home(
+    request: Request,
+    user: dict = Depends(require_roles_dep("admin", "superadmin")),
+):
+    """
+    Pantalla de exportación para el negocio.
+    Muestra opciones para descargar stock actual y movimientos.
+    """
+    return templates.TemplateResponse(
+        "exportar.html",
+        {
+            "request": request,
+            "user": user,
+        },
+    )
 
 
 # =====================================================
@@ -56,10 +93,11 @@ def build_excel(headers: list[str], rows: list[tuple], title: str = "Reporte"):
 # EXPORT: STOCK ACTUAL
 # =====================================================
 
-@router.get("/stock")
+@router.get("/exportar/stock")
 async def export_stock_actual(
-    user=Depends(require_roles_dep("admin", "superadmin")),
+    request: Request,
     db: Session = Depends(get_db),
+    user: dict = Depends(require_roles_dep("admin", "superadmin")),
 ):
     """
     Exporta el stock actual por producto y slot (código_full) a Excel.
@@ -123,22 +161,45 @@ async def export_stock_actual(
 # EXPORT: MOVIMIENTOS
 # =====================================================
 
-@router.get("/movements")
+@router.get("/exportar/movimientos")
 async def export_movimientos(
-    user=Depends(require_roles_dep("admin", "superadmin")),
+    request: Request,
     db: Session = Depends(get_db),
-    start_date: date | None = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
-    end_date: date | None = Query(None, description="Fecha fin (YYYY-MM-DD)"),
+    user: dict = Depends(require_roles_dep("admin", "superadmin")),
+    start_date: Optional[str] = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Fecha fin (YYYY-MM-DD)"),
 ):
     """
     Exporta movimientos de stock a Excel en un rango de fechas.
 
     - Usa directamente los campos de Movimiento:
-        fecha, tipo, producto, cantidad, zona (código_full), usuario, fecha_vencimiento, motivo_salida.
+        fecha, tipo, producto, cantidad, zona (código_full), usuario,
+        fecha_vencimiento, motivo_salida.
     - Filtra por negocio_id del usuario.
+    - Si no se envía rango de fechas (o vienen vacías), exporta todos los movimientos.
     """
 
     negocio_id = user.get("negocio_id")
+
+    # Parseo suave de fechas (admite "", None → None)
+    start_dt: datetime | None = None
+    end_dt: datetime | None = None
+
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        except ValueError:
+            logger.warning(f"[EXPORT_MOV] start_date inválida: {start_date}")
+            start_dt = None
+
+    if end_date:
+        try:
+            # usamos max.time() para incluir todo el día
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            end_dt = datetime.combine(end_dt.date(), datetime.max.time())
+        except ValueError:
+            logger.warning(f"[EXPORT_MOV] end_date inválida: {end_date}")
+            end_dt = None
 
     q = (
         db.query(
@@ -154,10 +215,10 @@ async def export_movimientos(
         .filter(Movimiento.negocio_id == negocio_id)
     )
 
-    if start_date:
-        q = q.filter(Movimiento.fecha >= datetime.combine(start_date, datetime.min.time()))
-    if end_date:
-        q = q.filter(Movimiento.fecha <= datetime.combine(end_date, datetime.max.time()))
+    if start_dt:
+        q = q.filter(Movimiento.fecha >= start_dt)
+    if end_dt:
+        q = q.filter(Movimiento.fecha <= end_dt)
 
     q = q.order_by(Movimiento.fecha.desc())
     resultados = q.all()

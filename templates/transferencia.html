@@ -2,57 +2,55 @@
 {% block title %}Transferencia - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-3xl mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
-        <!-- Paso / guía -->
-        <div class="flex items-start justify-between gap-3">
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                     Paso 3 de 4 · Movimientos
                 </p>
-                <p class="text-[11px] text-slate-500">
-                    Usa esta vista para mover stock entre slots ya configurados,
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
+                    Transferencia entre slots
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Mueve stock del slot origen al slot destino dentro de
+                    <span class="font-semibold">{{ user.negocio }}</span>,
                     sin modificar el stock total del producto.
                 </p>
             </div>
+
+            <!-- Volver desktop -->
             <a href="/stock"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
                 ← Volver a stock
             </a>
-        </div>
+        </header>
 
-        <!-- Header principal -->
-        <div>
-            <h1 class="text-lg font-bold text-slate-900">
-                Transferencia entre slots
-            </h1>
-            <p class="text-xs text-slate-500">
-                Mueve stock del slot origen al slot destino dentro de {{ user.negocio }}.
-            </p>
-        </div>
-
-        <!-- Error -->
+        <!-- ERROR -->
         {% if error %}
-        <div class="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-xs text-rose-700">
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2">
             {{ error }}
         </div>
         {% endif %}
 
-        <!-- Form -->
+        <!-- FORMULARIO -->
         <form method="post" class="space-y-4">
 
             <!-- Producto + cantidad -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <!-- Producto -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                <div class="space-y-1">
+                    <label for="producto" class="block text-xs font-medium text-slate-700">
                         Producto
                     </label>
-                    <select name="producto"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
-                            required>
+                    <select id="producto"
+                            name="producto"
+                            required
+                            class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">Selecciona producto</option>
                         {% for p in productos %}
                         <option value="{{ p.nombre }}"
@@ -67,17 +65,18 @@
                 </div>
 
                 <!-- Cantidad -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                <div class="space-y-1">
+                    <label for="cantidad" class="block text-xs font-medium text-slate-700">
                         Cantidad a transferir
                     </label>
-                    <input type="number"
+                    <input id="cantidad"
+                           type="number"
                            name="cantidad"
                            min="1"
                            value="{{ cantidad or '' }}"
                            required
-                           class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                            placeholder="Ej: 10" />
                     <p class="mt-1 text-[10px] text-slate-400">
                         Esta cantidad se restará del slot origen y se sumará al slot destino.
@@ -88,14 +87,15 @@
             <!-- Slots -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <!-- Slot origen -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                <div class="space-y-1">
+                    <label for="slot_origen_id" class="block text-xs font-medium text-slate-700">
                         Desde slot (origen)
                     </label>
-                    <select name="slot_origen_id"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
-                            required>
+                    <select id="slot_origen_id"
+                            name="slot_origen_id"
+                            required
+                            class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">Selecciona slot origen</option>
                         {% for s in slots %}
                         <option value="{{ s.id }}"
@@ -114,14 +114,15 @@
                 </div>
 
                 <!-- Slot destino -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                <div class="space-y-1">
+                    <label for="slot_destino_id" class="block text-xs font-medium text-slate-700">
                         Hacia slot (destino)
                     </label>
-                    <select name="slot_destino_id"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
-                            required>
+                    <select id="slot_destino_id"
+                            name="slot_destino_id"
+                            required
+                            class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">Selecciona slot destino</option>
                         {% for s in slots %}
                         <option value="{{ s.id }}"
@@ -140,28 +141,38 @@
                 </div>
             </div>
 
-            <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
+            <!-- BOTONES -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
                 <a href="/stock"
-                   class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px]
-                          border border-slate-200 text-slate-600 hover:bg-slate-50">
+                   class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
-                        class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-[11px] font-semibold
-                               bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.97]">
+                        class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold
+                               bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.98] transition">
                     Registrar transferencia
                 </button>
             </div>
-
         </form>
 
-        <!-- Volver móvil -->
-        <a href="/stock"
-           class="block mt-3 text-center text-xs text-slate-500 sm:hidden">
-            ← Volver al stock
-        </a>
+        <!-- PIE -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar el stock consolidado
+                </span>
+                en la vista de stock para confirmar la transferencia.
+            </p>
 
-    </div>
+            <!-- Volver móvil -->
+            <a href="/stock"
+               class="block text-center text-[11px] text-slate-500 hover:text-slate-700 sm:hidden">
+                ← Volver al stock
+            </a>
+        </div>
+
+    </section>
 </div>
 {% endblock %}

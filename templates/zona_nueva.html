@@ -2,19 +2,20 @@
 {% block title %}Nueva zona - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-    <section class="bg-white shadow-sm rounded-2xl border border-slate-100 p-5 space-y-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
         <!-- HEADER -->
-        <header class="flex items-start justify-between gap-3">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
                     Paso 1 de 4 · Diseño de almacén
                 </p>
-                <h1 class="text-lg font-semibold text-slate-900">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Nueva zona de almacenamiento
                 </h1>
-                <p class="text-xs text-slate-500 mt-1">
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
                     Crea áreas como <span class="font-semibold">Despensa</span>,
                     <span class="font-semibold">Refrigerador</span> o
                     <span class="font-semibold">Congelador</span>. Luego definirás
@@ -22,6 +23,7 @@
                 </p>
             </div>
 
+            <!-- Link volver -->
             <a href="/zonas"
                class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
                 ← Volver a zonas
@@ -30,7 +32,7 @@
 
         <!-- ERRORES -->
         {% if error %}
-        <div class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2">
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2">
             {{ error }}
         </div>
         {% endif %}
@@ -48,8 +50,8 @@
                        type="text"
                        required
                        value="{{ nombre|default('', true) }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: Despensa, Refrigerador, Congelador" />
                 <p class="text-[10px] text-slate-400">
                     Este nombre aparecerá en el stock, dashboard y reportes.
@@ -66,8 +68,8 @@
                        type="text"
                        maxlength="5"
                        value="{{ sigla|default('', true) }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: D, REF, CONG" />
                 <p class="text-[10px] text-slate-400">
                     Si la dejas en blanco, se usará automáticamente la primera letra del nombre.
@@ -78,27 +80,28 @@
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/zonas"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                               bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition">
                     Crear zona
                 </button>
             </div>
         </form>
 
-        <!-- PIE / NAVEGACIÓN -->
-        <div class="pt-3 border-t border-slate-100 flex flex-col gap-1">
+        <!-- PIE -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <p class="text-[11px] text-slate-500">
                 Siguiente paso recomendado:
                 <span class="font-semibold text-slate-800">
                     crear ubicaciones y slots
                 </span> dentro de esta zona.
             </p>
+
             <a href="/zonas"
-               class="block text-center text-[11px] text-slate-500 sm:hidden">
+               class="block text-center text-[11px] text-slate-500 hover:text-slate-700 sm:hidden">
                 ← Volver al listado de zonas
             </a>
         </div>

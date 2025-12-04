@@ -85,20 +85,7 @@ def crear_cookie_sesion(response: RedirectResponse, usuario: Usuario, token_sesi
         "token_sesion": token_sesion,
         "ts": datetime.utcnow().isoformat(),
     }
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    signed = signer.sign(data).decode("utf-8")
-
-    # Importante: max_age debería estar alineado con la expiración de la sesión
-    max_age = settings.SESSION_MAX_AGE_SECONDS or SESSION_INACTIVITY_SECONDS
-
-    response.set_cookie(
-        key=settings.SESSION_COOKIE_NAME,
-        value=signed,
-        httponly=True,
-        samesite=settings.SESSION_COOKIE_SAMESITE,
-        max_age=max_age,
-        secure=settings.SESSION_COOKIE_SECURE,
-    )
+    _set_session_cookie_from_payload(response, payload)
 
 
 def get_current_user(request: Request):
@@ -108,7 +95,6 @@ def get_current_user(request: Request):
 
     # 1) Verificamos firma Y vencimiento (max_age)
     try:
-        # Esto hace que la cookie NO sea válida después de X segundos
         data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
         payload = json.loads(data)
     except (BadSignature, json.JSONDecodeError):
@@ -116,6 +102,11 @@ def get_current_user(request: Request):
 
     user_id = payload.get("user_id")
     token_sesion = payload.get("token_sesion")
+
+    # 👇 datos de modo negocio
+    acting_negocio_id = payload.get("acting_negocio_id")
+    acting_negocio_nombre = payload.get("acting_negocio_nombre")
+
     if not user_id or not token_sesion:
         return None
 
@@ -139,7 +130,6 @@ def get_current_user(request: Request):
         if sesion.last_seen_at:
             delta = ahora - sesion.last_seen_at
             if delta.total_seconds() > SESSION_INACTIVITY_SECONDS:
-                # Sesión expirada por inactividad -> la marcamos como inactiva
                 sesion.activo = 0
                 db.commit()
                 return None
@@ -156,30 +146,74 @@ def get_current_user(request: Request):
         sesion.last_seen_at = ahora
         db.commit()
 
+        # rol real y rol efectivo
+        rol_real = usuario.rol
+        rol_efectivo = rol_real
+
+        # Negocio base (por defecto)
+        negocio_id = usuario.negocio_id
         negocio_nombre = (
             usuario.negocio.nombre_fantasia
             if usuario.negocio
             else settings.SUPERADMIN_BUSINESS_NAME
         )
 
-        # ⚠️ Aquí sí devolvemos info rica, pero solo en memoria.
+        # Si es superadmin y tiene "modo negocio" activo,
+        # usamos ese negocio y lo tratamos como admin.
+        if rol_real == "superadmin" and acting_negocio_id:
+            negocio_id = acting_negocio_id
+            if acting_negocio_nombre:
+                negocio_nombre = acting_negocio_nombre
+            rol_efectivo = "admin"  # se comporta como admin en rutas de negocio
+
         return {
             "id": usuario.id,
             "email": usuario.email,
             "negocio": negocio_nombre,
-            "negocio_id": usuario.negocio_id,
-            "rol": usuario.rol,
+            "negocio_id": negocio_id,
+            "rol": rol_efectivo,          # lo que ve el resto del sistema
+            "rol_real": rol_real,         # lo que es realmente en BD
+            "impersonando_negocio_id": acting_negocio_id,
         }
     finally:
         db.close()
 
 
 def is_superadmin(user: dict) -> bool:
-    return user.get("rol") == "superadmin"
+    return (user.get("rol_real") or user.get("rol")) == "superadmin"
 
 
-def require_superadmin(user: dict):
-    if not user or user.get("rol") != "superadmin":
+def is_superadmin_global(user: dict) -> bool:
+    """
+    True solo cuando el superadmin está en modo GLOBAL
+    (no impersonando un negocio).
+    """
+    return is_superadmin(user) and not user.get("impersonando_negocio_id")
+
+
+def is_admin(user: dict) -> bool:
+    """
+    True si el usuario es admin de negocio.
+    """
+    return user.get("rol") == "admin"
+
+
+def is_operator(user: dict) -> bool:
+    """
+    True si el usuario es operador.
+    """
+    return user.get("rol") == "operador"
+
+
+def require_superadmin(user: dict | None):
+    if not user:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo superadmin puede acceder a esta sección",
+        )
+
+    rol_real = user.get("rol_real") or user.get("rol")
+    if rol_real != "superadmin":
         raise HTTPException(
             status_code=403,
             detail="Solo superadmin puede acceder a esta sección",
@@ -224,10 +258,50 @@ def require_superadmin_dep(request: Request):
             detail="No autenticado.",
         )
 
-    if user.get("rol") != "superadmin":
+    rol_real = user.get("rol_real") or user.get("rol")
+    if rol_real != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo superadmin puede acceder a esta sección.",
         )
 
     return user
+
+
+def _get_session_payload_from_request(request: Request) -> dict | None:
+    """
+    Devuelve el payload crudo de la cookie de sesión (o None si no es válido).
+    Se usa para activar / desactivar 'modo negocio'.
+    """
+    cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not cookie:
+        return None
+
+    try:
+        data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
+        payload = json.loads(data)
+        return payload
+    except (BadSignature, json.JSONDecodeError):
+        return None
+
+
+def _set_session_cookie_from_payload(response: RedirectResponse, payload: dict):
+    """
+    Firma y guarda la cookie de sesión a partir de un payload ya armado.
+    Usado tanto en login como en el modo negocio.
+    """
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    signed = signer.sign(data).decode("utf-8")
+
+    max_age = settings.SESSION_MAX_AGE_SECONDS or SESSION_INACTIVITY_SECONDS
+
+    response.set_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        value=signed,
+        httponly=True,
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        max_age=max_age,
+        secure=settings.SESSION_COOKIE_SECURE,
+        path="/",
+    )
+

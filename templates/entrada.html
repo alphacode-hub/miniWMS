@@ -2,59 +2,55 @@
 {% block title %}Registrar entrada - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
 
-        <!-- Paso / guía -->
-        <div class="flex items-start justify-between mb-1">
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                     Paso 3 de 4 · Movimientos
                 </p>
-                <p class="text-[11px] text-slate-500">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
+                    Registrar entrada
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
                     Registra entradas de mercadería en los slots que ya definiste.
+                    El stock se actualizará automáticamente en el inventario de
+                    <span class="font-semibold">{{ user.negocio }}</span>.
                 </p>
             </div>
+
+            <!-- Volver desktop -->
             <a href="/movimientos"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
                 ← Volver a movimientos
             </a>
-        </div>
+        </header>
 
-        <!-- Header principal -->
-        <div>
-            <h1 class="text-lg font-bold text-slate-900">
-                Registrar entrada
-            </h1>
-            <p class="text-xs text-slate-500">
-                Ingreso de mercadería al inventario de {{ user.negocio }}.
-            </p>
-        </div>
-
-        <!-- Error -->
+        <!-- ERROR -->
         {% if error %}
-        <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 mb-1">
-            <p class="text-[11px] text-red-700">
-                {{ error }}
-            </p>
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2">
+            {{ error }}
         </div>
         {% endif %}
 
-        <!-- Formulario -->
+        <!-- FORMULARIO -->
         <form method="post"
               action="/movimientos/entrada"
               class="space-y-4">
 
             <!-- Producto -->
-            <div>
-                <label for="producto" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="producto" class="block text-xs font-medium text-slate-700">
                     Producto
                 </label>
                 <select id="producto"
                         name="producto"
-                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        required>
+                        required
+                        class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">Selecciona un producto</option>
                     {% for p in productos %}
                     <option value="{{ p.nombre }}"
@@ -66,8 +62,8 @@
             </div>
 
             <!-- Cantidad -->
-            <div>
-                <label for="cantidad" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="cantidad" class="block text-xs font-medium text-slate-700">
                     Cantidad
                 </label>
                 <input id="cantidad"
@@ -76,21 +72,21 @@
                        min="1"
                        required
                        value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="1" />
             </div>
 
             <!-- Ubicación / Slot -->
-            <div>
-                <label for="slot_id" class="block text-xs font-medium text-slate-700 mb-1">
-                    Ubicación
+            <div class="space-y-1">
+                <label for="slot_id" class="block text-xs font-medium text-slate-700">
+                    Ubicación (zona / ubicación / slot)
                 </label>
                 <select id="slot_id"
                         name="slot_id"
-                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white
-                               focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        required>
+                        required
+                        class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">Selecciona zona / ubicación / slot</option>
                     {% for s in slots %}
                     <option value="{{ s.id }}"
@@ -99,59 +95,77 @@
                     </option>
                     {% endfor %}
                 </select>
-                <p class="text-[10px] text-slate-400 mt-1">
-                    Asegúrate de usar siempre el mismo slot para el mismo tipo de producto si quieres un control más ordenado.
+                <p class="text-[10px] text-slate-400">
+                    Para un control más ordenado, intenta usar siempre el mismo slot para el mismo tipo de producto.
                 </p>
             </div>
 
             <!-- Fecha de vencimiento -->
-            <div>
-                <label for="fecha_vencimiento" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="fecha_vencimiento" class="block text-xs font-medium text-slate-700">
                     Fecha de vencimiento <span class="font-normal text-slate-400">(opcional)</span>
                 </label>
                 <input id="fecha_vencimiento"
                        type="date"
                        name="fecha_vencimiento"
                        value="{% if fecha_vencimiento is defined %}{{ fecha_vencimiento }}{% endif %}"
-                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
-              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-              appearance-none" />
-                <p class="text-[10px] text-slate-400 mt-1">
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                              appearance-none" />
+                <p class="text-[10px] text-slate-400">
                     Si la dejas vacía, el lote ingresará sin fecha de vencimiento.
                 </p>
             </div>
 
             <!-- Fecha de entrada -->
-            <div>
-                <label for="fecha" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="fecha" class="block text-xs font-medium text-slate-700">
                     Fecha de entrada
                 </label>
                 <input id="fecha"
                        type="date"
                        name="fecha"
                        value="{{ fecha or '' }}"
-                       class="w-full max-w-full block rounded-xl border border-slate-300 px-3 py-2 text-sm
-              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-              appearance-none" />
-                <p class="text-[10px] text-slate-400 mt-1">
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                              appearance-none" />
+                <p class="text-[10px] text-slate-400">
                     Si no eliges una fecha, se usará la fecha y hora actuales.
                 </p>
             </div>
 
-            <!-- Botón -->
-            <button type="submit"
-                    class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
-                           bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.98]">
-                Registrar entrada
-            </button>
+            <!-- BOTONES -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+                <a href="/movimientos"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
+                               bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition">
+                    Registrar entrada
+                </button>
+            </div>
         </form>
 
-        <!-- Volver móvil -->
-        <a href="/movimientos"
-           class="block mt-4 text-center text-xs text-slate-500 sm:hidden">
-            ← Volver a movimientos
-        </a>
+        <!-- PIE -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar el stock actualizado
+                </span>
+                en la vista de <span class="font-semibold">Stock</span> o registrar nuevas entradas.
+            </p>
 
-    </div>
+            <!-- Volver móvil -->
+            <a href="/movimientos"
+               class="block text-center text-[11px] text-slate-500 hover:text-slate-700 sm:hidden">
+                ← Volver a movimientos
+            </a>
+        </div>
+
+    </section>
 </div>
 {% endblock %}

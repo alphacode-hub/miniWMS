@@ -20,10 +20,12 @@ from models import Usuario, SesionUsuario
 from security import (
     get_current_user,
     is_superadmin,
+    is_superadmin_global,
     verify_password,
     crear_sesion_db,
     crear_cookie_sesion,
     signer,
+    SESSION_INACTIVITY_SECONDS,
 )
 
 # ============================
@@ -53,9 +55,11 @@ async def root(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    if is_superadmin(user):
+    # Si es superadmin "puro" (sin modo negocio) → dashboard global
+    if user.get("rol_real") == "superadmin" and not user.get("impersonando_negocio_id"):
         return RedirectResponse(url="/superadmin/dashboard", status_code=302)
 
+    # Admin, operador o superadmin en modo negocio → dashboard del negocio
     return RedirectResponse(url="/dashboard", status_code=302)
 
 
@@ -64,7 +68,7 @@ async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         # Si ya está autenticado, lo mandamos a su panel
-        if is_superadmin(user):
+        if is_superadmin_global(user):
             return RedirectResponse(url="/superadmin/dashboard", status_code=302)
         return RedirectResponse(url="/dashboard", status_code=302)
 
@@ -105,7 +109,7 @@ async def login_submit(
             status_code=401,
         )
 
-    # (Opcional) Validar estado del negocio
+    # Validar estado del negocio
     if usuario.negocio and usuario.negocio.estado != "activo":
         return templates.TemplateResponse(
             "login.html",
@@ -120,7 +124,7 @@ async def login_submit(
     # Login OK → crear sesión en BD
     token_sesion = crear_sesion_db(db, usuario)
 
-    # Crear respuesta de redirección según rol
+    # Crear respuesta de redirección según rol REAL
     if usuario.rol == "superadmin":
         redirect_url = "/superadmin/dashboard"
     else:
@@ -160,4 +164,3 @@ async def logout(request: Request, db: Session = Depends(get_db)):
         path="/",
     )
     return response
-

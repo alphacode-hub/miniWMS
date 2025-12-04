@@ -26,6 +26,7 @@ from routes.routes_alerts import router as alerts_router
 from routes.routes_health import router as health_router
 from routes.routes_backups import router as backups_router
 from routes.routes_export import router as export_router
+from middleware.auth_redirect import redirect_middleware
 
 
 
@@ -62,7 +63,7 @@ templates = Jinja2Templates(directory="templates")
 #   INCLUIR ROUTERS
 # ============================
 
-
+app.middleware("http")(redirect_middleware)
 app.include_router(health_router)
 app.include_router(backups_router)
 app.include_router(auth_router)
@@ -80,6 +81,7 @@ app.include_router(inventory_router)
 app.include_router(audit_router)
 app.include_router(alerts_router)
 app.include_router(export_router)
+
 
 
 # ============================

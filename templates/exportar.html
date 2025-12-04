@@ -1,0 +1,129 @@
+﻿{% extends "base.html" %}
+{% block title %}Exportar datos - Mini WMS{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-5xl mx-auto px-4 py-4 sm:py-6">
+
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
+                    Exportar datos
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Descarga información clave de tu inventario y movimientos en formato Excel
+                    para análisis o respaldo.
+                </p>
+
+                <p class="mt-2 text-[11px] text-slate-500 space-x-2">
+                    <span>
+                        Negocio:
+                        <span class="font-medium text-slate-800">{{ user.negocio }}</span>
+                    </span>
+                </p>
+            </div>
+        </header>
+
+        <!-- GRID DE EXPORTACIONES -->
+        <div class="grid gap-4 md:grid-cols-2">
+
+            <!-- Card: Stock actual -->
+            <article class="bg-slate-50 rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3 flex flex-col">
+                <div class="space-y-1">
+                    <h2 class="text-sm font-semibold text-slate-900">
+                        Stock actual por producto y slot
+                    </h2>
+                    <p class="text-xs text-slate-500">
+                        Exporta el stock actual consolidado por producto y ubicación (slot).
+                        Ideal para reportes de inventario y conciliación.
+                    </p>
+                </div>
+
+                <div class="mt-auto flex items-center justify-between pt-1">
+                    <p class="text-[11px] text-slate-400">
+                        Formato: Excel (.xlsx)
+                    </p>
+                    <a href="/exportar/stock"
+                       class="inline-flex items-center px-3 py-1.5 rounded-xl text-[11px] font-semibold
+                              bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98]">
+                        Descargar stock actual
+                    </a>
+                </div>
+            </article>
+
+            <!-- Card: Movimientos -->
+            <article class="bg-slate-50 rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3 flex flex-col">
+                <div class="space-y-1">
+                    <h2 class="text-sm font-semibold text-slate-900">
+                        Movimientos de stock
+                    </h2>
+                    <p class="text-xs text-slate-500">
+                        Exporta los movimientos de entrada, salida y ajustes en un rango de fechas.
+                        Incluye tipo, cantidad, producto, zona/slot, usuario y fecha de vencimiento.
+                    </p>
+                </div>
+
+                <form method="get"
+                      action="/exportar/movimientos"
+                      class="space-y-3 mt-2">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-medium text-slate-700">
+                                Desde (opcional)
+                            </label>
+                            <input type="date"
+                                   name="start_date"
+                                   class="w-full rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs
+                                          focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900
+                                          appearance-none" />
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-medium text-slate-700">
+                                Hasta (opcional)
+                            </label>
+                            <input type="date"
+                                   name="end_date"
+                                   class="w-full rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs
+                                          focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900
+                                          appearance-none" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <p class="text-[11px] text-slate-400">
+                            Si no eliges fechas, se exportarán todos los movimientos disponibles.
+                        </p>
+                        <button type="submit"
+                                class="inline-flex items-center px-3 py-1.5 rounded-xl text-[11px] font-semibold
+                                       bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98]">
+                            Descargar movimientos
+                        </button>
+                    </div>
+                </form>
+            </article>
+        </div>
+
+        <!-- PIE / SIGUIENTE PASO -->
+        <footer class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    analizar estos datos en Excel o Power BI
+                </span>
+                para identificar productos críticos, rotación y tendencias.
+            </p>
+
+            <a href="/dashboard"
+               class="block text-center sm:text-right text-[11px] text-slate-500 hover:text-slate-700">
+                ← Volver al dashboard
+            </a>
+        </footer>
+
+    </section>
+</div>
+{% endblock %}

@@ -2,17 +2,23 @@
 {% block title %}Editar producto - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md mx-auto px-4 py-4">
-    <div class="bg-white shadow-lg rounded-2xl p-5 space-y-4">
+<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
 
-        <!-- Header -->
-        <div class="flex items-start justify-between mb-1">
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <h1 class="text-lg font-bold text-slate-900">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">
+                    Paso 2 de 4 · Catálogo de productos
+                </p>
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Editar producto
                 </h1>
-                <p class="text-xs text-slate-500">
-                    Ajusta la información de este SKU de {{ user.negocio }}.
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                    Ajusta la información de este SKU de
+                    <span class="font-semibold">{{ user.negocio }}</span>.
                 </p>
 
                 <p class="mt-1 text-[10px] text-slate-400">
@@ -20,25 +26,28 @@
                 </p>
             </div>
 
+            <!-- Link volver -->
             <a href="/productos"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-600 hover:underline">
+               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
                 ← Volver a productos
             </a>
-        </div>
+        </header>
 
+        <!-- ERRORES -->
         {% if error %}
-        <div class="text-xs px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl px-3 py-2">
             {{ error }}
         </div>
         {% endif %}
 
+        <!-- FORMULARIO -->
         <form method="post"
               action="/productos/{{ producto.id }}/editar"
               class="space-y-4">
 
             <!-- Nombre -->
-            <div>
-                <label for="nombre" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="nombre" class="block text-xs font-medium text-slate-700">
                     Nombre del producto
                 </label>
                 <input id="nombre"
@@ -46,28 +55,28 @@
                        type="text"
                        required
                        value="{{ producto.nombre }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: Leche entera 1L" />
             </div>
 
             <!-- Unidad -->
-            <div>
-                <label for="unidad" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="unidad" class="block text-xs font-medium text-slate-700">
                     Unidad de medida
                 </label>
                 <input id="unidad"
                        name="unidad"
                        type="text"
                        value="{{ producto.unidad or 'unidad' }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="unidad, caja, kg, pack..." />
             </div>
 
             <!-- Costo -->
-            <div>
-                <label for="costo_unitario" class="block text-xs font-medium text-slate-700 mb-1">
+            <div class="space-y-1">
+                <label for="costo_unitario" class="block text-xs font-medium text-slate-700">
                     Costo unitario (opcional)
                 </label>
                 <input id="costo_unitario"
@@ -75,8 +84,8 @@
                        step="0.01"
                        name="costo_unitario"
                        value="{{ producto.costo_unitario or '' }}"
-                       class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                        placeholder="Ej: 1200" />
                 <p class="mt-1 text-[10px] text-slate-400">
                     Se usa para valorizar inventario y pérdidas por merma.
@@ -85,7 +94,7 @@
 
             <!-- Min / Max -->
             <div class="border border-slate-200 rounded-2xl px-3 py-3 bg-slate-50">
-                <p class="text-[11px] font-semibold text-slate-700 mb-1">
+                <p class="text-[11px] font-semibold text-slate-700 mb-2">
                     Stock mínimo / máximo
                     <span class="font-normal text-slate-500">(opcional)</span>
                 </p>
@@ -101,8 +110,8 @@
                                type="number"
                                min="0"
                                value="{{ producto.stock_min or '' }}"
-                               class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               class="w-full rounded-xl bg-white border border-slate-200 px-2 py-1.5 text-sm text-slate-900
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                placeholder="Ej: 5" />
                     </div>
 
@@ -115,36 +124,46 @@
                                type="number"
                                min="0"
                                value="{{ producto.stock_max or '' }}"
-                               class="w-full rounded-xl border border-slate-300 px-2 py-1.5 text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                               class="w-full rounded-xl bg-white border border-slate-200 px-2 py-1.5 text-sm text-slate-900
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                placeholder="Ej: 50" />
                     </div>
 
                 </div>
             </div>
 
-            <!-- Botones -->
-            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+            <!-- BOTONES -->
+            <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/productos"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+                          border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                     Cancelar
                 </a>
 
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                               bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+                           bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.98] transition">
                     Guardar cambios
                 </button>
             </div>
         </form>
 
-        <!-- Volver móvil -->
-        <a href="/productos"
-           class="block mt-2 text-center text-xs text-slate-500 sm:hidden">
-            ← Volver a productos
-        </a>
+        <!-- PIE -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar el impacto de este producto
+                </span>
+                en el stock y las alertas desde el módulo de inventario.
+            </p>
 
-    </div>
+            <a href="/productos"
+               class="block text-center text-[11px] text-slate-500 hover:text-slate-700 sm:hidden">
+                ← Volver a productos
+            </a>
+        </div>
+
+    </section>
 </div>
 {% endblock %}

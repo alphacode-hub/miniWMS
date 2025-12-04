@@ -3,13 +3,16 @@
 {% block title %}Negocios - Superadmin{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-4">
+<div class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-4">
 
-    <section class="bg-white rounded-2xl shadow-lg border border-slate-100 p-4 sm:p-6 space-y-4">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 sm:px-6 sm:py-6 space-y-5">
 
         <!-- Encabezado -->
         <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Panel global
+                </p>
                 <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Negocios
                 </h1>
@@ -29,7 +32,7 @@
                         <th class="px-4 py-2 text-left">Estado</th>
                         <th class="px-4 py-2 text-right">Usuarios</th>
                         <th class="px-4 py-2 text-right">Productos</th>
-                        <th class="px-4 py-2 text-right">Mov. 30 días</th>
+                        <th class="px-4 py-2 text-right whitespace-nowrap">Mov. 30 días</th>
                         <th class="px-4 py-2 text-left whitespace-nowrap">Último acceso</th>
                         <th class="px-4 py-2 text-right">Acciones</th>
                     </tr>
@@ -88,7 +91,7 @@
                         </td>
 
                         <!-- Último acceso -->
-                        <td class="px-4 py-2 align-middle text-[11px] text-slate-500 whitespace-nowrap">
+                        <td class="px-4 py-2 align-middle text-[11px] sm:text-xs text-slate-500 whitespace-nowrap">
                             {% if n.ultimo_acceso %}
                             {{ n.ultimo_acceso.strftime("%d-%m-%Y %H:%M") }}
                             {% else %}
@@ -107,6 +110,7 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+
             </table>
         </div>
         {% else %}

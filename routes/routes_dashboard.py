@@ -44,7 +44,7 @@ async def dashboard_view(
     - Admin / Operador: ven este dashboard de negocio.
     - Superadmin: es redirigido al dashboard corporativo.
     """
-    if user.get("rol") == "superadmin":
+    if user.get("rol_real") == "superadmin" and not user.get("impersonando_negocio_id"):
         return RedirectResponse("/superadmin/dashboard", status_code=302)
 
     hoy = date.today()

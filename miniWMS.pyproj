@@ -26,6 +26,7 @@
     <Compile Include="config.py" />
     <Compile Include="database.py" />
     <Compile Include="logging_config.py" />
+    <Compile Include="middleware\auth_redirect.py" />
     <Compile Include="miniWMS.py" />
     <Compile Include="models.py" />
     <Compile Include="plans.py" />
@@ -79,6 +80,7 @@
     <Content Include="templates\base.html" />
     <Content Include="templates\dashboard.html" />
     <Content Include="templates\entrada.html" />
+    <Content Include="templates\exportar.html" />
     <Content Include="templates\historial.html" />
     <Content Include="templates\inventario.html" />
     <Content Include="templates\login.html" />
@@ -92,6 +94,7 @@
     <Content Include="templates\slot_nuevo.html" />
     <Content Include="templates\stock.html" />
     <Content Include="templates\superadmin_alertas.html" />
+    <Content Include="templates\superadmin_auditoria.html" />
     <Content Include="templates\superadmin_dashboard.html" />
     <Content Include="templates\superadmin_negocios.html" />
     <Content Include="templates\superadmin_negocio_detalle.html" />
@@ -104,6 +107,7 @@
     <Content Include="templates\zona_nueva.html" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="middleware\" />
     <Folder Include="services\" />
     <Folder Include="routes\" />
     <Folder Include="static\" />

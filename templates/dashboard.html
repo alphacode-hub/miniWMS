@@ -2,14 +2,14 @@
 {% block title %}Dashboard - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-5xl mx-auto px-4 py-4 space-y-5">
+<div class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-5">
 
-    <!-- =========================================
-         1) ONBOARDING / CONFIGURACIÓN INICIAL
-         ========================================= -->
+    {# =========================================
+    1) ONBOARDING / CONFIGURACIÓN INICIAL
+    ========================================= #}
     {% if not onboarding_completo %}
     <!-- Modo guiado: pasos visibles -->
-    <section class="bg-slate-900 text-sky-50 rounded-2xl p-4 space-y-3">
+    <section class="bg-slate-900 text-sky-50 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 space-y-3">
         <div class="flex items-start justify-between gap-3">
             <div>
                 <p class="text-[11px] uppercase tracking-wide text-sky-300/80 font-semibold">
@@ -167,10 +167,10 @@
     </section>
     {% endif %}
 
-    <!-- =========================================
-         2) ACCIONES RÁPIDAS (EN ORDEN LÓGICO)
-         ========================================= -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+    {# =========================================
+    2) ACCIONES RÁPIDAS (EN ORDEN LÓGICO)
+    ========================================= #}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 sm:px-6 sm:py-5 space-y-3">
         <div class="flex items-center justify-between gap-2">
             <div>
                 <h2 class="text-sm font-semibold text-slate-900">
@@ -182,8 +182,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
             <!-- 1. Diseñar almacén -->
             <a href="/zonas"
                class="flex flex-col items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 hover:bg-slate-100 transition">
@@ -287,7 +286,8 @@
 
             <!-- 7. Inventario / Conteo -->
             <a href="/inventario"
-               class="flex flex-col items-start justify-between rounded-2xl border border-slate-200 bg-white px-3 py-3 hover:bg-slate-50 transition md:col-span-1 col-span-2">
+               class="flex flex-col items-start justify-between rounded-2xl border border-slate-200 bg-white px-3 py-3 hover:bg-slate-50 transition
+                      sm:col-span-2 md:col-span-1">
                 <div class="flex items-center gap-2">
                     <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500 text-white text-sm">
                         ✅
@@ -300,15 +300,12 @@
                     Ajustar diferencias físicas vs sistema.
                 </p>
             </a>
-
-
-
         </div>
     </section>
 
-    <!-- =========================================
-         3) KPIs + ALERTAS + VENCIMIENTOS
-         ========================================= -->
+    {# =========================================
+    3) KPIs + ALERTAS + VENCIMIENTOS
+    ========================================= #}
     <section class="space-y-3">
         <!-- KPIs principales -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -420,9 +417,9 @@
         </div>
     </section>
 
-    <!-- =========================================
-         4) GRÁFICO 7 DÍAS + ÚLTIMOS MOVIMIENTOS
-         ========================================= -->
+    {# =========================================
+    4) GRÁFICO 7 DÍAS + ÚLTIMOS MOVIMIENTOS
+    ========================================= #}
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <!-- Gráfico -->
         <div class="bg-white shadow-sm rounded-2xl p-4 border border-slate-100">
@@ -592,4 +589,3 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 {% endblock %}
-
