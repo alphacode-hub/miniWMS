@@ -79,6 +79,7 @@
     <Content Include=".env.prod" />
     <Content Include=".env.staging" />
     <Content Include="Dockerfile" />
+    <Content Include="modules\basic_wms\templates\partials\scanner.html" />
     <Content Include="requirements.txt" />
     <Content Include="static\.keep" />
     <Content Include="modules\basic_wms\templates\alertas.html" />
@@ -119,6 +120,7 @@
     <Folder Include="modules\basic_wms\" />
     <Folder Include="core\services\" />
     <Folder Include="modules\basic_wms\routes\" />
+    <Folder Include="modules\basic_wms\templates\partials\" />
     <Folder Include="modules\industrial_wms\" />
     <Folder Include="modules\industrial_wms\services\" />
     <Folder Include="modules\industrial_wms\templates\" />

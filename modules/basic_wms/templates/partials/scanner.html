@@ -1,0 +1,83 @@
+﻿{# templates/partials/scanner.html #}
+<div x-data="barcodeScanner('{{ target_input_id }}')" class="w-full">
+    <!-- Botón para abrir el escáner -->
+    <button type="button"
+            @click="openScanner"
+            class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold
+                   bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.97]">
+        📷 Escanear código
+    </button>
+
+    <!-- Overlay del escáner -->
+    <div x-show="isOpen"
+         x-cloak
+         class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/80">
+        <div class="w-full max-w-sm bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                <p class="text-xs font-semibold text-slate-800">
+                    Escanear código
+                </p>
+                <button type="button"
+                        @click="closeScanner"
+                        class="text-[11px] text-slate-500 hover:text-slate-700">
+                    Cerrar
+                </button>
+            </div>
+
+            <div class="p-3">
+                <div id="scanner-container" class="w-full h-64 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center text-slate-200 text-xs">
+                    Iniciando cámara...
+                </div>
+                <p class="mt-2 text-[10px] text-slate-500 text-center">
+                    Apunta la cámara al código. Se completará automáticamente en el formulario.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Requiere html5-qrcode cargado en base.html (CDN)
+    function barcodeScanner(targetInputId) {
+        return {
+            isOpen: false,
+            html5QrCode: null,
+            targetInputId,
+
+            async openScanner() {
+                this.isOpen = true;
+                await this.$nextTick();
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                this.html5QrCode = new Html5Qrcode("scanner-container");
+                this.html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    decodedText => {
+                        const input = document.getElementById(this.targetInputId);
+                        if (input) {
+                            input.value = decodedText;
+                            input.dispatchEvent(new Event('input'));
+                        }
+                        this.closeScanner();
+                    },
+                    error => {
+                        // errores de lectura se pueden ignorar
+                    }
+                );
+            },
+
+            async closeScanner() {
+                this.isOpen = false;
+                if (this.html5QrCode) {
+                    try {
+                        await this.html5QrCode.stop();
+                        this.html5QrCode.clear();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    this.html5QrCode = null;
+                }
+            }
+        }
+    }
+</script>
