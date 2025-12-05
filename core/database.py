@@ -124,6 +124,7 @@ def init_db() -> None:
     """
     # Import local para registrar modelos en Base.metadata
     import core.models  # noqa: F401
+    logger.info("[INIT_DB] Ejecutando migraciones con Alembic (recomendado a futuro)")
 
     logger.info("[INIT_DB] Creando tablas (si no existen)...")
     Base.metadata.create_all(bind=engine)
