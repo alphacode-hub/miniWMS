@@ -21,7 +21,6 @@ from core.services.services_audit import registrar_auditoria
 from core.services.services_alerts import evaluar_alertas_stock, evaluar_alertas_vencimiento
 
 
-
 # ============================
 #   TEMPLATES
 # ============================
@@ -236,6 +235,30 @@ def _obtener_producto_negocio(
     )
 
 
+def _buscar_producto_por_codigo(
+    db: Session,
+    negocio_id: int,
+    codigo: str,
+):
+    """
+    Busca un producto activo del negocio por SKU o EAN (match exacto).
+    Devuelve Producto o None.
+    """
+    codigo_norm = (codigo or "").strip()
+    if not codigo_norm:
+        return None
+
+    return (
+        db.query(Producto)
+        .filter(
+            Producto.negocio_id == negocio_id,
+            Producto.activo == 1,
+            (Producto.sku == codigo_norm) | (Producto.ean13 == codigo_norm),
+        )
+        .first()
+    )
+
+
 # ============================
 #     MOVIMIENTO DE SALIDA
 # ============================
@@ -283,13 +306,16 @@ async def salida_form(
             "producto": "",
             "cantidad": "",
             "slot_id": "",
+            "codigo": "",
         },
     )
+
 
 @router.post("/movimientos/salida", response_class=HTMLResponse)
 async def salida_submit(
     request: Request,
-    producto: str = Form(...),
+    producto: str = Form(""),
+    codigo: str = Form(""),
     cantidad: int = Form(...),
     slot_id: int = Form(...),
     motivo_salida: str = Form(""),
@@ -299,6 +325,9 @@ async def salida_submit(
 ):
     negocio_id = user["negocio_id"]
     producto = (producto or "").strip()
+    codigo = (codigo or "").strip()
+    motivo_salida = (motivo_salida or "").strip()
+    comentario = (comentario or "").strip()
 
     # 0) Validar cantidad > 0
     if cantidad <= 0:
@@ -323,12 +352,25 @@ async def salida_submit(
                 "producto": producto,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
+                "codigo": codigo,
+                "motivo_salida": motivo_salida,
+                "comentario": comentario,
             },
             status_code=400,
         )
 
-    # 1) Validar que el producto exista en el negocio
-    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    # 1) Resolver producto del negocio:
+    #    - si hay código, intentamos primero sku/ean
+    #    - si no hay match por código, caemos a nombre
+    producto_obj = None
+
+    if codigo:
+        producto_obj = _buscar_producto_por_codigo(db, negocio_id, codigo)
+
+    if not producto_obj and producto:
+        producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+
+    # Si seguimos sin producto → error
     if not producto_obj:
         productos = (
             db.query(Producto)
@@ -347,10 +389,13 @@ async def salida_submit(
                 "user": user,
                 "productos": productos,
                 "slots": slots,
-                "error": "El producto seleccionado no es válido para este negocio.",
+                "error": "No se encontró un producto válido para el código ingresado o la selección actual. Verifica el código o el producto.",
                 "producto": producto,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
+                "codigo": codigo,
+                "motivo_salida": motivo_salida,
+                "comentario": comentario,
             },
             status_code=400,
         )
@@ -391,6 +436,9 @@ async def salida_submit(
                 "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
+                "codigo": codigo,
+                "motivo_salida": motivo_salida,
+                "comentario": comentario,
             },
             status_code=400,
         )
@@ -427,6 +475,9 @@ async def salida_submit(
                 "producto": producto_nombre,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
+                "codigo": codigo,
+                "motivo_salida": motivo_salida,
+                "comentario": comentario,
             },
             status_code=400,
         )
@@ -440,7 +491,8 @@ async def salida_submit(
         cantidad=cantidad,
         zona=zona_str,
         fecha=datetime.utcnow(),
-        motivo_salida=(motivo_salida or None),
+        motivo_salida=motivo_salida or None,
+        codigo_producto=codigo or None,
     )
 
     db.add(movimiento)
@@ -458,7 +510,8 @@ async def salida_submit(
             "cantidad": cantidad,
             "zona": zona_str,
             "motivo_salida": motivo_salida or None,
-            "comentario": (comentario or "").strip() or None,
+            "comentario": comentario or None,
+            "codigo_producto": codigo or None,
         },
     )
 
@@ -470,9 +523,19 @@ async def salida_submit(
         motivo=(motivo_salida or None),
     )
 
-    print(">>> NUEVA SALIDA:", movimiento.id, producto_nombre, cantidad, "en", zona_str)
+    print(
+        ">>> NUEVA SALIDA:",
+        movimiento.id,
+        producto_nombre,
+        cantidad,
+        "en",
+        zona_str,
+        "codigo:",
+        movimiento.codigo_producto,
+    )
 
     return RedirectResponse(url="/dashboard", status_code=302)
+
 
 
 # ============================
@@ -523,6 +586,7 @@ async def entrada_form(
             "cantidad": "",
             "slot_id": "",
             "fecha_vencimiento": "",
+            "codigo": "",
         },
     )
 
@@ -531,14 +595,17 @@ async def entrada_form(
 async def entrada_submit(
     request: Request,
     producto: str = Form(...),
+    codigo: str = Form(""),
     cantidad: int = Form(...),
     slot_id: int = Form(...),
     fecha_vencimiento: str = Form(""),
+    fecha: str = Form(None),
     db: Session = Depends(get_db),
     user: dict = Depends(require_roles_dep("admin", "operador")),
 ):
     negocio_id = user["negocio_id"]
     producto = (producto or "").strip()
+    codigo = (codigo or "").strip()
 
     # 0) Validar cantidad > 0
     if cantidad <= 0:
@@ -564,12 +631,23 @@ async def entrada_submit(
                 "cantidad": cantidad,
                 "slot_id": slot_id,
                 "fecha_vencimiento": fecha_vencimiento,
+                "codigo": codigo,
             },
             status_code=400,
         )
 
-    # 1) Validar producto del negocio
-    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    # 1) Resolver producto del negocio:
+    #    - si hay código, intentamos primero sku/ean
+    #    - si no hay match por código, caemos a nombre
+    producto_obj = None
+
+    if codigo:
+        producto_obj = _buscar_producto_por_codigo(db, negocio_id, codigo)
+
+    if not producto_obj and producto:
+        producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+
+    # Si seguimos sin producto → error
     if not producto_obj:
         productos = (
             db.query(Producto)
@@ -588,11 +666,12 @@ async def entrada_submit(
                 "user": user,
                 "productos": productos,
                 "slots": slots,
-                "error": "El producto seleccionado no es válido para este negocio.",
+                "error": "No se encontró un producto válido para el código ingresado o la selección actual. Verifica el código o el producto.",
                 "producto": producto,
                 "cantidad": cantidad,
                 "slot_id": slot_id,
                 "fecha_vencimiento": fecha_vencimiento,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -633,6 +712,7 @@ async def entrada_submit(
                 "cantidad": cantidad,
                 "slot_id": slot_id,
                 "fecha_vencimiento": fecha_vencimiento,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -669,6 +749,7 @@ async def entrada_submit(
                     "cantidad": cantidad,
                     "slot_id": slot_id,
                     "fecha_vencimiento": fecha_vencimiento,
+                    "codigo": codigo,
                 },
                 status_code=400,
             )
@@ -683,6 +764,7 @@ async def entrada_submit(
         zona=zona_str,
         fecha=datetime.utcnow(),
         fecha_vencimiento=fv_date,
+        codigo_producto=codigo or None,
     )
 
     db.add(movimiento)
@@ -699,6 +781,7 @@ async def entrada_submit(
             "cantidad": cantidad,
             "zona": zona_str,
             "fecha_vencimiento": str(fv_date) if fv_date else None,
+            "codigo_producto": codigo or None,
         },
     )
 
@@ -726,6 +809,8 @@ async def entrada_submit(
         zona_str,
         "vence:",
         movimiento.fecha_vencimiento,
+        "codigo:",
+        movimiento.codigo_producto,
     )
 
     return RedirectResponse(url="/dashboard", status_code=302)
@@ -788,6 +873,7 @@ async def transferencia_submit(
     cantidad: int = Form(...),
     slot_origen_id: int = Form(...),
     slot_destino_id: int = Form(...),
+    codigo: str = Form(""),
     db: Session = Depends(get_db),
     user: dict = Depends(require_roles_dep("admin", "operador")),
 ):
@@ -800,6 +886,7 @@ async def transferencia_submit(
     """
     negocio_id = user["negocio_id"]
     producto = (producto or "").strip()
+    codigo = (codigo or "").strip()
 
     # 0) Validar cantidad > 0
     if cantidad <= 0:
@@ -825,12 +912,20 @@ async def transferencia_submit(
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
+                "codigo": codigo,
             },
             status_code=400,
         )
 
-    # Validar que el producto exista
-    producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+    # Resolver producto por código o nombre
+    producto_obj = None
+
+    if codigo:
+        producto_obj = _buscar_producto_por_codigo(db, negocio_id, codigo)
+
+    if not producto_obj and producto:
+        producto_obj = _obtener_producto_negocio(db, negocio_id, producto)
+
     if not producto_obj:
         productos = (
             db.query(Producto)
@@ -849,11 +944,12 @@ async def transferencia_submit(
                 "user": user,
                 "productos": productos,
                 "slots": slots,
-                "error": "El producto seleccionado no es válido para este negocio.",
+                "error": "No se encontró un producto válido para el código o selección actual.",
                 "producto": producto,
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -884,6 +980,7 @@ async def transferencia_submit(
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -933,6 +1030,7 @@ async def transferencia_submit(
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -972,6 +1070,7 @@ async def transferencia_submit(
                 "cantidad": cantidad,
                 "slot_origen_id": slot_origen_id,
                 "slot_destino_id": slot_destino_id,
+                "codigo": codigo,
             },
             status_code=400,
         )
@@ -985,6 +1084,7 @@ async def transferencia_submit(
         cantidad=cantidad,
         zona=zona_origen_str,
         fecha=datetime.utcnow(),
+        codigo_producto=codigo or None,
     )
 
     # 5) Crear entrada en destino
@@ -996,6 +1096,7 @@ async def transferencia_submit(
         cantidad=cantidad,
         zona=zona_destino_str,
         fecha=datetime.utcnow(),
+        codigo_producto=codigo or None,
     )
 
     db.add(mov_salida)
@@ -1015,16 +1116,19 @@ async def transferencia_submit(
             "zona_destino": zona_destino_str,
             "mov_salida_id": mov_salida.id,
             "mov_entrada_id": mov_entrada.id,
+            "codigo_producto": codigo or None,
         },
     )
 
     print(
-        f">>> TRANSFERENCIA: {cantidad} x '{producto_nombre}' "
-        f"de {zona_origen_str} a {zona_destino_str} "
-        f"(mov_salida={mov_salida.id}, mov_entrada={mov_entrada.id})"
+    f">>> TRANSFERENCIA: {cantidad} x '{producto_nombre}' "
+    f"de {zona_origen_str} a {zona_destino_str} "
+    f"(mov_salida={mov_salida.id}, mov_entrada={mov_entrada.id}, codigo={codigo or '-'})"
     )
 
     return RedirectResponse(url="/stock", status_code=302)
+
+
 
 
 # ============================

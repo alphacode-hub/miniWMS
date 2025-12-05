@@ -74,6 +74,94 @@
                 </p>
             </div>
 
+            <!-- Códigos de identificación -->
+            <div class="border border-slate-200 rounded-2xl px-3 py-3 bg-slate-50 space-y-3">
+                <p class="text-[11px] font-semibold text-slate-700">
+                    Códigos de identificación
+                    <span class="font-normal text-slate-500">(recomendado)</span>
+                </p>
+                <p class="text-[10px] text-slate-500">
+                    Asocia un código interno (SKU) y/o un código de barras EAN para poder buscar y escanear
+                    este producto rápidamente en entradas, salidas y conteos.
+                </p>
+
+                <div class="space-y-2">
+                    <!-- SKU interno -->
+                    <div class="space-y-1">
+                        <label for="sku" class="block text-[10px] text-slate-600">
+                            Código interno (SKU)
+                        </label>
+                        <input id="sku"
+                               name="sku"
+                               type="text"
+                               value="{{ sku|default('', true) }}"
+                               autocomplete="off"
+                               class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Ej: LEC-ENT-1L-01" />
+                        <p class="mt-1 text-[10px] text-slate-400">
+                            Úsalo como código interno para tu organización (no necesita ser escaneable).
+                        </p>
+                    </div>
+
+                    <!-- EAN / código de barras con cámara -->
+                    <div class="space-y-1">
+                        <label for="ean13" class="block text-[10px] text-slate-600">
+                            Código de barras / EAN / QR
+                        </label>
+
+                        <div class="flex items-center gap-2">
+                            <input id="ean13"
+                                   name="ean13"
+                                   type="text"
+                                   inputmode="numeric"
+                                   autocomplete="off"
+                                   value="{{ ean13|default('', true) }}"
+                                   class="flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="Escanea o escribe el código" />
+
+                            <!-- Botón de cámara (solo móviles via JS) -->
+                            <button type="button"
+                                    id="btn-scan-ean"
+                                    class="inline-flex items-center justify-center rounded-xl px-2.5 py-2
+                                           text-[11px] font-semibold bg-slate-900 text-white
+                                           hover:bg-slate-800 active:scale-[0.97] transition">
+                                📷
+                            </button>
+                        </div>
+
+                        <p class="mt-1 text-[10px] text-slate-400">
+                            En computador escribe el código manualmente. En móvil y tablet puedes usar la cámara
+                            para escanear el código de barras o QR.
+                        </p>
+                    </div>
+
+                    <!-- Contenedor del lector -->
+                    <div id="scan-section-ean" class="mt-2 hidden">
+                        <!-- Overlay pantalla completa -->
+                        <div id="scan-overlay-ean" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40"></div>
+
+                        <div class="relative z-50 rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                            <p class="text-[11px] text-slate-600">
+                                Apunta la cámara al código de barras o QR del producto.
+                            </p>
+
+                            <div id="reader-ean"
+                                 class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center">
+                            </div>
+
+                            <button type="button"
+                                    id="btn-stop-scan-ean"
+                                    class="mt-2 inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px] font-semibold
+                                           border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
+                                Detener cámara
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Costo unitario -->
             <div class="space-y-1">
                 <label for="costo_unitario" class="block text-xs font-medium text-slate-700 mb-1">
@@ -169,4 +257,101 @@
 
     </section>
 </div>
+
+<!-- SCRIPT ESCÁNER EAN: sólo móvil/tablet -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const btnScan = document.getElementById("btn-scan-ean");
+        const btnStop = document.getElementById("btn-stop-scan-ean");
+        const scanSection = document.getElementById("scan-section-ean");
+        const eanInput = document.getElementById("ean13");
+        const overlay = document.getElementById("scan-overlay-ean");
+
+        if (!btnScan || !scanSection || !eanInput) return;
+
+        const isTouchDevice =
+            ("ontouchstart" in window) ||
+            (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+            (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
+
+        // En desktop ocultamos cámara y visor
+        if (!isTouchDevice) {
+            btnScan.classList.add("hidden");
+            scanSection.classList.add("hidden");
+            if (overlay) overlay.classList.add("hidden");
+            return;
+        }
+
+        let html5QrCode = null;
+        let scanning = false;
+
+        function stopScanner() {
+            if (overlay) overlay.classList.add("hidden");
+
+            if (!html5QrCode || !scanning) {
+                scanSection.classList.add("hidden");
+                return;
+            }
+
+            html5QrCode.stop().then(() => {
+                scanning = false;
+                scanSection.classList.add("hidden");
+            }).catch(err => {
+                console.error("Error al detener el escáner:", err);
+                scanning = false;
+                scanSection.classList.add("hidden");
+            });
+        }
+
+        function startScanner() {
+            if (scanning) return;
+
+            if (typeof Html5Qrcode === "undefined") {
+                console.error("Html5Qrcode no está definido. Revisa el <script> en base.html");
+                alert("No se pudo iniciar el lector de códigos. Verifica la configuración del escáner.");
+                return;
+            }
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader-ean");
+            }
+
+            if (overlay) overlay.classList.remove("hidden");
+            scanSection.classList.remove("hidden");
+            scanning = true;
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    eanInput.value = decodedText;
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    // errores de lectura continua ignorados
+                }
+            ).catch(err => {
+                console.error("No se pudo iniciar la cámara:", err);
+                alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+                scanning = false;
+                stopScanner();
+            });
+        }
+
+        btnScan.addEventListener("click", function (e) {
+            e.preventDefault();
+            startScanner();
+        });
+
+        if (btnStop) {
+            btnStop.addEventListener("click", function (e) {
+                e.preventDefault();
+                stopScanner();
+            });
+        }
+    });
+</script>
 {% endblock %}

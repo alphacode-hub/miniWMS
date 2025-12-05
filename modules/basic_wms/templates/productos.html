@@ -16,7 +16,8 @@
 
                 <p class="text-xs sm:text-sm text-slate-500 mt-1">
                     Gestiona los SKUs de tu negocio. Estos productos se usarán en entradas,
-                    salidas, transferencias, alertas y reportes.
+                    salidas, transferencias, alertas y reportes. Incluye códigos SKU / EAN
+                    para poder escanearlos desde el móvil.
                 </p>
             </div>
 
@@ -70,13 +71,37 @@
                 <tbody>
                     {% for p in productos %}
                     <tr class="border-b last:border-0 hover:bg-slate-50/70">
-                        <!-- NOMBRE -->
+                        <!-- NOMBRE + ID + CÓDIGOS -->
                         <td class="py-1.5 px-3 align-top">
                             <div class="text-[11px] sm:text-xs font-semibold text-slate-900">
                                 {{ p.nombre }}
                             </div>
+
                             <div class="text-[10px] text-slate-400">
                                 ID: <span class="font-mono">{{ p.id }}</span>
+                            </div>
+
+                            <!-- Códigos SKU / EAN -->
+                            <div class="mt-0.5 flex flex-wrap gap-1">
+                                {% if p.sku %}
+                                <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-medium
+                                             bg-slate-100 text-slate-700 border border-slate-200">
+                                    SKU: <span class="ml-1 font-mono">{{ p.sku }}</span>
+                                </span>
+                                {% endif %}
+
+                                {% if p.ean13 %}
+                                <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-medium
+                                             bg-slate-100 text-slate-700 border border-slate-200">
+                                    EAN: <span class="ml-1 font-mono">{{ p.ean13 }}</span>
+                                </span>
+                                {% endif %}
+
+                                {% if not p.sku and not p.ean13 %}
+                                <span class="text-[10px] text-slate-400">
+                                    Sin código asociado
+                                </span>
+                                {% endif %}
                             </div>
                         </td>
 

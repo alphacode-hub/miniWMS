@@ -51,6 +51,8 @@
                     <option value="">Selecciona un producto</option>
                     {% for p in productos %}
                     <option value="{{ p.nombre }}"
+                            data-sku="{{ p.sku or '' }}"
+                            data-ean="{{ p.ean13 or '' }}"
                             {% if producto is defined and producto == p.nombre %}selected{% endif %}>
                         {{ p.nombre }}
                     </option>
@@ -113,6 +115,25 @@
                         Detener cámara
                     </button>
                 </div>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="space-y-1">
+                <label for="cantidad" class="block text-xs font-medium text-slate-700">
+                    Cantidad
+                </label>
+                <input id="cantidad"
+                       type="number"
+                       name="cantidad"
+                       min="1"
+                       required
+                       value="{{ cantidad or '' }}"
+                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="1" />
+                <p class="text-[10px] text-slate-400">
+                    Ingresa la cantidad total que estás recibiendo en este movimiento.
+                </p>
             </div>
 
             <!-- Ubicación / Slot -->
@@ -207,16 +228,73 @@
     </section>
 </div>
 
-<!-- SCRIPT ESCÁNER: sólo activa cámara en móviles/tablets -->
+<!-- SCRIPT: sincronizar producto desde código + escáner en móviles -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        const codigoInput = document.getElementById("codigo");
+        const selectProducto = document.getElementById("producto");
+
+        // Si falta algo crítico, no hacemos nada
+        if (!codigoInput || !selectProducto) {
+            return;
+        }
+
+        // ============================
+        // 1) Mapa código -> nombre producto (SKU / EAN)
+        // ============================
+        const codeToValue = new Map();
+
+        Array.from(selectProducto.options).forEach(opt => {
+            const value = opt.value;
+            if (!value) return; // saltar opción placeholder
+
+            const sku = (opt.dataset.sku || "").trim();
+            const ean = (opt.dataset.ean || "").trim();
+
+            if (sku) codeToValue.set(sku, value);
+            if (ean) codeToValue.set(ean, value);
+        });
+
+        function syncSelectFromCodigoEntrada() {
+            const code = (codigoInput.value || "").trim();
+            if (!code) return;
+
+            const value = codeToValue.get(code);
+            if (value) {
+                selectProducto.value = value;
+
+                // feedback visual pequeño
+                selectProducto.classList.add("ring-2", "ring-emerald-400");
+                setTimeout(() => {
+                    selectProducto.classList.remove("ring-2", "ring-emerald-400");
+                }, 400);
+            }
+        }
+
+        // Exponer global para que el escáner pueda llamarlo
+        window.syncProductoDesdeCodigoEntrada = syncSelectFromCodigoEntrada;
+
+        // Sincronizar cuando se escribe o se confirma el código
+        codigoInput.addEventListener("change", syncSelectFromCodigoEntrada);
+        codigoInput.addEventListener("blur", syncSelectFromCodigoEntrada);
+        codigoInput.addEventListener("keyup", function (e) {
+            if (e.key === "Enter") {
+                syncSelectFromCodigoEntrada();
+            }
+        });
+
+        // ============================
+        // 2) Lógica de escáner (sólo móviles/tablets)
+        // ============================
         const btnScan = document.getElementById("btn-scan");
         const btnStop = document.getElementById("btn-stop-scan");
         const scanSection = document.getElementById("scan-section");
-        const codigoInput = document.getElementById("codigo");
         const overlay = document.getElementById("scan-overlay");
 
-        if (!btnScan || !scanSection || !codigoInput) return;
+        // Si no hay botón o sección, no configuramos el escáner
+        if (!btnScan || !scanSection) {
+            return;
+        }
 
         // Detectar dispositivo táctil (móvil / tablet)
         const isTouchDevice =
@@ -281,6 +359,11 @@
                     // Feedback de vibración en móviles
                     if (navigator.vibrate) {
                         navigator.vibrate(200);
+                    }
+
+                    // Sincronizar select de producto desde el código
+                    if (window.syncProductoDesdeCodigoEntrada) {
+                        window.syncProductoDesdeCodigoEntrada();
                     }
 
                     // Detener scanner y cerrar visor correctamente

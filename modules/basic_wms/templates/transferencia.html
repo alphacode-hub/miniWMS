@@ -38,11 +38,30 @@
 
             <!-- Producto + cantidad -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
                 <!-- Producto -->
                 <div class="space-y-1">
                     <label for="producto" class="block text-xs font-medium text-slate-700">
                         Producto
                     </label>
+                    <!-- Código SKU/EAN (opcional, para sincronizar producto) -->
+                    <div class="mt-2 space-y-1">
+                        <label for="codigo" class="block text-[10px] font-medium text-slate-600">
+                            Código de producto (SKU / EAN) <span class="font-normal text-slate-400">(opcional)</span>
+                        </label>
+                        <input id="codigo"
+                               name="codigo"
+                               type="text"
+                               inputmode="numeric"
+                               autocomplete="off"
+                               value="{{ codigo or '' }}"
+                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Escribe o escanea el código en otra pantalla" />
+                        <p class="text-[10px] text-slate-400">
+                            Si ingresas un SKU o EAN que coincida con un producto, se seleccionará automáticamente en la lista.
+                        </p>
+                    </div>
                     <select id="producto"
                             name="producto"
                             required
@@ -51,7 +70,9 @@
                         <option value="">Selecciona producto</option>
                         {% for p in productos %}
                         <option value="{{ p.nombre }}"
-                                {% if producto == p.nombre %}selected{% endif %}>
+                                data-sku="{{ p.sku or '' }}"
+                                data-ean="{{ p.ean13 or '' }}"
+                                {% if producto is defined and producto == p.nombre %}selected{% endif %}>
                             {{ p.nombre }}
                         </option>
                         {% endfor %}
@@ -59,6 +80,8 @@
                     <p class="mt-1 text-[10px] text-slate-400">
                         Sólo se permitirá transferir si hay stock suficiente en el slot origen.
                     </p>
+
+
                 </div>
 
                 <!-- Cantidad -->
@@ -172,4 +195,56 @@
 
     </section>
 </div>
+
+<!-- SCRIPT: sincronizar producto desde código (SKU / EAN) -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const codigoInput = document.getElementById("codigo");
+        const selectProducto = document.getElementById("producto");
+
+        if (!codigoInput || !selectProducto) return;
+
+        // Mapa código -> nombre de producto
+        const codeToValue = new Map();
+
+        Array.from(selectProducto.options).forEach(opt => {
+            const value = opt.value;
+            if (!value) return;  // saltar placeholder
+
+            const sku = (opt.dataset.sku || "").trim();
+            const ean = (opt.dataset.ean || "").trim();
+
+            if (sku) codeToValue.set(sku, value);
+            if (ean) codeToValue.set(ean, value);
+        });
+
+        function syncSelectFromCodigoTransfer() {
+            const code = (codigoInput.value || "").trim();
+            if (!code) return;
+
+            const value = codeToValue.get(code);
+            if (value) {
+                selectProducto.value = value;
+
+                // pequeño feedback visual
+                selectProducto.classList.add("ring-2", "ring-emerald-400");
+                setTimeout(() => {
+                    selectProducto.classList.remove("ring-2", "ring-emerald-400");
+                }, 400);
+            }
+        }
+
+        // Sincronizar en eventos típicos de input
+        codigoInput.addEventListener("change", syncSelectFromCodigoTransfer);
+        codigoInput.addEventListener("blur", syncSelectFromCodigoTransfer);
+        codigoInput.addEventListener("keyup", function (e) {
+            if (e.key === "Enter") {
+                syncSelectFromCodigoTransfer();
+            }
+        });
+
+        // Lo dejamos en window por si más adelante quisieras llamarlo desde otro script
+        window.syncProductoDesdeCodigoTransfer = syncSelectFromCodigoTransfer;
+    });
+</script>
 {% endblock %}

@@ -247,6 +247,8 @@ async def stock_view(
                 "vencimiento_dias": venc_dias,
                 "vencimiento_estado": venc_estado,
                 "vencimiento_css": venc_css,
+                "sku": prod.sku if prod else None,
+                "ean13": prod.ean13 if prod else None,
             }
         )
 
@@ -281,6 +283,8 @@ async def stock_view(
                     "vencimiento_dias": None,
                     "vencimiento_estado": "Sin fecha",
                     "vencimiento_css": "bg-slate-100 text-slate-700 border border-slate-200",
+                    "sku": p.sku,
+                    "ean13": p.ean13,
                 }
             )
 

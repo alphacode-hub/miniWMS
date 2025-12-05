@@ -118,16 +118,12 @@ def seed_superadmin():
 # ============================
 
 def init_db() -> None:
-    """
-    Crear tablas y ejecutar seed inicial.
-    Llamar una vez al arrancar la app (evento startup).
-    """
-    # Import local para registrar modelos en Base.metadata
     import core.models  # noqa: F401
-    logger.info("[INIT_DB] Ejecutando migraciones con Alembic (recomendado a futuro)")
 
-    logger.info("[INIT_DB] Creando tablas (si no existen)...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("[INIT_DB] Tablas creadas/verificadas. Ejecutando seed_superadmin()...")
+    if settings.DATABASE_URL.startswith("sqlite"):
+        logger.info("[INIT_DB] SQLite detectado, creando tablas con create_all()...")
+        Base.metadata.create_all(bind=engine)
+
+    logger.info("[INIT_DB] Ejecutando seed_superadmin()...")
     seed_superadmin()
     logger.info("[INIT_DB] Proceso de inicialización de BD completado.")

@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import Movimiento
+from core.models import Movimiento, Producto
 from core.security import require_roles_dep
 from core.services.services_audit import registrar_auditoria
 
