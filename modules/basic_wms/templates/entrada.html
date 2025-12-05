@@ -65,7 +65,7 @@
                 </label>
 
                 <div class="flex items-center gap-2">
-                    <!-- Este input se ve en desktop, móvil y tablet -->
+                    <!-- Input visible en desktop, móvil y tablet -->
                     <input id="codigo"
                            name="codigo"
                            type="text"
@@ -76,7 +76,7 @@
                                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                            placeholder="Escanea o escribe el código" />
 
-                    <!-- Botón de cámara: sólo se usará en móviles/tablets (JS lo esconde en desktop) -->
+                    <!-- Botón de cámara: se oculta en desktop vía JS -->
                     <button type="button"
                             id="btn-scan"
                             class="inline-flex items-center justify-center rounded-xl px-2.5 py-2
@@ -93,15 +93,18 @@
 
             <!-- Contenedor del lector (sólo se muestra cuando se escanea en móvil/tablet) -->
             <div id="scan-section" class="mt-4 hidden">
+                <!-- Overlay pantalla completa -->
                 <div id="scan-overlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40"></div>
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+
+                <div class="relative z-50 rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
                     <p class="text-[11px] text-slate-600">
                         Apunta la cámara al código de barras o QR del producto.
                     </p>
+
+                    <!-- Visor grande -->
                     <div id="reader"
                          class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center">
                     </div>
-
 
                     <button type="button"
                             id="btn-stop-scan"
@@ -211,6 +214,7 @@
         const btnStop = document.getElementById("btn-stop-scan");
         const scanSection = document.getElementById("scan-section");
         const codigoInput = document.getElementById("codigo");
+        const overlay = document.getElementById("scan-overlay");
 
         if (!btnScan || !scanSection || !codigoInput) return;
 
@@ -220,19 +224,36 @@
             (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
             (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
 
-        // En desktop: ocultamos botón de cámara y el visor, pero el INPUT queda siempre visible
+        // En desktop: ocultamos botón de cámara y el visor
         if (!isTouchDevice) {
             btnScan.classList.add("hidden");
             scanSection.classList.add("hidden");
+            if (overlay) overlay.classList.add("hidden");
             return;
         }
 
         let html5QrCode = null;
         let scanning = false;
 
-        function startScanner() {
-            document.getElementById("scan-overlay").classList.remove("hidden");
+        function stopScanner() {
+            if (overlay) overlay.classList.add("hidden");
 
+            if (!html5QrCode || !scanning) {
+                scanSection.classList.add("hidden");
+                return;
+            }
+
+            html5QrCode.stop().then(() => {
+                scanning = false;
+                scanSection.classList.add("hidden");
+            }).catch(err => {
+                console.error("Error al detener el escáner:", err);
+                scanning = false;
+                scanSection.classList.add("hidden");
+            });
+        }
+
+        function startScanner() {
             if (scanning) return;
 
             // Validar que la librería esté disponible
@@ -246,6 +267,7 @@
                 html5QrCode = new Html5Qrcode("reader");
             }
 
+            if (overlay) overlay.classList.remove("hidden");
             scanSection.classList.remove("hidden");
             scanning = true;
 
@@ -261,41 +283,17 @@
                         navigator.vibrate(200);
                     }
 
-                    // Detener scanner y ocultar visor
-                    html5QrCode.stop().then(() => {
-                        scanning = false;
-                        scanSection.classList.add("hidden");
-                    }).catch(err => {
-                        console.error("Error al detener el escáner:", err);
-                        scanning = false;
-                        scanSection.classList.add("hidden");
-                    });
+                    // Detener scanner y cerrar visor correctamente
+                    stopScanner();
                 },
                 (errorMessage) => {
                     // Ignoramos errores de lectura continua
                 }
             ).catch(err => {
                 console.error("No se pudo iniciar la cámara:", err);
-                scanning = false;
-                scanSection.classList.add("hidden");
                 alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
-            });
-        }
-
-        function stopScanner() {
-            document.getElementById("scan-overlay").classList.add("hidden");
-
-            if (!html5QrCode || !scanning) {
-                scanSection.classList.add("hidden");
-                return;
-            }
-            html5QrCode.stop().then(() => {
                 scanning = false;
-                scanSection.classList.add("hidden");
-            }).catch(err => {
-                console.error("Error al detener el escáner:", err);
-                scanning = false;
-                scanSection.classList.add("hidden");
+                stopScanner();
             });
         }
 
