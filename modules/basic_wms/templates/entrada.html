@@ -92,12 +92,16 @@
             </div>
 
             <!-- Contenedor del lector (sólo se muestra cuando se escanea en móvil/tablet) -->
-            <div id="scan-section" class="mt-2 hidden">
+            <div id="scan-section" class="mt-4 hidden">
+                <div id="scan-overlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40"></div>
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
                     <p class="text-[11px] text-slate-600">
                         Apunta la cámara al código de barras o QR del producto.
                     </p>
-                    <div id="reader" class="w-full rounded-xl overflow-hidden bg-black/80 aspect-video"></div>
+                    <div id="reader"
+                         class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center">
+                    </div>
+
 
                     <button type="button"
                             id="btn-stop-scan"
@@ -227,6 +231,8 @@
         let scanning = false;
 
         function startScanner() {
+            document.getElementById("scan-overlay").classList.remove("hidden");
+
             if (scanning) return;
 
             // Validar que la librería esté disponible
@@ -277,6 +283,8 @@
         }
 
         function stopScanner() {
+            document.getElementById("scan-overlay").classList.add("hidden");
+
             if (!html5QrCode || !scanning) {
                 scanSection.classList.add("hidden");
                 return;
