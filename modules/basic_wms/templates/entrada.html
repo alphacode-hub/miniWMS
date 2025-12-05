@@ -9,9 +9,6 @@
         <!-- HEADER -->
         <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-                    Paso 3 de 4 · Movimientos
-                </p>
                 <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Registrar entrada
                 </h1>
@@ -41,31 +38,6 @@
               action="/movimientos/entrada"
               class="space-y-4">
 
-            {# ============================
-            CÓDIGO / ETIQUETA (SCANNER)
-            ============================ #}
-            <div class="space-y-1">
-                <label for="codigo_entrada" class="block text-xs font-medium text-slate-700">
-                    Código / etiqueta <span class="font-normal text-slate-400">(opcional)</span>
-                </label>
-                <div class="flex gap-2">
-                    <input id="codigo_entrada"
-                           type="text"
-                           name="codigo_entrada"
-                           value="{{ codigo_entrada or '' }}"
-                           class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
-                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                           placeholder="Escanea o escribe el código del producto / lote / pallet" />
-
-                    {# Componente de escáner reutilizable #}
-                    {% set target_input_id = "codigo_entrada" %}
-                    {% include "partials/scanner.html" %}
-                </div>
-                <p class="text-[10px] text-slate-400">
-                    En móvil, usa el botón de cámara para escanear el código. Este campo es adicional al producto seleccionado.
-                </p>
-            </div>
-
             <!-- Producto -->
             <div class="space-y-1">
                 <label for="producto" class="block text-xs font-medium text-slate-700">
@@ -86,20 +58,54 @@
                 </select>
             </div>
 
-            <!-- Cantidad -->
+            <!-- Código SKU / EAN + botón cámara (input SIEMPRE visible) -->
             <div class="space-y-1">
-                <label for="cantidad" class="block text-xs font-medium text-slate-700">
-                    Cantidad
+                <label for="codigo" class="block text-xs font-medium text-slate-700">
+                    Código de producto (SKU / EAN)
                 </label>
-                <input id="cantidad"
-                       type="number"
-                       name="cantidad"
-                       min="1"
-                       required
-                       value="{% if cantidad is defined %}{{ cantidad }}{% endif %}"
-                       class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       placeholder="1" />
+
+                <div class="flex items-center gap-2">
+                    <!-- Este input se ve en desktop, móvil y tablet -->
+                    <input id="codigo"
+                           name="codigo"
+                           type="text"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           value="{{ codigo or '' }}"
+                           class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                           placeholder="Escanea o escribe el código" />
+
+                    <!-- Botón de cámara: sólo se usará en móviles/tablets (JS lo esconde en desktop) -->
+                    <button type="button"
+                            id="btn-scan"
+                            class="inline-flex items-center justify-center rounded-xl px-2.5 py-2
+                                   text-[11px] font-semibold bg-slate-900 text-white
+                                   hover:bg-slate-800 active:scale-[0.97] transition">
+                        📷
+                    </button>
+                </div>
+
+                <p class="text-[10px] text-slate-400">
+                    En computador escribe el código manualmente. En móvil y tablet puedes usar la cámara para escanear.
+                </p>
+            </div>
+
+            <!-- Contenedor del lector (sólo se muestra cuando se escanea en móvil/tablet) -->
+            <div id="scan-section" class="mt-2 hidden">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <p class="text-[11px] text-slate-600">
+                        Apunta la cámara al código de barras o QR del producto.
+                    </p>
+                    <div id="reader" class="w-full rounded-xl overflow-hidden bg-black/80 aspect-video"></div>
+
+                    <button type="button"
+                            id="btn-stop-scan"
+                            class="mt-2 inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px] font-semibold
+                                   border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
+                        Detener cámara
+                    </button>
+                </div>
             </div>
 
             <!-- Ubicación / Slot -->
@@ -193,4 +199,109 @@
 
     </section>
 </div>
+
+<!-- SCRIPT ESCÁNER: sólo activa cámara en móviles/tablets -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const btnScan = document.getElementById("btn-scan");
+        const btnStop = document.getElementById("btn-stop-scan");
+        const scanSection = document.getElementById("scan-section");
+        const codigoInput = document.getElementById("codigo");
+
+        if (!btnScan || !scanSection || !codigoInput) return;
+
+        // Detectar dispositivo táctil (móvil / tablet)
+        const isTouchDevice =
+            ("ontouchstart" in window) ||
+            (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+            (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
+
+        // En desktop: ocultamos botón de cámara y el visor, pero el INPUT queda siempre visible
+        if (!isTouchDevice) {
+            btnScan.classList.add("hidden");
+            scanSection.classList.add("hidden");
+            return;
+        }
+
+        let html5QrCode = null;
+        let scanning = false;
+
+        function startScanner() {
+            if (scanning) return;
+
+            // Validar que la librería esté disponible
+            if (typeof Html5Qrcode === "undefined") {
+                console.error("Html5Qrcode no está definido. Revisa el <script> en base.html");
+                alert("No se pudo iniciar el lector de códigos. Verifica la configuración del escáner.");
+                return;
+            }
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            scanSection.classList.remove("hidden");
+            scanning = true;
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    // Escribimos el código escaneado en el input
+                    codigoInput.value = decodedText;
+
+                    // Feedback de vibración en móviles
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+
+                    // Detener scanner y ocultar visor
+                    html5QrCode.stop().then(() => {
+                        scanning = false;
+                        scanSection.classList.add("hidden");
+                    }).catch(err => {
+                        console.error("Error al detener el escáner:", err);
+                        scanning = false;
+                        scanSection.classList.add("hidden");
+                    });
+                },
+                (errorMessage) => {
+                    // Ignoramos errores de lectura continua
+                }
+            ).catch(err => {
+                console.error("No se pudo iniciar la cámara:", err);
+                scanning = false;
+                scanSection.classList.add("hidden");
+                alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+            });
+        }
+
+        function stopScanner() {
+            if (!html5QrCode || !scanning) {
+                scanSection.classList.add("hidden");
+                return;
+            }
+            html5QrCode.stop().then(() => {
+                scanning = false;
+                scanSection.classList.add("hidden");
+            }).catch(err => {
+                console.error("Error al detener el escáner:", err);
+                scanning = false;
+                scanSection.classList.add("hidden");
+            });
+        }
+
+        btnScan.addEventListener("click", function (e) {
+            e.preventDefault();
+            startScanner();
+        });
+
+        if (btnStop) {
+            btnStop.addEventListener("click", function (e) {
+                e.preventDefault();
+                stopScanner();
+            });
+        }
+    });
+</script>
 {% endblock %}
