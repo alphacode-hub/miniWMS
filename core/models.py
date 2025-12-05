@@ -185,6 +185,10 @@ class Producto(Base):
     activo = Column(Integer, default=1, nullable=False)
     costo_unitario = Column(Float, nullable=True)  # 👈 antes estaba como FLOAT
 
+    # 🔢 Códigos de identificación
+    sku = Column(String, nullable=True, index=True)    # Código interno / SKU
+    ean13 = Column(String, nullable=True, index=True)  # Código de barras / EAN / QR simple
+
     negocio = relationship("Negocio", back_populates="productos")
 
 
@@ -193,19 +197,22 @@ class Movimiento(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # 🔁 Antes: negocio = Column(String, ...)
     negocio_id = Column(Integer, ForeignKey("negocios.id"), index=True, nullable=False)
 
-    usuario = Column(String, index=True, nullable=False)   # email del usuario que hizo el movimiento
+    usuario = Column(String, index=True, nullable=False)   # email del usuario
     tipo = Column(String, index=True, nullable=False)      # entrada / salida / ajuste / etc.
-    producto = Column(String, index=True, nullable=False)
+    producto = Column(String, index=True, nullable=False)  # nombre del producto
     cantidad = Column(Integer, nullable=False)
     zona = Column(String, nullable=False)                  # código_full del slot
     fecha = Column(DateTime, default=datetime.utcnow, nullable=False)
     fecha_vencimiento = Column(Date, nullable=True)
     motivo_salida = Column(String, nullable=True)
 
+    # 🆕 Código físico usado en el movimiento (si aplica)
+    codigo_producto = Column(String, nullable=True, index=True)
+
     negocio = relationship("Negocio", back_populates="movimientos")
+
 
 
 class Alerta(Base):

@@ -9,3 +9,4 @@ python-dotenv
 pydantic-settings
 openpyxl
 psycopg2-binary
+alembic
