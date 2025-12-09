@@ -2,36 +2,145 @@
 {% block title %}Inventario - Mini WMS{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-4xl mx-auto px-4 py-4 sm:py-6">
+<div class="w-full max-w-5xl mx-auto px-4 py-4 sm:py-6 space-y-4">
 
+    <!-- TARJETA HEADER -->
     <section class="bg-white shadow-sm rounded-2xl border border-slate-100
-                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
-
-        <!-- HEADER -->
-        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-2">
+        <header class="flex flex-col gap-2">
             <div>
                 <h1 class="text-lg sm:text-xl font-semibold text-slate-900">
                     Inventario físico
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-500 mt-1">
-                    Compara el stock teórico con el conteo real en bodega y ajusta diferencias automáticamente.
+                    Compara el stock teórico con el conteo real en bodega y genera
+                    ajustes automáticos por producto y ubicación.
+                </p>
+            </div>
+        </header>
+    </section>
+
+    <!-- TARJETA FILTROS + CONTEO -->
+    <section class="bg-white shadow-sm rounded-2xl border border-slate-100
+                     px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+
+        <!-- FILTROS DE INVENTARIO -->
+        <div class="space-y-3">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-900">
+                    Filtros para conteo
+                </h2>
+                <p class="text-[11px] text-slate-500">
+                    Elige un producto específico o filtra por código (SKU / EAN) para hacer
+                    conteos más precisos por línea de producto.
                 </p>
             </div>
 
-            <a href="/dashboard"
-               class="hidden sm:inline-flex items-center text-[11px] text-slate-500 hover:text-slate-700 hover:underline">
-                ← Volver al dashboard
-            </a>
-        </header>
+            <form id="inventario-filtros"
+                  method="get"
+                  class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
 
+                <!-- Filtro por nombre de producto -->
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                        Producto
+                    </label>
+                    <input type="text"
+                           name="producto"
+                           value="{{ f_producto or '' }}"
+                           placeholder="Ej: Leche entera 1L"
+                           class="w-full rounded-xl bg-slate-50 border border-slate-200 px-2 py-1.5 text-xs text-slate-900
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        Puedes escribir parte del nombre del producto para filtrar la lista de conteo.
+                    </p>
+                </div>
+
+                <!-- Filtro por código SKU/EAN + cámara -->
+                <div>
+                    <label for="codigo" class="block text-[11px] font-medium text-slate-600 mb-1">
+                        Código (SKU / EAN)
+                    </label>
+
+                    <div class="flex items-center gap-2">
+                        <input id="codigo"
+                               type="text"
+                               name="codigo"
+                               inputmode="numeric"
+                               autocomplete="off"
+                               value="{{ f_codigo or '' }}"
+                               placeholder="Escribe o escanea el código"
+                               class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-2 py-1.5 text-xs text-slate-900
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+
+                        <!-- Botón cámara: sólo móvil/tablet (se oculta en desktop vía JS) -->
+                        <button type="button"
+                                id="btn-scan-inv"
+                                class="inline-flex items-center justify-center rounded-xl px-2.5 py-1.5
+                                       text-[11px] font-semibold bg-slate-900 text-white
+                                       hover:bg-slate-800 active:scale-[0.97] transition">
+                            📷
+                        </button>
+                    </div>
+
+                    <p class="mt-1 text-[10px] text-slate-400">
+                        En computador escribe el código manualmente. En móvil y tablet puedes usar la cámara.
+                    </p>
+                </div>
+
+                <!-- Botones filtros -->
+                <div class="md:col-span-3 flex justify-end gap-2 mt-1">
+                    <a href="/inventario"
+                       class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs border border-slate-200
+                              text-slate-600 bg-white hover:bg-slate-50">
+                        Limpiar filtros
+                    </a>
+                    <button type="submit"
+                            class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold
+                                   bg-slate-900 hover:bg-slate-800 text-white shadow-sm active:scale-[0.98] transition">
+                        Aplicar filtros
+                    </button>
+                </div>
+            </form>
+
+            <!-- Contenedor del lector (sólo se muestra al escanear en móvil/tablet) -->
+            <div id="scan-section-inv" class="mt-3 hidden">
+                <!-- Overlay pantalla completa -->
+                <div id="scan-overlay-inv"
+                     class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40">
+                </div>
+
+                <div class="relative z-50 rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <p class="text-[11px] text-slate-600">
+                        Apunta la cámara al código de barras o QR del producto que quieres contar.
+                    </p>
+
+                    <div id="reader-inv"
+                         class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90
+                                flex items-center justify-center">
+                    </div>
+
+                    <button type="button"
+                            id="btn-stop-scan-inv"
+                            class="mt-2 inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px] font-semibold
+                                   border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
+                        Detener cámara
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE DE CONTEO -->
         {% if stock_items|length == 0 %}
-
-        <!-- ESTADO VACÍO -->
-        <p class="text-xs text-slate-500 mt-1">
-            No hay productos con movimientos aún.
-            Primero registra <span class="font-semibold">entradas</span> para poder hacer inventario.
-        </p>
-
+        <div class="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 space-y-2">
+            <p class="text-sm font-semibold text-slate-800">
+                No hay ítems para conteo con los filtros actuales
+            </p>
+            <p class="text-xs text-slate-500">
+                Verifica que el producto tenga movimientos de stock o ajusta los filtros de
+                nombre y código. Si es tu primer inventario, comienza registrando entradas.
+            </p>
+        </div>
         {% else %}
 
         <!-- FORMULARIO INVENTARIO -->
@@ -40,13 +149,13 @@
             <!-- total_items para el backend -->
             <input type="hidden" name="total_items" value="{{ stock_items|length }}" />
 
-            <!-- LISTA DE ITEMS -->
+            <!-- LISTA DE ITEMS A CONTAR -->
             <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                 {% for item in stock_items %}
                 {% set i = loop.index0 %}
 
                 <div class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
-                    <!-- Hidden fields -->
+                    <!-- Campos ocultos -->
                     <input type="hidden" name="producto_{{ i }}" value="{{ item.producto }}">
                     <input type="hidden" name="zona_{{ i }}" value="{{ item.zona }}">
 
@@ -75,8 +184,8 @@
                                    name="conteo_{{ i }}"
                                    min="0"
                                    class="w-full rounded-lg border border-slate-300 px-2 py-1 text-right text-[11px]
-                                          focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                                          appearance-none"
+                                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                                              appearance-none"
                                    placeholder="{{ item.stock_actual }}" />
                         </div>
                     </div>
@@ -88,36 +197,142 @@
             <div class="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2">
                 <a href="/dashboard"
                    class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl text-[11px] font-semibold
-                          border border-slate-300 text-slate-700 hover:bg-slate-50">
+                              border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
                     Cancelar
                 </a>
                 <button type="submit"
                         class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 rounded-xl
-                               text-[11px] font-semibold bg-slate-900 text-white shadow-sm
-                               hover:bg-slate-800 active:scale-[0.97] transition">
+                                   text-[11px] font-semibold bg-slate-900 text-white shadow-sm
+                                   hover:bg-slate-800 active:scale-[0.97] transition">
                     Registrar ajustes
                 </button>
             </div>
 
-            <!-- PIE / LEYENDA -->
-            <div class="mt-3 pt-3 border-t border-slate-100">
-                <p class="text-[11px] text-slate-500">
-                    Para cada producto y ubicación, ingresa el conteo físico. Si es distinto al stock teórico,
-                    se generará automáticamente un movimiento de <span class="font-semibold">ajuste</span> para cuadrar el inventario.
-                </p>
-            </div>
-
         </form>
-
         {% endif %}
+
+        <!-- VOLVER DASHBOARD (pie único, desktop + mobile) -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+            <p class="text-[11px] text-slate-500">
+                Siguiente paso recomendado:
+                <span class="font-semibold text-slate-800">
+                    revisar el stock consolidado
+                </span>
+                en la vista de Stock después de registrar los ajustes.
+            </p>
+
+            <a href="/dashboard"
+               class="text-[11px] text-slate-500 hover:text-slate-700 text-center sm:text-right">
+                ← Volver al dashboard
+            </a>
+        </div>
 
     </section>
 
-    <!-- VOLVER (MÓVIL) -->
-    <a href="/dashboard"
-       class="block mt-3 text-center text-xs text-slate-500 sm:hidden hover:text-slate-700">
-        ← Volver al dashboard
-    </a>
-
 </div>
+
+<!-- SCRIPT ESCÁNER: sólo móviles/tablets -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btnScan   = document.getElementById("btn-scan-inv");
+    const btnStop   = document.getElementById("btn-stop-scan-inv");
+    const scanSect  = document.getElementById("scan-section-inv");
+    const overlay   = document.getElementById("scan-overlay-inv");
+    const codigoInp = document.getElementById("codigo");
+    const formFiltros = document.getElementById("inventario-filtros");
+
+    if (!btnScan || !scanSect || !codigoInp || !formFiltros) return;
+
+    // Detectar dispositivo táctil (móvil / tablet)
+    const isTouchDevice =
+        ("ontouchstart" in window) ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+        (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
+
+    // En desktop: ocultamos botón de cámara y visor
+    if (!isTouchDevice) {
+        btnScan.classList.add("hidden");
+        scanSect.classList.add("hidden");
+        if (overlay) overlay.classList.add("hidden");
+        return;
+    }
+
+    let html5QrCode = null;
+    let scanning = false;
+
+    function stopScanner() {
+        if (overlay) overlay.classList.add("hidden");
+
+        if (!html5QrCode || !scanning) {
+            scanSect.classList.add("hidden");
+            return;
+        }
+
+        html5QrCode.stop().then(() => {
+            scanning = false;
+            scanSect.classList.add("hidden");
+        }).catch(err => {
+            console.error("Error al detener el escáner:", err);
+            scanning = false;
+            scanSect.classList.add("hidden");
+        });
+    }
+
+    function startScanner() {
+        if (scanning) return;
+
+        if (typeof Html5Qrcode === "undefined") {
+            console.error("Html5Qrcode no está definido. Revisa el <script> en base.html");
+            alert("No se pudo iniciar el lector de códigos. Verifica la configuración del escáner.");
+            return;
+        }
+
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader-inv");
+        }
+
+        if (overlay) overlay.classList.remove("hidden");
+        scanSect.classList.remove("hidden");
+        scanning = true;
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // Escribimos el código escaneado en el input
+                codigoInp.value = decodedText;
+
+                // Vibración como feedback
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+
+                // En inventario, al escanear filtramos de inmediato
+                stopScanner();
+                formFiltros.submit();
+            },
+            (errorMessage) => {
+                // errores de lectura continua: ignorar
+            }
+        ).catch(err => {
+            console.error("No se pudo iniciar la cámara:", err);
+            alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+            scanning = false;
+            stopScanner();
+        });
+    }
+
+    btnScan.addEventListener("click", function (e) {
+        e.preventDefault();
+        startScanner();
+    });
+
+    if (btnStop) {
+        btnStop.addEventListener("click", function (e) {
+            e.preventDefault();
+            stopScanner();
+        });
+    }
+});
+</script>
 {% endblock %}

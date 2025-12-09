@@ -39,52 +39,68 @@
             <!-- Producto + cantidad -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                <!-- Producto -->
-                <div class="space-y-1">
-                    <label for="producto" class="block text-xs font-medium text-slate-700">
-                        Producto
-                    </label>
-                    <!-- Código SKU/EAN (opcional, para sincronizar producto) -->
-                    <div class="mt-2 space-y-1">
-                        <label for="codigo" class="block text-[10px] font-medium text-slate-600">
+                <!-- Columna izquierda: código + producto -->
+                <div class="space-y-3">
+
+                    <!-- Código SKU/EAN + botón cámara -->
+                    <div class="space-y-1">
+                        <label for="codigo" class="block text-xs font-medium text-slate-700">
                             Código de producto (SKU / EAN) <span class="font-normal text-slate-400">(opcional)</span>
                         </label>
-                        <input id="codigo"
-                               name="codigo"
-                               type="text"
-                               inputmode="numeric"
-                               autocomplete="off"
-                               value="{{ codigo or '' }}"
-                               class="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
-                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                               placeholder="Escribe o escanea el código en otra pantalla" />
+
+                        <div class="flex items-center gap-2">
+                            <input id="codigo"
+                                   name="codigo"
+                                   type="text"
+                                   inputmode="numeric"
+                                   autocomplete="off"
+                                   value="{{ codigo or '' }}"
+                                   class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="Escribe o escanea el código" />
+
+                            <!-- Botón cámara: visible en móvil/tablet, oculto en desktop vía JS -->
+                            <button type="button"
+                                    id="btn-scan-transfer"
+                                    class="inline-flex items-center justify-center rounded-xl px-2.5 py-2
+                                           text-[11px] font-semibold bg-slate-900 text-white
+                                           hover:bg-slate-800 active:scale-[0.97] transition">
+                                📷
+                            </button>
+                        </div>
+
                         <p class="text-[10px] text-slate-400">
                             Si ingresas un SKU o EAN que coincida con un producto, se seleccionará automáticamente en la lista.
                         </p>
                     </div>
-                    <select id="producto"
-                            name="producto"
-                            required
-                            class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Selecciona producto</option>
-                        {% for p in productos %}
-                        <option value="{{ p.nombre }}"
-                                data-sku="{{ p.sku or '' }}"
-                                data-ean="{{ p.ean13 or '' }}"
-                                {% if producto is defined and producto == p.nombre %}selected{% endif %}>
-                            {{ p.nombre }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <p class="mt-1 text-[10px] text-slate-400">
-                        Sólo se permitirá transferir si hay stock suficiente en el slot origen.
-                    </p>
 
-
+                    <!-- Select producto -->
+                    <div class="space-y-1">
+                        <label for="producto" class="block text-xs font-medium text-slate-700">
+                            Producto
+                        </label>
+                        <select id="producto"
+                                name="producto"
+                                required
+                                class="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm text-slate-900
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Selecciona producto</option>
+                            {% for p in productos %}
+                            <option value="{{ p.nombre }}"
+                                    data-sku="{{ p.sku or '' }}"
+                                    data-ean="{{ p.ean13 or '' }}"
+                                    {% if producto is defined and producto == p.nombre %}selected{% endif %}>
+                                {{ p.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <p class="mt-1 text-[10px] text-slate-400">
+                            Sólo se permitirá transferir si hay stock suficiente en el slot origen.
+                        </p>
+                    </div>
                 </div>
 
-                <!-- Cantidad -->
+                <!-- Columna derecha: cantidad -->
                 <div class="space-y-1">
                     <label for="cantidad" class="block text-xs font-medium text-slate-700">
                         Cantidad a transferir
@@ -196,37 +212,56 @@
     </section>
 </div>
 
-<!-- SCRIPT: sincronizar producto desde código (SKU / EAN) -->
+<!-- OVERLAY Y VISOR DEL SCANNER (sólo en esta página) -->
+<div id="scan-overlay-transfer" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40"></div>
+<div id="scan-section-transfer" class="hidden fixed inset-4 sm:inset-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2
+                                      z-50 max-w-md w-[95%] sm:w-full">
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2 shadow-xl">
+        <p class="text-[11px] text-slate-600">
+            Apunta la cámara al código de barras o QR del producto.
+        </p>
+        <div id="reader-transfer"
+             class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center">
+        </div>
+        <button type="button"
+                id="btn-stop-scan-transfer"
+                class="mt-2 inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px] font-semibold
+                       border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
+            Detener cámara
+        </button>
+    </div>
+</div>
+
+<!-- SCRIPT: scanner + sincronizar producto según código -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const codigoInput = document.getElementById("codigo");
         const selectProducto = document.getElementById("producto");
+        const btnScan = document.getElementById("btn-scan-transfer");
+        const btnStop = document.getElementById("btn-stop-scan-transfer");
+        const scanSection = document.getElementById("scan-section-transfer");
+        const overlay = document.getElementById("scan-overlay-transfer");
 
-        if (!codigoInput || !selectProducto) return;
+        if (!codigoInput || !selectProducto || !btnScan || !scanSection) return;
 
-        // Mapa código -> nombre de producto
+        // ====== MAPA CÓDIGO -> PRODUCTO ======
         const codeToValue = new Map();
-
         Array.from(selectProducto.options).forEach(opt => {
             const value = opt.value;
-            if (!value) return;  // saltar placeholder
-
+            if (!value) return;
             const sku = (opt.dataset.sku || "").trim();
             const ean = (opt.dataset.ean || "").trim();
-
             if (sku) codeToValue.set(sku, value);
             if (ean) codeToValue.set(ean, value);
         });
 
-        function syncSelectFromCodigoTransfer() {
+        function syncSelectFromCodigo() {
             const code = (codigoInput.value || "").trim();
             if (!code) return;
-
             const value = codeToValue.get(code);
             if (value) {
                 selectProducto.value = value;
-
-                // pequeño feedback visual
+                // pequeño feedback
                 selectProducto.classList.add("ring-2", "ring-emerald-400");
                 setTimeout(() => {
                     selectProducto.classList.remove("ring-2", "ring-emerald-400");
@@ -234,17 +269,92 @@
             }
         }
 
-        // Sincronizar en eventos típicos de input
-        codigoInput.addEventListener("change", syncSelectFromCodigoTransfer);
-        codigoInput.addEventListener("blur", syncSelectFromCodigoTransfer);
+        codigoInput.addEventListener("change", syncSelectFromCodigo);
+        codigoInput.addEventListener("blur", syncSelectFromCodigo);
         codigoInput.addEventListener("keyup", function (e) {
-            if (e.key === "Enter") {
-                syncSelectFromCodigoTransfer();
-            }
+            if (e.key === "Enter") syncSelectFromCodigo();
         });
 
-        // Lo dejamos en window por si más adelante quisieras llamarlo desde otro script
-        window.syncProductoDesdeCodigoTransfer = syncSelectFromCodigoTransfer;
+        // ====== LÓGICA SCANNER (similar a entrada.html) ======
+        // Detectar dispositivo táctil
+        const isTouchDevice =
+            ("ontouchstart" in window) ||
+            (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+            (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
+
+        // En desktop: ocultamos botón y visor
+        if (!isTouchDevice) {
+            btnScan.classList.add("hidden");
+            if (overlay) overlay.classList.add("hidden");
+            if (scanSection) scanSection.classList.add("hidden");
+            return;
+        }
+
+        let html5QrCode = null;
+        let scanning = false;
+
+        function stopScanner() {
+            if (overlay) overlay.classList.add("hidden");
+            if (!html5QrCode || !scanning) {
+                if (scanSection) scanSection.classList.add("hidden");
+                return;
+            }
+            html5QrCode.stop().then(() => {
+                scanning = false;
+                scanSection.classList.add("hidden");
+            }).catch(err => {
+                console.error("Error al detener el escáner:", err);
+                scanning = false;
+                scanSection.classList.add("hidden");
+            });
+        }
+
+        function startScanner() {
+            if (scanning) return;
+
+            if (typeof Html5Qrcode === "undefined") {
+                console.error("Html5Qrcode no está definido. Revisa el <script> en base.html");
+                alert("No se pudo iniciar el lector de códigos. Verifica la configuración del escáner.");
+                return;
+            }
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader-transfer");
+            }
+
+            if (overlay) overlay.classList.remove("hidden");
+            scanSection.classList.remove("hidden");
+            scanning = true;
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    codigoInput.value = decodedText;
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    syncSelectFromCodigo();
+                    stopScanner();
+                },
+                () => { /* ignorar errores continuos */ }
+            ).catch(err => {
+                console.error("No se pudo iniciar la cámara:", err);
+                alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+                scanning = false;
+                stopScanner();
+            });
+        }
+
+        btnScan.addEventListener("click", function (e) {
+            e.preventDefault();
+            startScanner();
+        });
+
+        if (btnStop) {
+            btnStop.addEventListener("click", function (e) {
+                e.preventDefault();
+                stopScanner();
+            });
+        }
     });
 </script>
 {% endblock %}

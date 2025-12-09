@@ -72,7 +72,8 @@
             </p>
         </div>
 
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+
             <!-- Producto (texto libre) -->
             <div>
                 <label class="block text-[11px] font-medium text-slate-600 mb-1">
@@ -84,6 +85,40 @@
                        placeholder="Ej: Arroz"
                        class="w-full rounded-xl bg-slate-50 border border-slate-200 px-2 py-1.5 text-xs text-slate-900
                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+
+            <!-- Código SKU / EAN + botón cámara (sólo visible en móvil/tablet) -->
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">
+                    Código (SKU / EAN)
+                </label>
+
+                <div class="flex items-center gap-2">
+                    <!-- Input de código -->
+                    <input id="codigo"
+                           type="text"
+                           name="codigo"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           value="{{ f_codigo or '' }}"
+                           placeholder="Escribe o escanea el código"
+                           class="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-2 py-1.5 text-xs text-slate-900
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+
+                    <!-- Botón cámara (oculto por JS en desktop) -->
+                    <button type="button"
+                            id="btn-scan-stock"
+                            class="inline-flex items-center justify-center rounded-xl px-2.5 py-1.5
+                                   text-[11px] font-semibold bg-slate-900 text-white
+                                   hover:bg-slate-800 active:scale-[0.97] transition">
+                        📷
+                    </button>
+                </div>
+
+                <p class="mt-1 text-[10px] text-slate-400">
+                    En computador escribe el código manualmente.
+                    En móvil y tablet puedes usar la cámara para escanear.
+                </p>
             </div>
 
             <!-- Zona -->
@@ -138,7 +173,7 @@
             </div>
 
             <!-- Botones filtros -->
-            <div class="md:col-span-4 flex justify-end gap-2 mt-1">
+            <div class="md:col-span-5 flex justify-end gap-2 mt-1">
                 <a href="/stock"
                    class="inline-flex items-center rounded-xl px-3 py-1.5 text-xs border border-slate-200
                           text-slate-600 bg-white hover:bg-slate-50">
@@ -151,6 +186,31 @@
                 </button>
             </div>
         </form>
+
+        <!-- Contenedor del lector (sólo se muestra cuando se escanea en móvil/tablet) -->
+        <div id="scan-section-stock" class="mt-4 hidden">
+            <!-- Overlay pantalla completa -->
+            <div id="scan-overlay-stock"
+                 class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40"></div>
+
+            <div class="relative z-50 rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <p class="text-[11px] text-slate-600">
+                    Apunta la cámara al código de barras o QR del producto para filtrar el stock.
+                </p>
+
+                <!-- Visor grande -->
+                <div id="reader-stock"
+                     class="w-full h-[70vh] sm:h-80 rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center">
+                </div>
+
+                <button type="button"
+                        id="btn-stop-scan-stock"
+                        class="mt-2 inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-[11px] font-semibold
+                               border border-slate-300 text-slate-700 bg-white hover:bg-slate-50">
+                    Detener cámara
+                </button>
+            </div>
+        </div>
     </section>
 
     <!-- TABLA PRINCIPAL -->
@@ -237,4 +297,106 @@
     </section>
 
 </div>
+
+<!-- SCRIPT ESCÁNER: sólo activa cámara en móviles/tablets -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btnScan   = document.getElementById("btn-scan-stock");
+    const btnStop   = document.getElementById("btn-stop-scan-stock");
+    const scanSect  = document.getElementById("scan-section-stock");
+    const overlay   = document.getElementById("scan-overlay-stock");
+    const codigoInp = document.getElementById("codigo");
+
+    if (!btnScan || !scanSect || !codigoInp) return;
+
+    // Detectar dispositivo táctil (móvil / tablet)
+    const isTouchDevice =
+        ("ontouchstart" in window) ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+        (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0);
+
+    // En desktop: ocultamos botón de cámara y el visor
+    if (!isTouchDevice) {
+        btnScan.classList.add("hidden");
+        scanSect.classList.add("hidden");
+        if (overlay) overlay.classList.add("hidden");
+        return;
+    }
+
+    let html5QrCode = null;
+    let scanning = false;
+
+    function stopScanner() {
+        if (overlay) overlay.classList.add("hidden");
+
+        if (!html5QrCode || !scanning) {
+            scanSect.classList.add("hidden");
+            return;
+        }
+
+        html5QrCode.stop().then(() => {
+            scanning = false;
+            scanSect.classList.add("hidden");
+        }).catch(err => {
+            console.error("Error al detener el escáner:", err);
+            scanning = false;
+            scanSect.classList.add("hidden");
+        });
+    }
+
+    function startScanner() {
+        if (scanning) return;
+
+        if (typeof Html5Qrcode === "undefined") {
+            console.error("Html5Qrcode no está definido. Revisa el <script> en base.html");
+            alert("No se pudo iniciar el lector de códigos. Verifica la configuración del escáner.");
+            return;
+        }
+
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader-stock");
+        }
+
+        if (overlay) overlay.classList.remove("hidden");
+        scanSect.classList.remove("hidden");
+        scanning = true;
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // Escribimos el código escaneado en el input
+                codigoInp.value = decodedText;
+
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+
+                // El usuario luego puede tocar "Aplicar" para enviar filtros
+                stopScanner();
+            },
+            (errorMessage) => {
+                // errores de lectura continua: ignorar
+            }
+        ).catch(err => {
+            console.error("No se pudo iniciar la cámara:", err);
+            alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+            scanning = false;
+            stopScanner();
+        });
+    }
+
+    btnScan.addEventListener("click", function (e) {
+        e.preventDefault();
+        startScanner();
+    });
+
+    if (btnStop) {
+        btnStop.addEventListener("click", function (e) {
+            e.preventDefault();
+            stopScanner();
+        });
+    }
+});
+</script>
 {% endblock %}

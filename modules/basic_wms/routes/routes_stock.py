@@ -65,6 +65,7 @@ async def stock_view(
     f_zona = (params.get("zona", "") or "").strip()
     f_estado = (params.get("estado", "") or "").strip()
     f_vencimiento = (params.get("vencimiento", "") or "").strip()
+    f_codigo = (params.get("codigo", "") or "").strip()
 
     # ============================
     # 1) Productos del negocio
@@ -76,6 +77,15 @@ async def stock_view(
         .all()
     )
     productos_by_name = {p.nombre.lower(): p for p in productos}
+
+    # NUEVO: productos que matchean el SKU/EAN ingresado
+    codigo_match_nombres: set[str] = set()
+    if f_codigo:
+        for p in productos:
+            sku = (p.sku or "").strip() if hasattr(p, "sku") else ""
+            ean = (p.ean13 or "").strip() if hasattr(p, "ean13") else ""
+            if f_codigo == sku or f_codigo == ean:
+                codigo_match_nombres.add(p.nombre)
 
     # ============================
     # 2) Movimientos con join Slot/Ubic/Zona (orden FEFO)
@@ -309,6 +319,8 @@ async def stock_view(
     for r in filas_all:
         if f_producto and f_producto.lower() not in r["producto"].lower():
             continue
+        if f_codigo and r["producto"] not in codigo_match_nombres:
+            continue
         if f_zona and r["zona_nombre"] != f_zona:
             continue
         if f_estado and r["estado"] != f_estado:
@@ -362,10 +374,10 @@ async def stock_view(
             "zonas_list": zonas_list,
             "estados_list": estados_list,
             "venc_list": venc_list,
-            # filtros actuales
             "f_producto": f_producto,
             "f_zona": f_zona,
             "f_estado": f_estado,
             "f_vencimiento": f_vencimiento,
+            "f_codigo": f_codigo,
         },
     )

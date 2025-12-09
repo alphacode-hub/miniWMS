@@ -104,13 +104,67 @@ async def inventario_form(
     """
     negocio_id = user["negocio_id"]
 
+    params = request.query_params
+    f_producto = (params.get("producto", "") or "").strip()
+    f_codigo = (params.get("codigo", "") or "").strip()
+
+        # Productos del negocio (para mapear códigos SKU / EAN13)
+    productos = (
+        db.query(Producto)
+        .filter(Producto.negocio_id == negocio_id)
+        .order_by(Producto.nombre.asc())
+        .all()
+    )
+
+    # Mapa de código físico (SKU / EAN) -> nombre de producto
+    codigo_to_nombre: dict[str, str] = {}
+    for p in productos:
+        # SKU interno
+        if p.sku:
+            codigo_to_nombre[p.sku.strip()] = p.nombre
+
+        # Código de barras / EAN13
+        if p.ean13:
+            codigo_to_nombre[p.ean13.strip()] = p.nombre
+
+    nombre_por_codigo = None
+    if f_codigo:
+        nombre_por_codigo = codigo_to_nombre.get(f_codigo.strip())
+
+        # Si el usuario filtró por código pero no hubo match,
+    # devolvemos lista vacía directamente.
+    if f_codigo and nombre_por_codigo is None:
+        return templates.TemplateResponse(
+            "inventario.html",
+            {
+                "request": request,
+                "user": user,
+                "stock_items": [],
+                "f_producto": f_producto,
+                "f_codigo": f_codigo,
+            },
+        )
+
+
+
+
     # 1) Calcular stock teórico por (producto_norm, zona)
     resumen = _calcular_resumen_inventario(db, negocio_id)
 
     # 2) Construir lista para la tabla
     stock_items: list[dict] = []
     for (_prod_norm, _zona_norm), data in resumen.items():
+        producto_nombre = data["producto_display"]
+        zona = data["zona"]
         stock_actual = (data["entradas"] or 0) - (data["salidas"] or 0)
+        # Filtro por nombre (substring, case-insensitive)
+        if f_producto and f_producto.lower() not in producto_nombre.lower():
+            continue
+
+        # Filtro por código (si hay match de SKU/EAN a nombre)
+        if nombre_por_codigo and producto_nombre != nombre_por_codigo:
+            continue
+
         stock_items.append(
             {
                 "producto": data["producto_display"],
@@ -128,6 +182,8 @@ async def inventario_form(
             "request": request,
             "user": user,
             "stock_items": stock_items,
+            "f_producto": f_producto,
+            "f_codigo": f_codigo,
         },
     )
 
