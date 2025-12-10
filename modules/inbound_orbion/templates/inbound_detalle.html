@@ -1,0 +1,583 @@
+﻿{% extends "base.html" %}
+{% block title %}Orbion Inbound - {{ recepcion.codigo }}{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-3xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+            <h1 class="text-xl font-bold text-slate-900 truncate">
+                {{ recepcion.codigo }} · {{ recepcion.proveedor }}
+            </h1>
+            <p class="text-xs text-slate-500 truncate">
+                {{ recepcion.referencia_externa or 'Sin referencia externa' }}
+            </p>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium
+                {% if recepcion.estado == 'CERRADO' %}
+                    bg-emerald-50 text-emerald-700
+                {% elif recepcion.estado == 'EN_DESCARGA' %}
+                    bg-indigo-50 text-indigo-700
+                {% elif recepcion.estado == 'EN_CONTROL_CALIDAD' %}
+                    bg-amber-50 text-amber-800
+                {% elif recepcion.estado == 'EN_ESPERA' %}
+                    bg-sky-50 text-sky-700
+                {% else %}
+                    bg-slate-50 text-slate-600
+                {% endif %}">
+                {{ recepcion.estado.replace('_', ' ') }}
+            </span>
+            <a href="/inbound"
+               class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Datos básicos -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 space-y-1">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Datos de transporte
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">Contenedor:</span>
+                {{ recepcion.contenedor or 'No registrado' }}
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">Patente camión:</span>
+                {{ recepcion.patente_camion or 'No registrada' }}
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">Tipo de carga:</span>
+                {{ recepcion.tipo_carga or 'No definido' }}
+            </p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 space-y-1">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Fechas clave
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">ETA:</span>
+                {% if recepcion.fecha_estimada_llegada %}
+                {{ recepcion.fecha_estimada_llegada.strftime('%d-%m-%Y %H:%M') }}
+                {% else %}
+                No definida
+                {% endif %}
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">Creado:</span>
+                {% if recepcion.creado_en %}
+                {{ recepcion.creado_en.strftime('%d-%m-%Y %H:%M') }}
+                {% else %}
+                -
+                {% endif %}
+            </p>
+            <p class="text-xs text-slate-700">
+                <span class="font-semibold">Actualizado:</span>
+                {% if recepcion.actualizado_en %}
+                {{ recepcion.actualizado_en.strftime('%d-%m-%Y %H:%M') }}
+                {% else %}
+                -
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Observaciones -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+            Observaciones
+        </p>
+        <p class="text-xs text-slate-700 whitespace-pre-line">
+            {{ recepcion.observaciones or 'Sin observaciones registradas.' }}
+        </p>
+    </div>
+
+    <!-- Timeline de estados -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            Timeline de recepción
+        </p>
+        <ol class="space-y-2 text-xs text-slate-700">
+            <li class="flex items-start gap-2">
+                <div class="mt-[3px] h-2 w-2 rounded-full
+                            {% if recepcion.fecha_arribo %}
+                                bg-emerald-500
+                            {% else %}
+                                bg-slate-300
+                            {% endif %}"></div>
+                <div>
+                    <p class="font-semibold">Arribo al recinto</p>
+                    <p class="text-[11px] text-slate-500">
+                        {% if recepcion.fecha_arribo %}
+                        {{ recepcion.fecha_arribo.strftime('%d-%m-%Y %H:%M') }}
+                        {% else %}
+                        Aún no registrado.
+                        {% endif %}
+                    </p>
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <div class="mt-[3px] h-2 w-2 rounded-full
+                            {% if recepcion.fecha_inicio_descarga %}
+                                bg-emerald-500
+                            {% else %}
+                                bg-slate-300
+                            {% endif %}"></div>
+                <div>
+                    <p class="font-semibold">Inicio de descarga</p>
+                    <p class="text-[11px] text-slate-500">
+                        {% if recepcion.fecha_inicio_descarga %}
+                        {{ recepcion.fecha_inicio_descarga.strftime('%d-%m-%Y %H:%M') }}
+                        {% else %}
+                        Aún no registrado.
+                        {% endif %}
+                    </p>
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <div class="mt-[3px] h-2 w-2 rounded-full
+                            {% if recepcion.fecha_fin_descarga %}
+                                bg-emerald-500
+                            {% else %}
+                                bg-slate-300
+                            {% endif %}"></div>
+                <div>
+                    <p class="font-semibold">Fin de descarga</p>
+                    <p class="text-[11px] text-slate-500">
+                        {% if recepcion.fecha_fin_descarga %}
+                        {{ recepcion.fecha_fin_descarga.strftime('%d-%m-%Y %H:%M') }}
+                        {% else %}
+                        Aún no registrado.
+                        {% endif %}
+                    </p>
+                </div>
+            </li>
+            <li class="flex items-start gap-2">
+                <div class="mt-[3px] h-2 w-2 rounded-full
+                            {% if recepcion.estado == 'CERRADO' %}
+                                bg-emerald-500
+                            {% else %}
+                                bg-slate-300
+                            {% endif %}"></div>
+                <div>
+                    <p class="font-semibold">Cierre de recepción</p>
+                    <p class="text-[11px] text-slate-500">
+                        {% if recepcion.estado == 'CERRADO' %}
+                        Recepción cerrada.
+                        {% else %}
+                        Aún no cerrada.
+                        {% endif %}
+                    </p>
+                </div>
+            </li>
+        </ol>
+    </div>
+
+    <!-- Indicadores de eficiencia (tiempos) -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Indicadores de eficiencia
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                    Tiempo de espera
+                </p>
+                <p class="text-sm font-semibold text-slate-900">
+                    {% if metrics.tiempo_espera_min is not none %}
+                    {{ metrics.tiempo_espera_min|round(1) }} min
+                    {% else %}
+                    -
+                    {% endif %}
+                </p>
+                <p class="text-[10px] text-slate-400">
+                    Desde arribo hasta inicio de descarga.
+                </p>
+            </div>
+            <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                    Tiempo de descarga
+                </p>
+                <p class="text-sm font-semibold text-slate-900">
+                    {% if metrics.tiempo_descarga_min is not none %}
+                    {{ metrics.tiempo_descarga_min|round(1) }} min
+                    {% else %}
+                    -
+                    {% endif %}
+                </p>
+                <p class="text-[10px] text-slate-400">
+                    Desde inicio hasta fin de descarga.
+                </p>
+            </div>
+            <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                    Tiempo total
+                </p>
+                <p class="text-sm font-semibold text-slate-900">
+                    {% if metrics.tiempo_total_min is not none %}
+                    {{ metrics.tiempo_total_min|round(1) }} min
+                    {% else %}
+                    -
+                    {% endif %}
+                </p>
+                <p class="text-[10px] text-slate-400">
+                    Desde arribo hasta fin de descarga.
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Acciones de estado -->
+    {% if recepcion.estado != 'CERRADO' %}
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-2">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            Acciones
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if recepcion.estado == 'PRE_REGISTRADO' %}
+            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="marcar_en_espera">
+                <button type="submit"
+                        class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-sky-600 text-white hover:bg-sky-700">
+                    Marcar arribado
+                </button>
+            </form>
+            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="iniciar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-indigo-600 text-white hover:bg-indigo-700">
+                    Iniciar descarga
+                </button>
+            </form>
+            {% elif recepcion.estado == 'EN_ESPERA' %}
+            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="iniciar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-indigo-600 text-white hover:bg-indigo-700">
+                    Iniciar descarga
+                </button>
+            </form>
+            {% elif recepcion.estado == 'EN_DESCARGA' %}
+            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="finalizar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-amber-600 text-white hover:bg-amber-700">
+                    Finalizar descarga / Enviar a control
+                </button>
+            </form>
+            {% elif recepcion.estado in ['EN_CONTROL_CALIDAD'] %}
+            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="cerrar_recepcion">
+                <button type="submit"
+                        class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-emerald-600 text-white hover:bg-emerald-700">
+                    Cerrar recepción
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- LÍNEAS DE RECEPCIÓN -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Líneas de recepción
+            </p>
+        </div>
+
+        {% if recepcion.lineas %}
+        <div class="space-y-2">
+            {% for linea in recepcion.lineas %}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold text-slate-900 truncate">
+                        {{ linea.producto.nombre if linea.producto else 'Producto eliminado' }}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        {% if linea.lote %}Lote: {{ linea.lote }} · {% endif %}
+                        {% if linea.fecha_vencimiento %}
+                        Venc: {{ linea.fecha_vencimiento.strftime('%d-%m-%Y') }}
+                        {% else %}
+                        Sin fecha de vencimiento
+                        {% endif %}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        Cantidad esperada: {{ linea.cantidad_esperada or '-' }}
+                        · Recibida: {{ linea.cantidad_recibida or '-' }}
+                        {% if linea.unidad %}{{ linea.unidad }}{% endif %}
+                    </p>
+                    {% if linea.temperatura_recibida is not none %}
+                    <p class="text-[11px] text-slate-500">
+                        Temp recibida: {{ linea.temperatura_recibida }} °C
+                        {% if linea.temperatura_objetivo is not none %}
+                        (objetivo: {{ linea.temperatura_objetivo }} °C)
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center justify-end gap-2">
+                    <form method="post" action="/inbound/{{ recepcion.id }}/lineas/{{ linea.id }}/eliminar">
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[10px] font-semibold
+                                       border border-red-200 text-red-600 bg-red-50 hover:bg-red-100">
+                            Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-[11px] text-slate-500">
+            Aún no se han registrado líneas para esta recepción.
+        </p>
+        {% endif %}
+
+        <!-- Formulario para agregar línea -->
+        <div class="mt-3 border-t border-slate-200 pt-3">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Agregar línea
+            </p>
+            {% if productos %}
+            <form method="post" action="/inbound/{{ recepcion.id }}/lineas" class="space-y-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Producto
+                        </label>
+                        <select name="producto_id"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                required>
+                            <option value="">Selecciona un producto</option>
+                            {% for p in productos %}
+                            <option value="{{ p.id }}">{{ p.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Cantidad recibida
+                        </label>
+                        <input type="number" step="0.01" min="0" name="cantidad_recibida"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Ej: 100">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Cantidad esperada
+                        </label>
+                        <input type="number" step="0.01" min="0" name="cantidad_esperada"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Opcional">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Lote
+                        </label>
+                        <input type="text" name="lote"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Opcional">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Fecha vencimiento
+                        </label>
+                        <input type="date" name="fecha_vencimiento"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Unidad
+                        </label>
+                        <input type="text" name="unidad"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Ej: cajas, kg, pallets">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Temp. objetivo (°C)
+                        </label>
+                        <input type="number" step="0.1" name="temperatura_objetivo"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Opcional">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Temp. recibida (°C)
+                        </label>
+                        <input type="number" step="0.1" name="temperatura_recibida"
+                               class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Observaciones
+                    </label>
+                    <textarea name="observaciones" rows="2"
+                              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              placeholder="Notas sobre esta línea (daños, embalaje, etc.)."></textarea>
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-indigo-600 text-white hover:bg-indigo-700">
+                        Agregar línea
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <p class="text-[11px] text-red-500">
+                No hay productos activos en este negocio. Registra productos primero para poder agregar líneas.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- INCIDENCIAS -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Incidencias
+            </p>
+        </div>
+
+        {% if recepcion.incidencias %}
+        <div class="space-y-2">
+            {% for inc in recepcion.incidencias %}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold text-slate-900">
+                        {{ inc.tipo|capitalize }} ·
+                        <span class="text-[11px]
+                            {% if inc.criticidad == 'alta' %}
+                                text-red-600
+                            {% elif inc.criticidad == 'media' %}
+                                text-amber-600
+                            {% else %}
+                                text-slate-600
+                            {% endif %}">
+                            Criticidad: {{ inc.criticidad }}
+                        </span>
+                    </p>
+                    <p class="text-[11px] text-slate-500 whitespace-pre-line">
+                        {{ inc.descripcion }}
+                    </p>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        Creado:
+                        {% if inc.creado_en %}
+                        {{ inc.creado_en.strftime('%d-%m-%Y %H:%M') }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="flex items-center justify-end gap-2">
+                    <form method="post" action="/inbound/{{ recepcion.id }}/incidencias/{{ inc.id }}/eliminar">
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[10px] font-semibold
+                                       border border-red-200 text-red-600 bg-red-50 hover:bg-red-100">
+                            Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-[11px] text-slate-500">
+            Aún no se han registrado incidencias para esta recepción.
+        </p>
+        {% endif %}
+
+        <!-- Formulario para agregar incidencia -->
+        <div class="mt-3 border-t border-slate-200 pt-3">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Registrar incidencia
+            </p>
+            <form method="post" action="/inbound/{{ recepcion.id }}/incidencias" class="space-y-2">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Tipo
+                        </label>
+                        <select name="tipo"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                required>
+                            <option value="">Selecciona tipo</option>
+                            <option value="daño">Daño</option>
+                            <option value="faltante">Faltante</option>
+                            <option value="sobrante">Sobrante</option>
+                            <option value="temperatura">Temperatura fuera de rango</option>
+                            <option value="documentacion">Documentación</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Criticidad
+                        </label>
+                        <select name="criticidad"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="baja">Baja</option>
+                            <option value="media" selected>Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Descripción
+                    </label>
+                    <textarea name="descripcion" rows="3" required
+                              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              placeholder="Describe la incidencia detectada, su impacto y cualquier acción tomada."></textarea>
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-[11px] font-semibold
+                                   bg-amber-600 text-white hover:bg-amber-700">
+                        Registrar incidencia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,668 @@
+﻿{% extends "base.html" %}
+{% block title %}Orbion Inbound - Analítica avanzada{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">
+                Analítica avanzada · Orbion Inbound
+            </h1>
+            <p class="text-xs text-slate-500">
+                Panel ejecutivo con métricas de eficiencia, proveedores y tiempos de descarga.
+            </p>
+            <p class="mt-1 text-[11px] text-slate-400">
+                Período analizado:
+                {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% endif %}
+                –
+                {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="/inbound/metrics/dataset"
+               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
+                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                Dataset JSON para ML/IA
+            </a>
+            <a href="/inbound"
+               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
+                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                Volver a recepciones
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros dinámicos -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            Filtros dinámicos
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <!-- Estado -->
+            <div class="space-y-1">
+                <label for="filtroEstado" class="text-[11px] font-medium text-slate-600">
+                    Estado
+                </label>
+                <select id="filtroEstado"
+                        class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                    <option value="TODOS">Todos</option>
+                    {% for estado, count in estados_count.items() %}
+                    <option value="{{ estado }}">{{ estado.replace('_', ' ') }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Proveedor -->
+            <div class="space-y-1">
+                <label for="filtroProveedor" class="text-[11px] font-medium text-slate-600">
+                    Proveedor
+                </label>
+                <select id="filtroProveedor"
+                        class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                    <option value="TODOS">Todos</option>
+                    {% set proveedores_set = [] %}
+                    {% for p in proveedores_resumen %}
+                    {% if p.proveedor not in proveedores_set %}
+                    {% set _ = proveedores_set.append(p.proveedor) %}
+                    <option value="{{ p.proveedor }}">{{ p.proveedor }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Fecha desde -->
+            <div class="space-y-1">
+                <label for="filtroDesde" class="text-[11px] font-medium text-slate-600">
+                    Desde (creación)
+                </label>
+                <input id="filtroDesde"
+                       type="date"
+                       class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+            </div>
+
+            <!-- Fecha hasta -->
+            <div class="space-y-1">
+                <label for="filtroHasta" class="text-[11px] font-medium text-slate-600">
+                    Hasta (creación)
+                </label>
+                <input id="filtroHasta"
+                       type="date"
+                       class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-[10px] text-slate-400">
+                Los gráficos y la tabla se actualizan en tiempo real según los filtros.
+            </p>
+            <button id="btnResetFiltros"
+                    type="button"
+                    class="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[11px] font-semibold
+                           border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100">
+                Limpiar filtros
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs principales -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiTotalRecepciones">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                Total recepciones (filtro)
+            </p>
+            <p class="mt-1 text-2xl font-semibold text-slate-900" id="kpiTotalRecepcionesValor">
+                {{ resumen.total_recepciones }}
+            </p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromEspera">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                Prom. espera
+            </p>
+            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromEsperaValor">
+                {% if resumen.promedio_tiempo_espera_min is not none %}
+                {{ resumen.promedio_tiempo_espera_min|round(1) }} min
+                {% else %}
+                -
+                {% endif %}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Arribo → inicio descarga
+            </p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromDescarga">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                Prom. descarga
+            </p>
+            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromDescargaValor">
+                {% if resumen.promedio_tiempo_descarga_min is not none %}
+                {{ resumen.promedio_tiempo_descarga_min|round(1) }} min
+                {% else %}
+                -
+                {% endif %}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Inicio → fin descarga
+            </p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromTotal">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+                Prom. tiempo total
+            </p>
+            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromTotalValor">
+                {% if resumen.promedio_tiempo_total_min is not none %}
+                {{ resumen.promedio_tiempo_total_min|round(1) }} min
+                {% else %}
+                -
+                {% endif %}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Arribo → fin descarga
+            </p>
+        </div>
+    </div>
+
+    <!-- Zona principal de gráficos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Gráfico estados -->
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Distribución de recepciones por estado
+            </p>
+            <div id="chartEstados" class="h-64"></div>
+        </div>
+
+        <!-- Gráfico proveedores -->
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Proveedores · tiempo promedio total
+            </p>
+            <div id="chartProveedores" class="h-64"></div>
+        </div>
+
+        <!-- Gráfico serie temporal -->
+        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 lg:col-span-2">
+            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Tiempo total por recepción (serie temporal)
+            </p>
+            <div id="chartRecepciones" class="h-64"></div>
+        </div>
+    </div>
+
+    <!-- Mini gráfico (sparkline) global -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Tendencia rápida · tiempo total (sparkline)
+        </p>
+        <div id="sparklineGlobal" class="h-24"></div>
+    </div>
+
+    <!-- Tabla de recepciones recientes -->
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Recepciones (vista filtrada)
+        </p>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-separate border-spacing-y-1 text-xs">
+                <thead>
+                    <tr class="text-left text-[10px] text-slate-500">
+                        <th class="px-2 py-1">Código</th>
+                        <th class="px-2 py-1">Proveedor</th>
+                        <th class="px-2 py-1">Estado</th>
+                        <th class="px-2 py-1">Fecha</th>
+                        <th class="px-2 py-1 text-right">Espera (min)</th>
+                        <th class="px-2 py-1 text-right">Descarga (min)</th>
+                        <th class="px-2 py-1 text-right">Total (min)</th>
+                        <th class="px-2 py-1 text-right">Inc.</th>
+                        <th class="px-2 py-1"></th>
+                    </tr>
+                </thead>
+                <tbody id="tablaRecepcionesBody">
+                    {% for r in recepciones %}
+                    <tr class="bg-slate-50 hover:bg-slate-100">
+                        <td class="px-2 py-1 whitespace-nowrap">
+                            {{ r.codigo }}
+                        </td>
+                        <td class="px-2 py-1 max-w-[140px]">
+                            <span class="block truncate">
+                                {{ r.proveedor or 'Sin proveedor' }}
+                            </span>
+                        </td>
+                        <td class="px-2 py-1">
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium
+                                {% if r.estado == 'CERRADO' %}
+                                    bg-emerald-50 text-emerald-700
+                                {% elif r.estado == 'EN_DESCARGA' %}
+                                    bg-indigo-50 text-indigo-700
+                                {% elif r.estado == 'EN_CONTROL_CALIDAD' %}
+                                    bg-amber-50 text-amber-800
+                                {% elif r.estado == 'EN_ESPERA' %}
+                                    bg-sky-50 text-sky-700
+                                {% else %}
+                                    bg-slate-50 text-slate-600
+                                {% endif %}">
+                                {{ r.estado.replace('_', ' ') }}
+                            </span>
+                        </td>
+                        <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-500">
+                            {% if r.creado_en %}
+                            {{ r.creado_en.strftime('%d-%m-%Y %H:%M') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-2 py-1 text-right">
+                            {% if r.tiempo_espera_min is not none %}
+                            {{ r.tiempo_espera_min|round(1) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-2 py-1 text-right">
+                            {% if r.tiempo_descarga_min is not none %}
+                            {{ r.tiempo_descarga_min|round(1) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-2 py-1 text-right">
+                            {% if r.tiempo_total_min is not none %}
+                            {{ r.tiempo_total_min|round(1) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-2 py-1 text-right">
+                            {{ r.incidencias }}
+                        </td>
+                        <td class="px-2 py-1 text-right">
+                            <a href="/inbound/{{ r.id }}"
+                               class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[10px] font-semibold
+                                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-100">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================
+     SCRIPTS: PLOTLY + LÓGICA
+     ============================ -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // ========================================
+    // 1) Dataset crudo desde el backend
+    // ========================================
+    const recepcionesRaw = [
+        {% for r in recepciones %}
+        {
+            id: {{ r.id }},
+            codigo: "{{ r.codigo }}",
+            proveedor: "{{ (r.proveedor or 'Sin proveedor')|replace('"','\\"') }}",
+            estado: "{{ r.estado }}",
+            creado_en: "{{ r.creado_en.isoformat() if r.creado_en else '' }}",
+            tiempo_espera_min: {{ 'null' if r.tiempo_espera_min is none else r.tiempo_espera_min|round(2) }},
+            tiempo_descarga_min: {{ 'null' if r.tiempo_descarga_min is none else r.tiempo_descarga_min|round(2) }},
+            tiempo_total_min: {{ 'null' if r.tiempo_total_min is none else r.tiempo_total_min|round(2) }},
+            incidencias: {{ r.incidencias }},
+        },
+        {% endfor %}
+    ];
+
+    // Guardamos una copia inicial para reset
+    const recepcionesBase = [...recepcionesRaw];
+
+    // ========================================
+    // 2) Helpers de fechas y filtros
+    // ========================================
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDateLabel(dateStr) {
+        const d = parseDate(dateStr);
+        if (!d) return "-";
+        const dd = d.getDate().toString().padStart(2, "0");
+        const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+        return `${dd}-${mm}`;
+    }
+
+    function filterData() {
+        const estadoSel = document.getElementById("filtroEstado").value;
+        const provSel = document.getElementById("filtroProveedor").value;
+        const desdeVal = document.getElementById("filtroDesde").value;
+        const hastaVal = document.getElementById("filtroHasta").value;
+
+        const desdeDate = desdeVal ? new Date(desdeVal + "T00:00:00") : null;
+        const hastaDate = hastaVal ? new Date(hastaVal + "T23:59:59") : null;
+
+        return recepcionesBase.filter(r => {
+            // Estado
+            if (estadoSel !== "TODOS" && r.estado !== estadoSel) {
+                return false;
+            }
+            // Proveedor
+            if (provSel !== "TODOS" && r.proveedor !== provSel) {
+                return false;
+            }
+            // Fechas
+            if (desdeDate || hastaDate) {
+                const d = parseDate(r.creado_en);
+                if (!d) return false;
+                if (desdeDate && d < desdeDate) return false;
+                if (hastaDate && d > hastaDate) return false;
+            }
+            return true;
+        });
+    }
+
+    // ========================================
+    // 3) Colores según rendimiento
+    //    (umbral en minutos de tiempo total)
+    // ========================================
+    function colorPorTiempoTotal(v) {
+        if (v === null || v === undefined) return "#cbd5f5"; // gris azulado
+        if (v <= 30) return "#22c55e";   // verde: excelente
+        if (v <= 60) return "#facc15";   // amarillo: aceptable
+        return "#ef4444";                // rojo: lento
+    }
+
+    // ========================================
+    // 4) Render de KPIs y tabla
+    // ========================================
+    function actualizarKpis(data) {
+        const total = data.length;
+        let sumEspera = 0, nEspera = 0;
+        let sumDescarga = 0, nDescarga = 0;
+        let sumTotal = 0, nTotal = 0;
+
+        data.forEach(r => {
+            if (r.tiempo_espera_min !== null) {
+                sumEspera += r.tiempo_espera_min;
+                nEspera += 1;
+            }
+            if (r.tiempo_descarga_min !== null) {
+                sumDescarga += r.tiempo_descarga_min;
+                nDescarga += 1;
+            }
+            if (r.tiempo_total_min !== null) {
+                sumTotal += r.tiempo_total_min;
+                nTotal += 1;
+            }
+        });
+
+        const promEspera = nEspera ? (sumEspera / nEspera) : null;
+        const promDescarga = nDescarga ? (sumDescarga / nDescarga) : null;
+        const promTotal = nTotal ? (sumTotal / nTotal) : null;
+
+        document.getElementById("kpiTotalRecepcionesValor").textContent = total;
+
+        const elPromEspera = document.getElementById("kpiPromEsperaValor");
+        const elPromDescarga = document.getElementById("kpiPromDescargaValor");
+        const elPromTotal = document.getElementById("kpiPromTotalValor");
+
+        elPromEspera.textContent = promEspera !== null ? promEspera.toFixed(1) + " min" : "-";
+        elPromDescarga.textContent = promDescarga !== null ? promDescarga.toFixed(1) + " min" : "-";
+        elPromTotal.textContent = promTotal !== null ? promTotal.toFixed(1) + " min" : "-";
+
+        // Coloreamos el KPI de tiempo total según rendimiento
+        const cardTotal = document.getElementById("kpiPromTotal");
+        if (promTotal === null) {
+            cardTotal.classList.remove("ring-2", "ring-emerald-400", "ring-yellow-400", "ring-red-400");
+        } else if (promTotal <= 30) {
+            cardTotal.classList.add("ring-2", "ring-emerald-400");
+            cardTotal.classList.remove("ring-yellow-400", "ring-red-400");
+        } else if (promTotal <= 60) {
+            cardTotal.classList.add("ring-2", "ring-yellow-400");
+            cardTotal.classList.remove("ring-emerald-400", "ring-red-400");
+        } else {
+            cardTotal.classList.add("ring-2", "ring-red-400");
+            cardTotal.classList.remove("ring-emerald-400", "ring-yellow-400");
+        }
+    }
+
+    function actualizarTabla(data) {
+        const tbody = document.getElementById("tablaRecepcionesBody");
+        tbody.innerHTML = "";
+
+        if (!data.length) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td colspan="9" class="px-2 py-3 text-center text-[11px] text-slate-500">
+                    No hay recepciones que coincidan con los filtros seleccionados.
+                </td>`;
+            tbody.appendChild(tr);
+            return;
+        }
+
+        data.forEach(r => {
+            const d = parseDate(r.creado_en);
+            let fechaStr = "-";
+            if (d) {
+                const dd = d.getDate().toString().padStart(2, "0");
+                const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+                const yyyy = d.getFullYear();
+                const hh = d.getHours().toString().padStart(2, "0");
+                const min = d.getMinutes().toString().padStart(2, "0");
+                fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+            }
+
+            const tr = document.createElement("tr");
+            tr.className = "bg-slate-50 hover:bg-slate-100";
+
+            // elegir chip de estado por clase
+            let chipClasses = "bg-slate-50 text-slate-600";
+            if (r.estado === "CERRADO") chipClasses = "bg-emerald-50 text-emerald-700";
+            else if (r.estado === "EN_DESCARGA") chipClasses = "bg-indigo-50 text-indigo-700";
+            else if (r.estado === "EN_CONTROL_CALIDAD") chipClasses = "bg-amber-50 text-amber-800";
+            else if (r.estado === "EN_ESPERA") chipClasses = "bg-sky-50 text-sky-700";
+
+            tr.innerHTML = `
+                <td class="px-2 py-1 whitespace-nowrap">${r.codigo}</td>
+                <td class="px-2 py-1 max-w-[140px]">
+                    <span class="block truncate">${r.proveedor}</span>
+                </td>
+                <td class="px-2 py-1">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${chipClasses}">
+                        ${r.estado.replaceAll("_", " ")}
+                    </span>
+                </td>
+                <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-500">${fechaStr}</td>
+                <td class="px-2 py-1 text-right">
+                    ${r.tiempo_espera_min !== null ? r.tiempo_espera_min.toFixed(1) : "-"}
+                </td>
+                <td class="px-2 py-1 text-right">
+                    ${r.tiempo_descarga_min !== null ? r.tiempo_descarga_min.toFixed(1) : "-"}
+                </td>
+                <td class="px-2 py-1 text-right">
+                    ${r.tiempo_total_min !== null ? r.tiempo_total_min.toFixed(1) : "-"}
+                </td>
+                <td class="px-2 py-1 text-right">${r.incidencias}</td>
+                <td class="px-2 py-1 text-right">
+                    <a href="/inbound/${r.id}"
+                       class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[10px] font-semibold
+                              border border-slate-200 text-slate-700 bg-white hover:bg-slate-100">
+                        Ver
+                    </a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ========================================
+    // 5) Render de gráficos Plotly
+    // ========================================
+    function actualizarGraficos(data) {
+        // 5.1 Distribución por estado
+        const estadosCount = {};
+        data.forEach(r => {
+            estadosCount[r.estado] = (estadosCount[r.estado] || 0) + 1;
+        });
+
+        const estadosLabels = Object.keys(estadosCount);
+        const estadosValues = Object.values(estadosCount);
+
+        const traceEstados = {
+            x: estadosLabels.map(e => e.replaceAll("_", " ")),
+            y: estadosValues,
+            type: "bar",
+            marker: {
+                color: estadosLabels.map(e => {
+                    if (e === "CERRADO") return "#22c55e";
+                    if (e === "EN_DESCARGA") return "#4f46e5";
+                    if (e === "EN_CONTROL_CALIDAD") return "#f59e0b";
+                    if (e === "EN_ESPERA") return "#0ea5e9";
+                    return "#94a3b8";
+                })
+            },
+            hovertemplate: "%{x}<br>%{y} recepciones<extra></extra>",
+        };
+
+        Plotly.newPlot("chartEstados", [traceEstados], {
+            margin: { t: 10, r: 10, b: 40, l: 40 },
+            xaxis: { tickfont: { size: 10 } },
+            yaxis: { tickfont: { size: 10 } },
+        }, {displaylogo: false, responsive: true});
+
+        // 5.2 Proveedores (promedio de tiempo total)
+        const provMap = {};
+        data.forEach(r => {
+            const key = r.proveedor || "Sin proveedor";
+            if (!provMap[key]) {
+                provMap[key] = {total: 0, sumaTiempo: 0, n: 0};
+            }
+            provMap[key].total += 1;
+            if (r.tiempo_total_min !== null) {
+                provMap[key].sumaTiempo += r.tiempo_total_min;
+                provMap[key].n += 1;
+            }
+        });
+
+        const provLabels = [];
+        const provPromedios = [];
+        Object.keys(provMap).forEach(p => {
+            const info = provMap[p];
+            const avg = info.n ? info.sumaTiempo / info.n : null;
+            provLabels.push(p);
+            provPromedios.push(avg);
+        });
+
+        // Ordenamos por promedio desc
+        const orderIdx = provPromedios
+            .map((v, idx) => ({v, idx}))
+            .sort((a, b) => (b.v || 0) - (a.v || 0))
+            .map(obj => obj.idx);
+
+        const provLabelsSorted = orderIdx.map(i => provLabels[i]);
+        const provPromediosSorted = orderIdx.map(i => provPromedios[i]);
+
+        const traceProv = {
+            y: provLabelsSorted,
+            x: provPromediosSorted.map(v => v !== null ? v : 0),
+            type: "bar",
+            orientation: "h",
+            marker: {
+                color: provPromediosSorted.map(v => colorPorTiempoTotal(v))
+            },
+            hovertemplate: "<b>%{y}</b><br>Tiempo promedio: %{x:.1f} min<extra></extra>",
+        };
+
+        Plotly.newPlot("chartProveedores", [traceProv], {
+            margin: { t: 10, r: 10, b: 30, l: 120 },
+            xaxis: { title: "Minutos", tickfont: { size: 10 } },
+            yaxis: { tickfont: { size: 10 } },
+        }, {displaylogo: false, responsive: true});
+
+        // 5.3 Serie temporal (por fecha de creación)
+        const dataSorted = [...data].sort((a, b) => {
+            const da = parseDate(a.creado_en) || 0;
+            const db = parseDate(b.creado_en) || 0;
+            return da - db;
+        });
+
+        const xLabels = dataSorted.map(r => formatDateLabel(r.creado_en));
+        const yValues = dataSorted.map(r => r.tiempo_total_min);
+        const colorsLinea = yValues.map(v => colorPorTiempoTotal(v));
+
+        const traceLinea = {
+            x: xLabels,
+            y: yValues,
+            type: "scatter",
+            mode: "lines+markers",
+            marker: {
+                size: 6,
+                color: colorsLinea,
+            },
+            line: {
+                shape: "spline",
+                smoothing: 0.25,
+                color: "#4b5563",
+            },
+            hovertemplate: "Fecha: %{x}<br>Tiempo total: %{y:.1f} min<extra></extra>",
+        };
+
+        Plotly.newPlot("chartRecepciones", [traceLinea], {
+            margin: { t: 10, r: 10, b: 40, l: 40 },
+            xaxis: { tickfont: { size: 9 } },
+            yaxis: { title: "Minutos", tickfont: { size: 10 } },
+        }, {displaylogo: false, responsive: true});
+
+        // 5.4 Sparkline global (mini gráfico)
+        const traceSpark = {
+            x: xLabels,
+            y: yValues,
+            type: "scatter",
+            mode: "lines",
+            line: { shape: "spline", smoothing: 0.4, width: 2 },
+            hovertemplate: "Fecha: %{x}<br>Tiempo total: %{y:.1f} min<extra></extra>",
+        };
+
+        Plotly.newPlot("sparklineGlobal", [traceSpark], {
+            margin: { t: 5, r: 5, b: 20, l: 30 },
+            xaxis: { tickfont: { size: 8 } },
+            yaxis: { tickfont: { size: 8 } },
+        }, {displaylogo: false, responsive: true});
+    }
+
+    // ========================================
+    // 6) Orquestador: aplicar filtros y render
+    // ========================================
+    function aplicarFiltrosYRender() {
+        const dataFiltrada = filterData();
+        actualizarKpis(dataFiltrada);
+        actualizarTabla(dataFiltrada);
+        actualizarGraficos(dataFiltrada);
+    }
+
+    // Inicial
+    aplicarFiltrosYRender();
+
+    // Eventos de filtros
+    document.getElementById("filtroEstado").addEventListener("change", aplicarFiltrosYRender);
+    document.getElementById("filtroProveedor").addEventListener("change", aplicarFiltrosYRender);
+    document.getElementById("filtroDesde").addEventListener("change", aplicarFiltrosYRender);
+    document.getElementById("filtroHasta").addEventListener("change", aplicarFiltrosYRender);
+
+    // Reset filtros
+    document.getElementById("btnResetFiltros").addEventListener("click", () => {
+        document.getElementById("filtroEstado").value = "TODOS";
+        document.getElementById("filtroProveedor").value = "TODOS";
+        document.getElementById("filtroDesde").value = "";
+        document.getElementById("filtroHasta").value = "";
+        aplicarFiltrosYRender();
+    });
+});
+</script>
+{% endblock %}

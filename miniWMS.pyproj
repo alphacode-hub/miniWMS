@@ -31,6 +31,11 @@
     <Compile Include="miniWMS.py" />
     <Compile Include="core\models.py" />
     <Compile Include="core\plans.py" />
+    <Compile Include="modules\inbound_orbion\routes\routes_inbound.py" />
+    <Compile Include="modules\inbound_orbion\routes\__init__.py" />
+    <Compile Include="modules\inbound_orbion\services\services_inbound.py" />
+    <Compile Include="modules\inbound_orbion\services\__init__.py" />
+    <Compile Include="modules\inbound_orbion\templates\__init__.py" />
     <Compile Include="modules\industrial_wms\routes\__init__.py" />
     <Compile Include="modules\industrial_wms\services\__init__.py" />
     <Compile Include="modules\industrial_wms\templates\__init__.py" />
@@ -80,6 +85,12 @@
     <Content Include=".env.staging" />
     <Content Include="Dockerfile" />
     <Content Include="modules\basic_wms\templates\partials\scanner.html" />
+    <Content Include="modules\inbound_orbion\templates\base.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_analytics.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_calidad.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_detalle.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_form.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_lista.html" />
     <Content Include="requirements.txt" />
     <Content Include="static\.keep" />
     <Content Include="modules\basic_wms\templates\alertas.html" />
@@ -121,10 +132,14 @@
     <Folder Include="core\services\" />
     <Folder Include="modules\basic_wms\routes\" />
     <Folder Include="modules\basic_wms\templates\partials\" />
+    <Folder Include="modules\inbound_orbion\templates\" />
+    <Folder Include="modules\inbound_orbion\services\" />
+    <Folder Include="modules\inbound_orbion\routes\" />
     <Folder Include="modules\industrial_wms\" />
     <Folder Include="modules\industrial_wms\services\" />
     <Folder Include="modules\industrial_wms\templates\" />
     <Folder Include="modules\industrial_wms\routes\" />
+    <Folder Include="modules\inbound_orbion\" />
     <Folder Include="static\" />
     <Folder Include="modules\basic_wms\templates\" />
   </ItemGroup>

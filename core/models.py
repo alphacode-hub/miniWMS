@@ -51,6 +51,8 @@ class Negocio(Base):
     plan_renovacion_cada_meses = Column(Integer, default=1, nullable=False)
     ultimo_acceso = Column(DateTime, nullable=True)
 
+    inbound_recepciones = relationship("InboundRecepcion", back_populates="negocio")
+
     # Relaciones principales
     usuarios = relationship(
         "Usuario",
@@ -233,3 +235,89 @@ class Alerta(Base):
     datos_json = Column(String, nullable=True) # JSON opcional
 
     negocio = relationship("Negocio", back_populates="alertas")
+
+
+
+class InboundRecepcion(Base):
+    __tablename__ = "inbound_recepciones"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=False)
+
+    codigo = Column(String(50), unique=True, nullable=False, index=True)
+    proveedor = Column(String(150), nullable=False)
+    referencia_externa = Column(String(150), nullable=True)
+    contenedor = Column(String(50), nullable=True)
+    patente_camion = Column(String(20), nullable=True)
+    tipo_carga = Column(String(50), nullable=True)
+
+    estado = Column(String(30), nullable=False, default="PRE_REGISTRADO")
+
+    fecha_estimada_llegada = Column(DateTime, nullable=True)
+    fecha_arribo = Column(DateTime, nullable=True)
+    fecha_inicio_descarga = Column(DateTime, nullable=True)
+    fecha_fin_descarga = Column(DateTime, nullable=True)
+
+    observaciones = Column(Text, nullable=True)
+
+    creado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    negocio = relationship("Negocio", back_populates="inbound_recepciones")
+    creado_por = relationship("Usuario")
+    lineas = relationship(
+        "InboundLinea",
+        back_populates="recepcion",
+        cascade="all, delete-orphan",
+    )
+    incidencias = relationship(
+        "InboundIncidencia",
+        back_populates="recepcion",
+        cascade="all, delete-orphan",
+    )
+
+
+class InboundLinea(Base):
+    __tablename__ = "inbound_lineas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recepcion_id = Column(Integer, ForeignKey("inbound_recepciones.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+
+    lote = Column(String(100), nullable=True)
+    fecha_vencimiento = Column(DateTime, nullable=True)
+
+    cantidad_esperada = Column(Float, nullable=True)
+    cantidad_recibida = Column(Float, nullable=True)
+    unidad = Column(String(30), nullable=True)
+
+    temperatura_objetivo = Column(Float, nullable=True)
+    temperatura_recibida = Column(Float, nullable=True)
+
+    observaciones = Column(Text, nullable=True)
+
+    recepcion = relationship("InboundRecepcion", back_populates="lineas")
+    producto = relationship("Producto")
+
+
+class InboundIncidencia(Base):
+    __tablename__ = "inbound_incidencias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recepcion_id = Column(Integer, ForeignKey("inbound_recepciones.id"), nullable=False)
+
+    tipo = Column(String(50), nullable=False)      # daño, faltante, sobrante, etc.
+    criticidad = Column(String(20), nullable=False, default="media")  # baja, media, alta
+    descripcion = Column(Text, nullable=False)
+
+    creado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    recepcion = relationship("InboundRecepcion", back_populates="incidencias")
+    creado_por = relationship("Usuario")

@@ -1,0 +1,128 @@
+﻿{% extends "base.html" %}
+{% block title %}Orbion Inbound - Nueva recepción{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-2xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">
+                Nueva recepción inbound
+            </h1>
+            <p class="text-xs text-slate-500">
+                Registra los datos básicos del contenedor o camión que será descargado.
+            </p>
+        </div>
+        <a href="/inbound"
+           class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
+                  border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+            Volver
+        </a>
+    </div>
+
+    <!-- Formulario -->
+    <form method="post" action="/inbound/nuevo" class="space-y-4">
+
+        <!-- Proveedor / Referencia -->
+        <div class="grid grid-cols-1 gap-3">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Proveedor <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="proveedor" required
+                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="Ej: Proveedor Logístico SPA">
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Referencia externa
+                </label>
+                <input type="text" name="referencia_externa"
+                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="OC, BL, factura, guía, etc.">
+            </div>
+        </div>
+
+        <!-- Contenedor / Patente -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Nº contenedor
+                </label>
+                <input type="text" name="contenedor"
+                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                              uppercase tracking-wide
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="Ej: MSKU1234567">
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Patente camión
+                </label>
+                <input type="text" name="patente_camion"
+                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                              uppercase tracking-wide
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="Ej: AB-CD12">
+            </div>
+        </div>
+
+        <!-- Tipo de carga / ETA -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Tipo de carga
+                </label>
+                <select name="tipo_carga"
+                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                               bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Selecciona tipo</option>
+                    <option value="congelado">Congelado</option>
+                    <option value="refrigerado">Refrigerado</option>
+                    <option value="seco">Seco</option>
+                    <option value="palletizado">Palletizado</option>
+                    <option value="granel">Granel</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Fecha estimada de llegada (ETA)
+                </label>
+                <input type="date" name="fecha_estimada_llegada"
+                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                Observaciones
+            </label>
+            <textarea name="observaciones" rows="3"
+                      class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Notas relevantes para la recepción, incidencias esperadas, instrucciones especiales, etc."></textarea>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex items-center justify-end gap-2 pt-2">
+            <a href="/inbound"
+               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
+                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold
+                           bg-indigo-600 text-white hover:bg-indigo-700
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                Crear recepción
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

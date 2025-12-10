@@ -27,6 +27,7 @@ from modules.basic_wms.routes.routes_health import router as health_router
 from modules.basic_wms.routes.routes_backups import router as backups_router
 from modules.basic_wms.routes.routes_export import router as export_router
 from core.middleware.auth_redirect import redirect_middleware
+from modules.inbound_orbion.routes import routes_inbound
 
 
 
@@ -81,6 +82,7 @@ app.include_router(inventory_router)
 app.include_router(audit_router)
 app.include_router(alerts_router)
 app.include_router(export_router)
+app.include_router(routes_inbound.router)
 
 
 

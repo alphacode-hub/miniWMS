@@ -40,7 +40,7 @@ ADMIN_PREFIXES = (
     "/zonas",
     "/slots",
     "/transferencia",
-    "/exportar",
+    "/inbound",
 )
 
 
