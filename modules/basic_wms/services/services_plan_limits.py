@@ -1,4 +1,5 @@
-﻿# services_plan_limits.py
+﻿# modules/basic_wms/services/services_plan_limits.py
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,7 @@ from core.models import (
     Ubicacion,
     Slot,
 )
-from core.plans import PLANES_CONFIG
+from core.plans import get_core_plan_config
 
 
 def check_plan_limit(db: Session, negocio_id: int, recurso: str) -> None:
@@ -25,7 +26,7 @@ def check_plan_limit(db: Session, negocio_id: int, recurso: str) -> None:
         raise HTTPException(status_code=404, detail="Negocio no encontrado.")
 
     plan_tipo = negocio.plan_tipo or "demo"
-    plan_cfg = PLANES_CONFIG.get(plan_tipo, PLANES_CONFIG["demo"])
+    plan_cfg = get_core_plan_config(plan_tipo)  # 👈 usamos helper global
 
     max_key = f"max_{recurso}"
     max_val = plan_cfg.get(max_key)

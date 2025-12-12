@@ -1,4 +1,4 @@
-﻿# security.py
+﻿# core/security.py
 from datetime import datetime, timedelta
 import json
 import bcrypt
@@ -95,9 +95,15 @@ def get_current_user(request: Request):
 
     # 1) Verificamos firma Y vencimiento (max_age)
     try:
-        data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
+        raw = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS)
+        # ⚠️ Aquí es donde antes explotaba: ahora toleramos bytes raros
+        data = raw.decode("utf-8", errors="ignore")
         payload = json.loads(data)
-    except (BadSignature, json.JSONDecodeError):
+    except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
+        # Cookie inválida / corrupta / vieja → tratamos como no autenticado
+        return None
+    except Exception:
+        # Cualquier otra cosa rara → también None
         return None
 
     user_id = payload.get("user_id")
@@ -278,10 +284,13 @@ def _get_session_payload_from_request(request: Request) -> dict | None:
         return None
 
     try:
-        data = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS).decode("utf-8")
+        raw = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS)
+        data = raw.decode("utf-8", errors="ignore")
         payload = json.loads(data)
         return payload
-    except (BadSignature, json.JSONDecodeError):
+    except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    except Exception:
         return None
 
 

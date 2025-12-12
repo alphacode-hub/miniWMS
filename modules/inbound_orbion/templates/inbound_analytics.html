@@ -1,52 +1,112 @@
-﻿{% extends "base.html" %}
-{% block title %}Orbion Inbound - Analítica avanzada{% endblock %}
+﻿{# modules/inbound_orbion/templates/inbound_analytics.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Analítica inbound{% endblock %}
+
+{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
+{% block page_header %}
+<div class="hidden sm:flex items-center justify-between gap-4">
+    <div class="space-y-1 min-w-0">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Módulo inbound · Analítica avanzada
+        </p>
+        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Panel ejecutivo de eficiencia inbound
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-xl">
+            Métricas de tiempos, proveedores e incidencias para optimizar tu operación de recepciones.
+        </p>
+        <p class="text-[11px] text-slate-500 mt-1">
+            Período analizado:
+            {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
+            –
+            {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
+        </p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2">
+        <a href="/inbound/metrics/dataset"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            Dataset JSON ML/IA
+        </a>
+        <a href="/inbound"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Recepciones inbound
+        </a>
+    </div>
+</div>
+{% endblock %}
+
 
 {% block content %}
-<div class="w-full max-w-6xl mx-auto px-4 py-4 space-y-4">
-
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <h1 class="text-xl font-bold text-slate-900">
-                Analítica avanzada · Orbion Inbound
-            </h1>
-            <p class="text-xs text-slate-500">
-                Panel ejecutivo con métricas de eficiencia, proveedores y tiempos de descarga.
+<div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
+    {# HEADER MOBILE (BAJO TOPBAR) #}
+    <div class="sm:hidden space-y-3">
+        <div class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Analítica avanzada
             </p>
-            <p class="mt-1 text-[11px] text-slate-400">
-                Período analizado:
-                {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% endif %}
+            <h1 class="text-base font-semibold text-slate-100 tracking-tight">
+                Panel ejecutivo inbound
+            </h1>
+            <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+                Métricas de tiempos, proveedores e incidencias para tus recepciones.
+            </p>
+            <p class="text-[11px] text-slate-500">
+                Período:
+                {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
                 –
-                {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% endif %}
+                {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
             </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <a href="/inbound/metrics/dataset"
-               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
-                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-                Dataset JSON para ML/IA
-            </a>
+
+        <div class="flex flex-wrap gap-2">
             <a href="/inbound"
-               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
-                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-                Volver a recepciones
+               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+                ← Recepciones inbound
+            </a>
+            <a href="/inbound/metrics/dataset"
+               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+                Dataset ML/IA
             </a>
         </div>
     </div>
 
-    <!-- Filtros dinámicos -->
-    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
-        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-            Filtros dinámicos
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+    {# =========================
+    FILTROS DINÁMICOS
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <header class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                Filtros dinámicos
+            </p>
+            <button id="btnResetFiltros"
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                           text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                           transition-colors">
+                Limpiar filtros
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80">
             <!-- Estado -->
             <div class="space-y-1">
-                <label for="filtroEstado" class="text-[11px] font-medium text-slate-600">
+                <label for="filtroEstado" class="text-[11px] font-semibold text-slate-200">
                     Estado
                 </label>
                 <select id="filtroEstado"
-                        class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                               text-xs text-slate-100 focus:outline-none focus:ring-2
+                               focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="TODOS">Todos</option>
                     {% for estado, count in estados_count.items() %}
                     <option value="{{ estado }}">{{ estado.replace('_', ' ') }}</option>
@@ -56,11 +116,13 @@
 
             <!-- Proveedor -->
             <div class="space-y-1">
-                <label for="filtroProveedor" class="text-[11px] font-medium text-slate-600">
+                <label for="filtroProveedor" class="text-[11px] font-semibold text-slate-200">
                     Proveedor
                 </label>
                 <select id="filtroProveedor"
-                        class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                               text-xs text-slate-100 focus:outline-none focus:ring-2
+                               focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="TODOS">Todos</option>
                     {% set proveedores_set = [] %}
                     {% for p in proveedores_resumen %}
@@ -74,140 +136,178 @@
 
             <!-- Fecha desde -->
             <div class="space-y-1">
-                <label for="filtroDesde" class="text-[11px] font-medium text-slate-600">
+                <label for="filtroDesde" class="text-[11px] font-semibold text-slate-200">
                     Desde (creación)
                 </label>
                 <input id="filtroDesde"
                        type="date"
-                       class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                              text-xs text-slate-100 focus:outline-none focus:ring-2
+                              focus:ring-cyan-500 focus:border-cyan-500 appearance-none" />
             </div>
 
             <!-- Fecha hasta -->
             <div class="space-y-1">
-                <label for="filtroHasta" class="text-[11px] font-medium text-slate-600">
+                <label for="filtroHasta" class="text-[11px] font-semibold text-slate-200">
                     Hasta (creación)
                 </label>
                 <input id="filtroHasta"
                        type="date"
-                       class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                              text-xs text-slate-100 focus:outline-none focus:ring-2
+                              focus:ring-cyan-500 focus:border-cyan-500 appearance-none" />
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <p class="text-[10px] text-slate-400">
-                Los gráficos y la tabla se actualizan en tiempo real según los filtros.
-            </p>
-            <button id="btnResetFiltros"
-                    type="button"
-                    class="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[11px] font-semibold
-                           border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100">
-                Limpiar filtros
-            </button>
-        </div>
-    </div>
+        <p class="text-[10px] text-slate-400">
+            Los gráficos y la tabla se actualizan en tiempo real según los filtros seleccionados.
+        </p>
+    </section>
 
-    <!-- KPIs principales -->
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiTotalRecepciones">
-            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+    {# =========================
+    KPIs PRINCIPALES
+    ========================== #}
+    <section class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiTotalRecepciones">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
                 Total recepciones (filtro)
             </p>
-            <p class="mt-1 text-2xl font-semibold text-slate-900" id="kpiTotalRecepcionesValor">
+            <p class="mt-1 text-2xl font-semibold text-slate-100" id="kpiTotalRecepcionesValor">
                 {{ resumen.total_recepciones }}
             </p>
+            <p class="text-[10px] text-slate-400 mt-1">
+                Límite plan inbound:
+                <span class="font-semibold text-slate-100">
+                    {{ resumen.limite_recepciones_mes if resumen.limite_recepciones_mes is defined else 'según plan' }}
+                </span>
+            </p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromEspera">
-            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromEspera">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
                 Prom. espera
             </p>
-            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromEsperaValor">
+            <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromEsperaValor">
                 {% if resumen.promedio_tiempo_espera_min is not none %}
                 {{ resumen.promedio_tiempo_espera_min|round(1) }} min
                 {% else %}
                 -
                 {% endif %}
             </p>
-            <p class="text-[10px] text-slate-400">
+            <p class="text-[10px] text-slate-500">
                 Arribo → inicio descarga
             </p>
+            <p class="mt-1 text-[10px] text-slate-400">
+                SLA:
+                {% if config and config.sla_espera_obj_min %}
+                <span class="font-semibold text-slate-100">{{ config.sla_espera_obj_min|round(1) }} min</span>
+                {% else %}
+                <span class="italic text-slate-500">no definido</span>
+                {% endif %}
+            </p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromDescarga">
-            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromDescarga">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
                 Prom. descarga
             </p>
-            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromDescargaValor">
+            <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromDescargaValor">
                 {% if resumen.promedio_tiempo_descarga_min is not none %}
                 {{ resumen.promedio_tiempo_descarga_min|round(1) }} min
                 {% else %}
                 -
                 {% endif %}
             </p>
-            <p class="text-[10px] text-slate-400">
+            <p class="text-[10px] text-slate-500">
                 Inicio → fin descarga
             </p>
+            <p class="mt-1 text-[10px] text-slate-400">
+                SLA:
+                {% if config and config.sla_descarga_obj_min %}
+                <span class="font-semibold text-slate-100">{{ config.sla_descarga_obj_min|round(1) }} min</span>
+                {% else %}
+                <span class="italic text-slate-500">no definido</span>
+                {% endif %}
+            </p>
         </div>
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3" id="kpiPromTotal">
-            <p class="text-[10px] text-slate-500 uppercase tracking-wide">
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromTotal">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
                 Prom. tiempo total
             </p>
-            <p class="mt-1 text-xl font-semibold text-slate-900" id="kpiPromTotalValor">
+            <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromTotalValor">
                 {% if resumen.promedio_tiempo_total_min is not none %}
                 {{ resumen.promedio_tiempo_total_min|round(1) }} min
                 {% else %}
                 -
                 {% endif %}
             </p>
-            <p class="text-[10px] text-slate-400">
+            <p class="text-[10px] text-slate-500">
                 Arribo → fin descarga
             </p>
+            <p class="mt-1 text-[10px] text-slate-400">
+                SLA:
+                {% if config and config.sla_total_obj_min %}
+                <span class="font-semibold text-slate-100">{{ config.sla_total_obj_min|round(1) }} min</span>
+                {% else %}
+                <span class="italic text-slate-500">no definido</span>
+                {% endif %}
+            </p>
+            <p class="mt-1 text-[10px]" id="kpiPromTotalBadge"></p>
         </div>
-    </div>
+    </section>
 
-    <!-- Zona principal de gráficos -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    {# =========================
+    ZONA DE GRÁFICOS
+    ========================== #}
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Gráfico estados -->
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Distribución de recepciones por estado
             </p>
             <div id="chartEstados" class="h-64"></div>
         </div>
 
         <!-- Gráfico proveedores -->
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Proveedores · tiempo promedio total
             </p>
             <div id="chartProveedores" class="h-64"></div>
         </div>
 
         <!-- Gráfico serie temporal -->
-        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 lg:col-span-2">
-            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 lg:col-span-2">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Tiempo total por recepción (serie temporal)
             </p>
             <div id="chartRecepciones" class="h-64"></div>
         </div>
-    </div>
+    </section>
 
-    <!-- Mini gráfico (sparkline) global -->
-    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
-        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+    {# =========================
+    SPARKLINE GLOBAL
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
             Tendencia rápida · tiempo total (sparkline)
         </p>
         <div id="sparklineGlobal" class="h-24"></div>
-    </div>
+    </section>
 
-    <!-- Tabla de recepciones recientes -->
-    <div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
-        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+    {# =========================
+    TABLA DE RECEPCIONES
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
             Recepciones (vista filtrada)
         </p>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full border-separate border-spacing-y-1 text-xs">
+            <table class="min-w-full border-separate border-spacing-y-1 text-xs text-slate-100">
                 <thead>
-                    <tr class="text-left text-[10px] text-slate-500">
+                    <tr class="text-left text-[10px] text-slate-400">
                         <th class="px-2 py-1">Código</th>
                         <th class="px-2 py-1">Proveedor</th>
                         <th class="px-2 py-1">Estado</th>
@@ -221,66 +321,67 @@
                 </thead>
                 <tbody id="tablaRecepcionesBody">
                     {% for r in recepciones %}
-                    <tr class="bg-slate-50 hover:bg-slate-100">
+                    <tr class="bg-slate-900/70 hover:bg-slate-900">
                         <td class="px-2 py-1 whitespace-nowrap">
                             {{ r.codigo }}
                         </td>
                         <td class="px-2 py-1 max-w-[140px]">
-                            <span class="block truncate">
+                            <span class="block truncate text-[11px] text-slate-200">
                                 {{ r.proveedor or 'Sin proveedor' }}
                             </span>
                         </td>
                         <td class="px-2 py-1">
-                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border
                                 {% if r.estado == 'CERRADO' %}
-                                    bg-emerald-50 text-emerald-700
+                                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
                                 {% elif r.estado == 'EN_DESCARGA' %}
-                                    bg-indigo-50 text-indigo-700
+                                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
                                 {% elif r.estado == 'EN_CONTROL_CALIDAD' %}
-                                    bg-amber-50 text-amber-800
+                                    bg-amber-500/10 text-amber-200 border-amber-500/40
                                 {% elif r.estado == 'EN_ESPERA' %}
-                                    bg-sky-50 text-sky-700
+                                    bg-sky-500/10 text-sky-200 border-sky-500/40
                                 {% else %}
-                                    bg-slate-50 text-slate-600
+                                    bg-slate-700/40 text-slate-100 border-slate-600
                                 {% endif %}">
                                 {{ r.estado.replace('_', ' ') }}
                             </span>
                         </td>
-                        <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-500">
+                        <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-400">
                             {% if r.creado_en %}
                             {{ r.creado_en.strftime('%d-%m-%Y %H:%M') }}
                             {% else %}
                             -
                             {% endif %}
                         </td>
-                        <td class="px-2 py-1 text-right">
+                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">
                             {% if r.tiempo_espera_min is not none %}
                             {{ r.tiempo_espera_min|round(1) }}
                             {% else %}
                             -
                             {% endif %}
                         </td>
-                        <td class="px-2 py-1 text-right">
+                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">
                             {% if r.tiempo_descarga_min is not none %}
                             {{ r.tiempo_descarga_min|round(1) }}
                             {% else %}
                             -
                             {% endif %}
                         </td>
-                        <td class="px-2 py-1 text-right">
+                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">
                             {% if r.tiempo_total_min is not none %}
                             {{ r.tiempo_total_min|round(1) }}
                             {% else %}
                             -
                             {% endif %}
                         </td>
-                        <td class="px-2 py-1 text-right">
+                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">
                             {{ r.incidencias }}
                         </td>
                         <td class="px-2 py-1 text-right">
                             <a href="/inbound/{{ r.id }}"
-                               class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[10px] font-semibold
-                                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-100">
+                               class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                                      transition-colors">
                                 Ver
                             </a>
                         </td>
@@ -289,19 +390,19 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
 </div>
 
-<!-- ============================
-     SCRIPTS: PLOTLY + LÓGICA
-     ============================ -->
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{# ============================
+   SCRIPTS: ECHARTS + LÓGICA
+   ============================ #}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // ========================================
-    // 1) Dataset crudo desde el backend
-    // ========================================
+    // ============================
+    // 1) Dataset crudo desde backend
+    // ============================
     const recepcionesRaw = [
         {% for r in recepciones %}
         {
@@ -317,13 +418,16 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         {% endfor %}
     ];
-
-    // Guardamos una copia inicial para reset
     const recepcionesBase = [...recepcionesRaw];
 
-    // ========================================
-    // 2) Helpers de fechas y filtros
-    // ========================================
+    // SLA desde backend
+    const SLA_ESPERA   = {% if config and config.sla_espera_obj_min is not none %}{{ config.sla_espera_obj_min }}{% else %}null{% endif %};
+    const SLA_DESCARGA = {% if config and config.sla_descarga_obj_min is not none %}{{ config.sla_descarga_obj_min }}{% else %}null{% endif %};
+    const SLA_TOTAL    = {% if config and config.sla_total_obj_min is not none %}{{ config.sla_total_obj_min }}{% else %}null{% endif %};
+
+    // ============================
+    // 2) Helpers
+    // ============================
     function parseDate(dateStr) {
         if (!dateStr) return null;
         const d = new Date(dateStr);
@@ -340,23 +444,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function filterData() {
         const estadoSel = document.getElementById("filtroEstado").value;
-        const provSel = document.getElementById("filtroProveedor").value;
-        const desdeVal = document.getElementById("filtroDesde").value;
-        const hastaVal = document.getElementById("filtroHasta").value;
+        const provSel   = document.getElementById("filtroProveedor").value;
+        const desdeVal  = document.getElementById("filtroDesde").value;
+        const hastaVal  = document.getElementById("filtroHasta").value;
 
         const desdeDate = desdeVal ? new Date(desdeVal + "T00:00:00") : null;
         const hastaDate = hastaVal ? new Date(hastaVal + "T23:59:59") : null;
 
         return recepcionesBase.filter(r => {
-            // Estado
-            if (estadoSel !== "TODOS" && r.estado !== estadoSel) {
-                return false;
-            }
-            // Proveedor
-            if (provSel !== "TODOS" && r.proveedor !== provSel) {
-                return false;
-            }
-            // Fechas
+            if (estadoSel !== "TODOS" && r.estado !== estadoSel) return false;
+            if (provSel   !== "TODOS" && r.proveedor !== provSel) return false;
+
             if (desdeDate || hastaDate) {
                 const d = parseDate(r.creado_en);
                 if (!d) return false;
@@ -367,68 +465,68 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ========================================
-    // 3) Colores según rendimiento
-    //    (umbral en minutos de tiempo total)
-    // ========================================
     function colorPorTiempoTotal(v) {
-        if (v === null || v === undefined) return "#cbd5f5"; // gris azulado
-        if (v <= 30) return "#22c55e";   // verde: excelente
-        if (v <= 60) return "#facc15";   // amarillo: aceptable
-        return "#ef4444";                // rojo: lento
+        if (v === null || v === undefined) return "#64748b";
+        if (SLA_TOTAL) {
+            if (v <= SLA_TOTAL)        return "#22c55e";
+            if (v <= SLA_TOTAL * 1.5)  return "#eab308";
+            return "#ef4444";
+        } else {
+            if (v <= 30) return "#22c55e";
+            if (v <= 60) return "#eab308";
+            return "#ef4444";
+        }
     }
 
-    // ========================================
-    // 4) Render de KPIs y tabla
-    // ========================================
+    // ============================
+    // 3) KPIs + tabla
+    // ============================
     function actualizarKpis(data) {
         const total = data.length;
         let sumEspera = 0, nEspera = 0;
-        let sumDescarga = 0, nDescarga = 0;
-        let sumTotal = 0, nTotal = 0;
+        let sumDesc   = 0, nDesc   = 0;
+        let sumTotal  = 0, nTotal  = 0;
 
         data.forEach(r => {
-            if (r.tiempo_espera_min !== null) {
-                sumEspera += r.tiempo_espera_min;
-                nEspera += 1;
-            }
-            if (r.tiempo_descarga_min !== null) {
-                sumDescarga += r.tiempo_descarga_min;
-                nDescarga += 1;
-            }
-            if (r.tiempo_total_min !== null) {
-                sumTotal += r.tiempo_total_min;
-                nTotal += 1;
-            }
+            if (r.tiempo_espera_min   !== null) { sumEspera += r.tiempo_espera_min;   nEspera++; }
+            if (r.tiempo_descarga_min !== null) { sumDesc   += r.tiempo_descarga_min; nDesc++;   }
+            if (r.tiempo_total_min    !== null) { sumTotal  += r.tiempo_total_min;    nTotal++;  }
         });
 
-        const promEspera = nEspera ? (sumEspera / nEspera) : null;
-        const promDescarga = nDescarga ? (sumDescarga / nDescarga) : null;
-        const promTotal = nTotal ? (sumTotal / nTotal) : null;
+        const promEspera   = nEspera ? sumEspera / nEspera : null;
+        const promDescarga = nDesc   ? sumDesc   / nDesc   : null;
+        const promTotal    = nTotal  ? sumTotal  / nTotal  : null;
 
         document.getElementById("kpiTotalRecepcionesValor").textContent = total;
 
-        const elPromEspera = document.getElementById("kpiPromEsperaValor");
+        const elPromEspera   = document.getElementById("kpiPromEsperaValor");
         const elPromDescarga = document.getElementById("kpiPromDescargaValor");
-        const elPromTotal = document.getElementById("kpiPromTotalValor");
+        const elPromTotal    = document.getElementById("kpiPromTotalValor");
+        const cardTotal      = document.getElementById("kpiPromTotal");
+        const badgeTotal     = document.getElementById("kpiPromTotalBadge");
 
-        elPromEspera.textContent = promEspera !== null ? promEspera.toFixed(1) + " min" : "-";
+        elPromEspera.textContent   = promEspera   !== null ? promEspera.toFixed(1)   + " min" : "-";
         elPromDescarga.textContent = promDescarga !== null ? promDescarga.toFixed(1) + " min" : "-";
-        elPromTotal.textContent = promTotal !== null ? promTotal.toFixed(1) + " min" : "-";
+        elPromTotal.textContent    = promTotal    !== null ? promTotal.toFixed(1)    + " min" : "-";
 
-        // Coloreamos el KPI de tiempo total según rendimiento
-        const cardTotal = document.getElementById("kpiPromTotal");
-        if (promTotal === null) {
-            cardTotal.classList.remove("ring-2", "ring-emerald-400", "ring-yellow-400", "ring-red-400");
-        } else if (promTotal <= 30) {
-            cardTotal.classList.add("ring-2", "ring-emerald-400");
-            cardTotal.classList.remove("ring-yellow-400", "ring-red-400");
-        } else if (promTotal <= 60) {
-            cardTotal.classList.add("ring-2", "ring-yellow-400");
-            cardTotal.classList.remove("ring-emerald-400", "ring-red-400");
-        } else {
-            cardTotal.classList.add("ring-2", "ring-red-400");
-            cardTotal.classList.remove("ring-emerald-400", "ring-yellow-400");
+        cardTotal.classList.remove("ring-2", "ring-emerald-400", "ring-yellow-400", "ring-red-400");
+        badgeTotal.textContent = "";
+        badgeTotal.className = "mt-1 text-[10px]";
+
+        if (promTotal !== null && SLA_TOTAL) {
+            if (promTotal <= SLA_TOTAL) {
+                cardTotal.classList.add("ring-2", "ring-emerald-400");
+                badgeTotal.textContent = "✅ Dentro del SLA objetivo";
+                badgeTotal.classList.add("text-emerald-400", "font-semibold");
+            } else if (promTotal <= SLA_TOTAL * 1.5) {
+                cardTotal.classList.add("ring-2", "ring-yellow-400");
+                badgeTotal.textContent = "⚠️ Ligeramente sobre el SLA";
+                badgeTotal.classList.add("text-amber-300", "font-semibold");
+            } else {
+                cardTotal.classList.add("ring-2", "ring-red-400");
+                badgeTotal.textContent = "⛔ Muy sobre el SLA";
+                badgeTotal.classList.add("text-red-400", "font-semibold");
+            }
         }
     }
 
@@ -439,7 +537,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!data.length) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-                <td colspan="9" class="px-2 py-3 text-center text-[11px] text-slate-500">
+                <td colspan="9" class="px-2 py-3 text-center text-[11px] text-slate-400">
                     No hay recepciones que coincidan con los filtros seleccionados.
                 </td>`;
             tbody.appendChild(tr);
@@ -454,45 +552,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 const mm = (d.getMonth() + 1).toString().padStart(2, "0");
                 const yyyy = d.getFullYear();
                 const hh = d.getHours().toString().padStart(2, "0");
-                const min = d.getMinutes().toString().padStart(2, "0");
-                fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+                const mi = d.getMinutes().toString().padStart(2, "0");
+                fechaStr = `${dd}-${mm}-${yyyy} ${hh}:${mi}`;
             }
 
+            let chipClasses = "bg-slate-700/40 text-slate-100 border-slate-600";
+            if (r.estado === "CERRADO")               chipClasses = "bg-emerald-500/10 text-emerald-200 border-emerald-500/40";
+            else if (r.estado === "EN_DESCARGA")      chipClasses = "bg-indigo-500/10 text-indigo-200 border-indigo-500/40";
+            else if (r.estado === "EN_CONTROL_CALIDAD") chipClasses = "bg-amber-500/10 text-amber-200 border-amber-500/40";
+            else if (r.estado === "EN_ESPERA")        chipClasses = "bg-sky-500/10 text-sky-200 border-sky-500/40";
+
             const tr = document.createElement("tr");
-            tr.className = "bg-slate-50 hover:bg-slate-100";
-
-            // elegir chip de estado por clase
-            let chipClasses = "bg-slate-50 text-slate-600";
-            if (r.estado === "CERRADO") chipClasses = "bg-emerald-50 text-emerald-700";
-            else if (r.estado === "EN_DESCARGA") chipClasses = "bg-indigo-50 text-indigo-700";
-            else if (r.estado === "EN_CONTROL_CALIDAD") chipClasses = "bg-amber-50 text-amber-800";
-            else if (r.estado === "EN_ESPERA") chipClasses = "bg-sky-50 text-sky-700";
-
+            tr.className = "bg-slate-900/70 hover:bg-slate-900";
             tr.innerHTML = `
                 <td class="px-2 py-1 whitespace-nowrap">${r.codigo}</td>
                 <td class="px-2 py-1 max-w-[140px]">
-                    <span class="block truncate">${r.proveedor}</span>
+                    <span class="block truncate text-[11px] text-slate-200">${r.proveedor}</span>
                 </td>
                 <td class="px-2 py-1">
-                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${chipClasses}">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${chipClasses}">
                         ${r.estado.replaceAll("_", " ")}
                     </span>
                 </td>
-                <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-500">${fechaStr}</td>
-                <td class="px-2 py-1 text-right">
-                    ${r.tiempo_espera_min !== null ? r.tiempo_espera_min.toFixed(1) : "-"}
+                <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-400">${fechaStr}</td>
+                <td class="px-2 py-1 text-right text-[11px] text-slate-100">
+                    ${r.tiempo_espera_min   !== null ? r.tiempo_espera_min.toFixed(1)   : "-"}
                 </td>
-                <td class="px-2 py-1 text-right">
+                <td class="px-2 py-1 text-right text-[11px] text-slate-100">
                     ${r.tiempo_descarga_min !== null ? r.tiempo_descarga_min.toFixed(1) : "-"}
                 </td>
-                <td class="px-2 py-1 text-right">
-                    ${r.tiempo_total_min !== null ? r.tiempo_total_min.toFixed(1) : "-"}
+                <td class="px-2 py-1 text-right text-[11px] text-slate-100">
+                    ${r.tiempo_total_min    !== null ? r.tiempo_total_min.toFixed(1)    : "-"}
                 </td>
-                <td class="px-2 py-1 text-right">${r.incidencias}</td>
+                <td class="px-2 py-1 text-right text-[11px] text-slate-100">${r.incidencias}</td>
                 <td class="px-2 py-1 text-right">
                     <a href="/inbound/${r.id}"
-                       class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[10px] font-semibold
-                              border border-slate-200 text-slate-700 bg-white hover:bg-slate-100">
+                       class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1
+                              text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                              transition-colors">
                         Ver
                     </a>
                 </td>
@@ -501,144 +598,265 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ========================================
-    // 5) Render de gráficos Plotly
-    // ========================================
-    function actualizarGraficos(data) {
-        // 5.1 Distribución por estado
+    // ============================
+    // 4) Gráficos ECharts
+    // ============================
+    const chartEstadosEl     = document.getElementById("chartEstados");
+    const chartProveedoresEl = document.getElementById("chartProveedores");
+    const chartRecepcionesEl = document.getElementById("chartRecepciones");
+    const chartSparklineEl   = document.getElementById("sparklineGlobal");
+
+    const chartEstados     = echarts.init(chartEstadosEl, null, {renderer: "canvas"});
+    const chartProveedores = echarts.init(chartProveedoresEl, null, {renderer: "canvas"});
+    const chartRecepciones = echarts.init(chartRecepcionesEl, null, {renderer: "canvas"});
+    const chartSparkline   = echarts.init(chartSparklineEl, null, {renderer: "canvas"});
+
+    function renderChartEstados(data) {
         const estadosCount = {};
         data.forEach(r => {
             estadosCount[r.estado] = (estadosCount[r.estado] || 0) + 1;
         });
 
-        const estadosLabels = Object.keys(estadosCount);
-        const estadosValues = Object.values(estadosCount);
+        const estados = Object.keys(estadosCount);
+        const valores = estados.map(e => estadosCount[e]);
 
-        const traceEstados = {
-            x: estadosLabels.map(e => e.replaceAll("_", " ")),
-            y: estadosValues,
-            type: "bar",
-            marker: {
-                color: estadosLabels.map(e => {
-                    if (e === "CERRADO") return "#22c55e";
-                    if (e === "EN_DESCARGA") return "#4f46e5";
-                    if (e === "EN_CONTROL_CALIDAD") return "#f59e0b";
-                    if (e === "EN_ESPERA") return "#0ea5e9";
-                    return "#94a3b8";
-                })
+        const option = {
+            backgroundColor: "transparent",
+            animationDuration: 700,
+            tooltip: {
+                trigger: "item",
+                formatter: params => {
+                    return `${params.name.replaceAll("_", " ")}<br/>Recepciones: <b>${params.value}</b>`;
+                }
             },
-            hovertemplate: "%{x}<br>%{y} recepciones<extra></extra>",
+            grid: {left: 40, right: 10, top: 20, bottom: 40},
+            xAxis: {
+                type: "category",
+                data: estados.map(e => e.replaceAll("_", " ")),
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                axisTick: { show: false },
+                axisLine: { lineStyle: { color: "#475569" } }
+            },
+            yAxis: {
+                type: "value",
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                splitLine: { lineStyle: { color: "#1f2937" } }
+            },
+            series: [{
+                type: "bar",
+                data: estados.map((e, idx) => ({
+                    value: valores[idx],
+                    itemStyle: {
+                        borderRadius: [6, 6, 0, 0],
+                        color: (function (estado) {
+                            if (estado === "CERRADO")            return "#22c55e";
+                            if (estado === "EN_DESCARGA")        return "#6366f1";
+                            if (estado === "EN_CONTROL_CALIDAD") return "#f59e0b";
+                            if (estado === "EN_ESPERA")          return "#0ea5e9";
+                            return "#94a3b8";
+                        })(e)
+                    }
+                }))
+            }]
         };
+        chartEstados.setOption(option);
+    }
 
-        Plotly.newPlot("chartEstados", [traceEstados], {
-            margin: { t: 10, r: 10, b: 40, l: 40 },
-            xaxis: { tickfont: { size: 10 } },
-            yaxis: { tickfont: { size: 10 } },
-        }, {displaylogo: false, responsive: true});
-
-        // 5.2 Proveedores (promedio de tiempo total)
+    function renderChartProveedores(data) {
         const provMap = {};
         data.forEach(r => {
             const key = r.proveedor || "Sin proveedor";
-            if (!provMap[key]) {
-                provMap[key] = {total: 0, sumaTiempo: 0, n: 0};
-            }
-            provMap[key].total += 1;
+            if (!provMap[key]) provMap[key] = { sum: 0, n: 0 };
             if (r.tiempo_total_min !== null) {
-                provMap[key].sumaTiempo += r.tiempo_total_min;
-                provMap[key].n += 1;
+                provMap[key].sum += r.tiempo_total_min;
+                provMap[key].n++;
             }
         });
 
-        const provLabels = [];
-        const provPromedios = [];
-        Object.keys(provMap).forEach(p => {
+        let provData = Object.keys(provMap).map(p => {
             const info = provMap[p];
-            const avg = info.n ? info.sumaTiempo / info.n : null;
-            provLabels.push(p);
-            provPromedios.push(avg);
+            return {
+                proveedor: p,
+                avg: info.n ? info.sum / info.n : null
+            };
         });
 
-        // Ordenamos por promedio desc
-        const orderIdx = provPromedios
-            .map((v, idx) => ({v, idx}))
-            .sort((a, b) => (b.v || 0) - (a.v || 0))
-            .map(obj => obj.idx);
+        provData = provData.sort((a, b) => (b.avg || 0) - (a.avg || 0));
 
-        const provLabelsSorted = orderIdx.map(i => provLabels[i]);
-        const provPromediosSorted = orderIdx.map(i => provPromedios[i]);
+        const labels = provData.map(d => d.proveedor);
+        const valores = provData.map(d => d.avg || 0);
 
-        const traceProv = {
-            y: provLabelsSorted,
-            x: provPromediosSorted.map(v => v !== null ? v : 0),
-            type: "bar",
-            orientation: "h",
-            marker: {
-                color: provPromediosSorted.map(v => colorPorTiempoTotal(v))
+        const option = {
+            backgroundColor: "transparent",
+            animationDuration: 700,
+            tooltip: {
+                trigger: "item",
+                formatter: params => {
+                    const v = provData[params.dataIndex].avg;
+                    const txt = v ? v.toFixed(1) + " min" : "-";
+                    return `<b>${labels[params.dataIndex]}</b><br/>Tiempo promedio total: <b>${txt}</b>`;
+                }
             },
-            hovertemplate: "<b>%{y}</b><br>Tiempo promedio: %{x:.1f} min<extra></extra>",
+            grid: {left: 120, right: 10, top: 20, bottom: 30},
+            xAxis: {
+                type: "value",
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                splitLine: { lineStyle: { color: "#1f2937" } }
+            },
+            yAxis: {
+                type: "category",
+                data: labels,
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                axisTick: { show: false },
+                axisLine: { lineStyle: { color: "#475569" } }
+            },
+            series: [{
+                type: "bar",
+                data: valores.map(v => ({
+                    value: v,
+                    itemStyle: {
+                        borderRadius: 6,
+                        color: colorPorTiempoTotal(v)
+                    }
+                }))
+            }]
         };
+        chartProveedores.setOption(option);
+    }
 
-        Plotly.newPlot("chartProveedores", [traceProv], {
-            margin: { t: 10, r: 10, b: 30, l: 120 },
-            xaxis: { title: "Minutos", tickfont: { size: 10 } },
-            yaxis: { tickfont: { size: 10 } },
-        }, {displaylogo: false, responsive: true});
-
-        // 5.3 Serie temporal (por fecha de creación)
-        const dataSorted = [...data].sort((a, b) => {
+    function renderChartRecepciones(data) {
+        const sorted = [...data].sort((a, b) => {
             const da = parseDate(a.creado_en) || 0;
             const db = parseDate(b.creado_en) || 0;
             return da - db;
-        });
+        }).filter(r => r.tiempo_total_min !== null);
 
-        const xLabels = dataSorted.map(r => formatDateLabel(r.creado_en));
-        const yValues = dataSorted.map(r => r.tiempo_total_min);
-        const colorsLinea = yValues.map(v => colorPorTiempoTotal(v));
+        const xData = sorted.map(r => formatDateLabel(r.creado_en));
+        const yData = sorted.map(r => r.tiempo_total_min);
 
-        const traceLinea = {
-            x: xLabels,
-            y: yValues,
-            type: "scatter",
-            mode: "lines+markers",
-            marker: {
-                size: 6,
-                color: colorsLinea,
+        const option = {
+            backgroundColor: "transparent",
+            animationDuration: 700,
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    const p = params[0];
+                    return `Fecha: <b>${p.axisValue}</b><br/>Tiempo total: <b>${p.data.toFixed(1)} min</b>`;
+                },
+                axisPointer: { type: "cross" }
             },
-            line: {
-                shape: "spline",
-                smoothing: 0.25,
-                color: "#4b5563",
+            grid: {left: 40, right: 10, top: 20, bottom: 40},
+            xAxis: {
+                type: "category",
+                data: xData,
+                boundaryGap: false,
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                axisLine: { lineStyle: { color: "#475569" } }
             },
-            hovertemplate: "Fecha: %{x}<br>Tiempo total: %{y:.1f} min<extra></extra>",
+            yAxis: {
+                type: "value",
+                axisLabel: { fontSize: 10, color: "#e5e7eb" },
+                splitLine: { lineStyle: { color: "#1f2937" } }
+            },
+            series: [{
+                name: "Tiempo total",
+                type: "line",
+                smooth: true,
+                data: yData,
+                symbolSize: 6,
+                itemStyle: {
+                    color: "#6366f1"
+                },
+                lineStyle: {
+                    width: 2
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: "rgba(99,102,241,0.35)"},
+                        {offset: 1, color: "rgba(99,102,241,0.0)"}
+                    ])
+                },
+                markLine: SLA_TOTAL ? {
+                    symbol: "none",
+                    data: [{
+                        yAxis: SLA_TOTAL,
+                        lineStyle: {
+                            color: "#fb923c",
+                            type: "dashed"
+                        },
+                        label: {
+                            formatter: `SLA (${SLA_TOTAL.toFixed ? SLA_TOTAL.toFixed(1) : SLA_TOTAL} min)`,
+                            color: "#fed7aa",
+                            fontSize: 10
+                        }
+                    }]
+                } : undefined
+            }]
         };
-
-        Plotly.newPlot("chartRecepciones", [traceLinea], {
-            margin: { t: 10, r: 10, b: 40, l: 40 },
-            xaxis: { tickfont: { size: 9 } },
-            yaxis: { title: "Minutos", tickfont: { size: 10 } },
-        }, {displaylogo: false, responsive: true});
-
-        // 5.4 Sparkline global (mini gráfico)
-        const traceSpark = {
-            x: xLabels,
-            y: yValues,
-            type: "scatter",
-            mode: "lines",
-            line: { shape: "spline", smoothing: 0.4, width: 2 },
-            hovertemplate: "Fecha: %{x}<br>Tiempo total: %{y:.1f} min<extra></extra>",
-        };
-
-        Plotly.newPlot("sparklineGlobal", [traceSpark], {
-            margin: { t: 5, r: 5, b: 20, l: 30 },
-            xaxis: { tickfont: { size: 8 } },
-            yaxis: { tickfont: { size: 8 } },
-        }, {displaylogo: false, responsive: true});
+        chartRecepciones.setOption(option);
     }
 
-    // ========================================
-    // 6) Orquestador: aplicar filtros y render
-    // ========================================
+    function renderSparkline(data) {
+        const sorted = [...data].sort((a, b) => {
+            const da = parseDate(a.creado_en) || 0;
+            const db = parseDate(b.creado_en) || 0;
+            return da - db;
+        }).filter(r => r.tiempo_total_min !== null);
+
+        const yData = sorted.map(r => r.tiempo_total_min);
+
+        const option = {
+            backgroundColor: "transparent",
+            animationDuration: 700,
+            grid: {left: 30, right: 10, top: 5, bottom: 20},
+            xAxis: {
+                type: "category",
+                data: sorted.map((_, idx) => idx),
+                show: false
+            },
+            yAxis: {
+                type: "value",
+                axisLabel: { fontSize: 8, color: "#e5e7eb" },
+                splitLine: { lineStyle: { color: "#1f2937" } }
+            },
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    const p = params[0];
+                    const r = sorted[p.dataIndex];
+                    return `Fecha: <b>${formatDateLabel(r.creado_en)}</b><br/>Tiempo total: <b>${p.data.toFixed(1)} min</b>`;
+                }
+            },
+            series: [{
+                type: "line",
+                smooth: true,
+                data: yData,
+                symbol: "none",
+                lineStyle: {
+                    width: 1.8,
+                    color: "#22c55e"
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: "rgba(34,197,94,0.35)"},
+                        {offset: 1, color: "rgba(34,197,94,0.0)"}
+                    ])
+                }
+            }]
+        };
+        chartSparkline.setOption(option);
+    }
+
+    function actualizarGraficos(data) {
+        renderChartEstados(data);
+        renderChartProveedores(data);
+        renderChartRecepciones(data);
+        renderSparkline(data);
+    }
+
+    // ============================
+    // 5) Orquestador
+    // ============================
     function aplicarFiltrosYRender() {
         const dataFiltrada = filterData();
         actualizarKpis(dataFiltrada);
@@ -649,20 +867,28 @@ document.addEventListener("DOMContentLoaded", function () {
     // Inicial
     aplicarFiltrosYRender();
 
-    // Eventos de filtros
+    // Eventos filtros
     document.getElementById("filtroEstado").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroProveedor").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroDesde").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroHasta").addEventListener("change", aplicarFiltrosYRender);
 
-    // Reset filtros
     document.getElementById("btnResetFiltros").addEventListener("click", () => {
-        document.getElementById("filtroEstado").value = "TODOS";
+        document.getElementById("filtroEstado").value  = "TODOS";
         document.getElementById("filtroProveedor").value = "TODOS";
-        document.getElementById("filtroDesde").value = "";
-        document.getElementById("filtroHasta").value = "";
+        document.getElementById("filtroDesde").value  = "";
+        document.getElementById("filtroHasta").value  = "";
         aplicarFiltrosYRender();
+    });
+
+    // Responsivo
+    window.addEventListener("resize", () => {
+        chartEstados.resize();
+        chartProveedores.resize();
+        chartRecepciones.resize();
+        chartSparkline.resize();
     });
 });
 </script>
+
 {% endblock %}

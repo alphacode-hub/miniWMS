@@ -1,0 +1,279 @@
+﻿{% extends "base/base_public.html" %}
+{% block title %}Crear negocio | ORBION{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+
+        {# =========================
+        LADO IZQUIERDO: STORY
+        ========================= #}
+        <div class="hidden lg:flex flex-col gap-4 text-slate-100">
+            <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-cyan-300">
+                Onboarding ORBION
+            </p>
+            <h1 class="text-2xl xl:text-3xl font-semibold leading-tight">
+                Crea el negocio<br class="hidden xl:block">
+                que será el núcleo de tu operación.
+            </h1>
+            <p class="text-sm text-slate-400 max-w-md">
+                En pocos pasos tendrás un entorno listo para conectar inventario,
+                inbound y analítica operacional. Un negocio, múltiples módulos en órbita.
+            </p>
+
+            <div class="mt-2 space-y-2 text-[11px] text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Un administrador principal con identidad clara en auditoría y alertas.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                    <span>Operadores y permisos configurables desde el panel.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                    <span>Alertas, stock, vencimientos y más, en un solo lugar.</span>
+                </div>
+            </div>
+        </div>
+
+        {# =========================
+        LADO DERECHO: FORM CARD
+        ========================= #}
+        <div class="w-full max-w-md mx-auto">
+            <div class="
+                relative overflow-hidden
+                rounded-2xl bg-slate-950/70
+                border border-slate-800
+                shadow-[0_18px_60px_rgba(0,0,0,0.75)]
+                backdrop-blur-xl
+                px-5 py-6 sm:px-7 sm:py-8
+                space-y-5
+            ">
+
+                {# Glow superior #}
+                <div class="pointer-events-none absolute -top-32 -left-24 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl"></div>
+
+                {# Header card #}
+                <div class="relative flex items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-cyan-300/90">
+                            Crear negocio
+                        </p>
+                        <h2 class="text-base sm:text-lg font-semibold text-slate-50">
+                            Registra tu negocio y cuenta admin
+                        </h2>
+                        <p class="text-[11px] text-slate-400">
+                            Este será el entorno principal donde se alojarán tus módulos ORBION.
+                        </p>
+                    </div>
+
+                    <a href="/app/login"
+                       class="text-[11px] inline-flex items-center px-3 py-1.5 rounded-full
+                              border border-slate-700 bg-slate-900/70 text-slate-200
+                              hover:bg-slate-800 transition">
+                        Ya tengo cuenta
+                    </a>
+                </div>
+
+                {# Errores #}
+                {% if errores and errores|length > 0 %}
+                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2">
+                    <p class="text-[11px] font-semibold text-rose-200">
+                        Revisa los siguientes puntos:
+                    </p>
+                    <ul class="mt-1 list-disc list-inside space-y-0.5 text-[11px] text-rose-200">
+                        {% for err in errores %}
+                        <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {# Formulario #}
+                <form method="post" class="relative space-y-4">
+
+                    {# Nombre negocio #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            Nombre de fantasía del negocio
+                        </label>
+                        <input type="text"
+                               name="nombre_negocio"
+                               value="{{ nombre_negocio }}"
+                               required
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="Ej: Bodega Central Norte" />
+                        <p class="text-[10px] text-slate-500">
+                            Este nombre aparecerá en el hub ORBION y en tus paneles.
+                        </p>
+                    </div>
+
+                    {# Nombre administrador #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            Nombre del administrador
+                        </label>
+                        <input type="text"
+                               name="nombre_admin"
+                               value="{{ nombre_admin }}"
+                               required
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="Ej: Bruce Wayne" />
+                        <p class="text-[10px] text-slate-500">
+                            Este nombre se usará en auditorías, alertas y paneles como identificador humano.
+                        </p>
+                    </div>
+
+                    {# WhatsApp #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            WhatsApp para notificaciones (opcional)
+                        </label>
+                        <input type="text"
+                               name="whatsapp"
+                               value="{{ whatsapp }}"
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="+56 9 1234 5678" />
+                        <p class="text-[10px] text-slate-500">
+                            Más adelante podrás recibir alertas de stock, vencimientos y eventos clave.
+                        </p>
+                    </div>
+
+                    {# Email admin #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            Correo del administrador
+                        </label>
+                        <input type="email"
+                               name="email"
+                               value="{{ email }}"
+                               required
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="admin@tunegocio.cl" />
+                        <p class="text-[10px] text-slate-500">
+                            Con este correo iniciarás sesión como administrador del negocio.
+                        </p>
+                    </div>
+
+                    {# Password #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            Contraseña
+                        </label>
+                        <input type="password"
+                               name="password"
+                               required
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="Mínimo 8 caracteres" />
+                    </div>
+
+                    {# Repetir password #}
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-medium text-slate-200">
+                            Repetir contraseña
+                        </label>
+                        <input type="password"
+                               name="password2"
+                               required
+                               class="
+                                   w-full rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="Debe coincidir" />
+                    </div>
+
+                    {# Botón submit #}
+                    <button type="submit"
+                            class="
+                                w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
+                                bg-[#00E4FF]
+                                text-slate-950
+                                shadow-[0_10px_40px_rgba(0,228,255,0.45)]
+                                hover:bg-cyan-300
+                                hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
+                                active:scale-[0.98]
+                                transition
+                            ">
+                        Crear negocio y entrar a ORBION
+                    </button>
+                </form>
+
+            </div>
+
+            {# Link discreto a la landing #}
+            <div class="mt-4 text-center">
+                <a href="/"
+                   class="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-300 transition">
+                    <span class="text-xs">←</span>
+                    <span>Volver a orbion.cl</span>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

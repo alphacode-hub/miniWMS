@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 from collections import defaultdict
+import math
 
 from fastapi import HTTPException, APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -11,9 +12,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import InboundRecepcion, Producto
+from core.models import InboundRecepcion, Producto, InboundConfig, Negocio
 from core.security import require_roles_dep
 from core.services.services_audit import registrar_auditoria
+from core.plans import get_inbound_plan_config
 
 from modules.inbound_orbion.services.services_inbound import (
     InboundDomainError,
@@ -25,9 +27,33 @@ from modules.inbound_orbion.services.services_inbound import (
     calcular_metricas_recepcion,
     calcular_metricas_negocio,
 )
+from modules.inbound_orbion.services.services_inbound_config import (
+    check_inbound_recepcion_limit,
+    check_inbound_ml_dataset_permission,
+)
+from modules.inbound_orbion.services.services_inbound_logging import (
+    log_inbound_event,
+    log_inbound_error,
+)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+# ============================
+#   TEMPLATES
+# ============================
+
+HERE = Path(__file__).resolve()
+
+PROJECT_ROOT = HERE.parents[3]   # .../miniWMS
+INBOUND_TEMPLATES = HERE.parents[1] / "templates"  # modules/inbound_orbion/templates
+GLOBAL_TEMPLATES = PROJECT_ROOT / "templates"      # templates/
+
+templates = Jinja2Templates(
+    directory=[
+        str(GLOBAL_TEMPLATES),       # para base/base_app.html y otros html globales
+        str(INBOUND_TEMPLATES),      # inbound_lista.html, inbound_detalle.html, etc.
+    ]
+)
+
+
 
 router = APIRouter(
     prefix="/inbound",
@@ -40,7 +66,6 @@ router = APIRouter(
 # ============================
 
 def _generar_codigo_inbound(db: Session, negocio_id: int) -> str:
-    # Muy simple, luego podemos mejorarlo
     count = (
         db.query(InboundRecepcion)
         .filter(InboundRecepcion.negocio_id == negocio_id)
@@ -48,6 +73,13 @@ def _generar_codigo_inbound(db: Session, negocio_id: int) -> str:
     )
     numero = count + 1
     return f"INB-{datetime.now().year}-{numero:06d}"
+
+
+def _get_negocio(db: Session, negocio_id: int) -> Negocio:
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    if not negocio:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    return negocio
 
 
 # ============================
@@ -59,14 +91,95 @@ async def inbound_lista(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_dep("admin", "operador")),
+    estado: Optional[str] = None,
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None,
+    page: int = 1,   # 👈 parámetro de página
 ):
     negocio_id = user["negocio_id"]
+    negocio = _get_negocio(db, negocio_id)
 
-    recepciones = (
+    # Config de plan para habilitar o no el botón de analítica
+    plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
+    inbound_analytics_enabled = bool(plan_cfg.get("enable_inbound_analytics", False))
+
+    # Query base
+    q = (
         db.query(InboundRecepcion)
         .filter(InboundRecepcion.negocio_id == negocio_id)
-        .order_by(InboundRecepcion.creado_en.desc())
-        .all()
+    )
+
+    # Filtro por estado
+    if estado:
+        q = q.filter(InboundRecepcion.estado == estado)
+
+    # Filtros por fecha (creado_en)
+    dt_desde = None
+    dt_hasta = None
+
+    if desde:
+        try:
+            dt_desde = datetime.fromisoformat(desde)
+            q = q.filter(InboundRecepcion.creado_en >= dt_desde)
+        except ValueError:
+            dt_desde = None
+
+    if hasta:
+        try:
+            # Hasta final del día
+            dt_hasta = datetime.fromisoformat(hasta) + timedelta(days=1)
+            q = q.filter(InboundRecepcion.creado_en < dt_hasta)
+        except ValueError:
+            dt_hasta = None
+
+    # ============================
+    #   PAGINACIÓN (5 POR PÁGINA)
+    # ============================
+    per_page = 5
+
+    total_recepciones = q.count()
+    total_pages = max(1, math.ceil(total_recepciones / per_page)) if total_recepciones > 0 else 1
+
+    # Normalizar página
+    if page < 1:
+        page = 1
+    if total_recepciones > 0 and page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
+
+    recepciones = (
+        q.order_by(InboundRecepcion.creado_en.desc())
+         .offset(offset)
+         .limit(per_page)
+         .all()
+    )
+
+    filtros = {
+        "estado": estado or "",
+        "desde": desde or "",
+        "hasta": hasta or "",
+    }
+
+    # Para construir los links de paginación manteniendo filtros
+    qs_parts = []
+    if estado:
+        qs_parts.append(f"estado={estado}")
+    if desde:
+        qs_parts.append(f"desde={desde}")
+    if hasta:
+        qs_parts.append(f"hasta={hasta}")
+    base_query = "&".join(qs_parts)  # ej: "estado=EN_ESPERA&desde=2025-12-01"
+
+    log_inbound_event(
+        "lista_recepciones_view",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        total_page=len(recepciones),
+        total_filtered=total_recepciones,
+        page=page,
+        total_pages=total_pages,
+        filtros=filtros,
     )
 
     return templates.TemplateResponse(
@@ -76,8 +189,16 @@ async def inbound_lista(
             "user": user,
             "recepciones": recepciones,
             "modulo_nombre": "Orbion Inbound",
+            "filtros": filtros,
+            "inbound_analytics_enabled": inbound_analytics_enabled,
+            "page": page,
+            "total_pages": total_pages,
+            "total_recepciones": total_recepciones,
+            "base_query": base_query,
         },
     )
+
+
 
 
 @router.get("/nuevo", response_class=HTMLResponse)
@@ -85,6 +206,12 @@ async def inbound_nuevo_form(
     request: Request,
     user=Depends(require_roles_dep("admin", "operador")),
 ):
+    log_inbound_event(
+        "nueva_recepcion_form_view",
+        negocio_id=user["negocio_id"],
+        user_email=user["email"],
+    )
+
     return templates.TemplateResponse(
         "inbound_form.html",
         {
@@ -109,24 +236,57 @@ async def inbound_nuevo_submit(
     observaciones: str = Form(""),
 ):
     negocio_id = user["negocio_id"]
+    negocio = _get_negocio(db, negocio_id)
+
+    # Normalización de texto
+    proveedor = proveedor.strip()
+    referencia_externa = referencia_externa.strip() or None
+    contenedor_norm = contenedor.strip().upper() or None
+    patente_norm = patente_camion.strip().upper() or None
+    tipo_carga = tipo_carga.strip() or None
+    observaciones_norm = observaciones.strip() or None
+
+    # Límite por plan (recepciones al mes)
+    try:
+        check_inbound_recepcion_limit(db, negocio)
+    except InboundDomainError as e:
+        log_inbound_error(
+            "recepcion_limit_reached",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            error=e.message,
+        )
+        raise HTTPException(status_code=400, detail=e.message)
 
     codigo = _generar_codigo_inbound(db, negocio_id)
 
     fecha_eta = None
     if fecha_estimada_llegada:
-        # Asumimos formato YYYY-MM-DD
-        fecha_eta = datetime.fromisoformat(fecha_estimada_llegada)
+        try:
+            fecha_eta = datetime.fromisoformat(fecha_estimada_llegada)
+        except ValueError as e:
+            log_inbound_error(
+                "nueva_recepcion_fecha_eta_invalida",
+                negocio_id=negocio_id,
+                user_email=user["email"],
+                raw_value=fecha_estimada_llegada,
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Fecha estimada de llegada inválida.",
+            )
 
     recepcion = InboundRecepcion(
         negocio_id=negocio_id,
         codigo=codigo,
         proveedor=proveedor,
-        referencia_externa=referencia_externa or None,
-        contenedor=contenedor or None,
-        patente_camion=patente_camion or None,
-        tipo_carga=tipo_carga or None,
+        referencia_externa=referencia_externa,
+        contenedor=contenedor_norm,
+        patente_camion=patente_norm,
+        tipo_carga=tipo_carga,
         fecha_estimada_llegada=fecha_eta,
-        observaciones=observaciones or None,
+        observaciones=observaciones_norm,
         estado="PRE_REGISTRADO",
         creado_por_id=user["id"],
     )
@@ -145,8 +305,141 @@ async def inbound_nuevo_submit(
         },
     )
 
+    log_inbound_event(
+        "recepcion_creada",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion.id,
+        user_email=user["email"],
+        codigo=recepcion.codigo,
+        proveedor=proveedor,
+        estado=recepcion.estado,
+    )
+
     return RedirectResponse(
         url="/inbound",
+        status_code=302,
+    )
+
+
+# ============================
+#   CONFIGURACIÓN POR NEGOCIO
+# ============================
+
+@router.get("/config", response_class=HTMLResponse)
+async def inbound_config_view(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_dep("admin", "operador")),
+):
+    negocio_id = user["negocio_id"]
+    negocio = _get_negocio(db, negocio_id)
+
+    config = (
+        db.query(InboundConfig)
+        .filter(InboundConfig.negocio_id == negocio_id)
+        .first()
+    )
+
+    # Si no hay config, la creamos vacía (o con defaults si quisieras)
+    if not config:
+        config = InboundConfig(negocio_id=negocio_id)
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+
+    # Config del plan para mostrar límites de referencia (read-only)
+    plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
+
+    log_inbound_event(
+        "config_view",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        plan=negocio.plan_tipo,
+    )
+
+    return templates.TemplateResponse(
+        "inbound_config.html",
+        {
+            "request": request,
+            "user": user,
+            "negocio": negocio,
+            "config": config,
+            "plan_cfg": plan_cfg,
+            "modulo_nombre": "Orbion Inbound",
+        },
+    )
+
+
+@router.post("/config", response_class=HTMLResponse)
+async def inbound_config_save(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_dep("admin", "operador")),
+):
+    """
+    Guarda la configuración inbound para el negocio actual.
+
+    El formulario debe usar names que coincidan con
+    los atributos del modelo InboundConfig.
+    """
+    negocio_id = user["negocio_id"]
+
+    config = (
+        db.query(InboundConfig)
+        .filter(InboundConfig.negocio_id == negocio_id)
+        .first()
+    )
+
+    if not config:
+        config = InboundConfig(negocio_id=negocio_id)
+        db.add(config)
+        db.flush()
+
+    form = await request.form()
+
+    def parse_value(raw: str):
+        if raw is None:
+            return None
+        raw = str(raw).strip()
+        if raw == "":
+            return None
+
+        lower = raw.lower()
+        if lower in ("true", "on", "yes", "si", "1"):
+            return True
+        if lower in ("false", "off", "no", "0"):
+            return False
+
+        if raw.isdigit():
+            try:
+                return int(raw)
+            except ValueError:
+                pass
+
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+
+        return raw
+
+    for key, raw_value in form.items():
+        if not hasattr(config, key):
+            continue
+        value = parse_value(raw_value)
+        setattr(config, key, value)
+
+    db.commit()
+    db.refresh(config)
+
+    log_inbound_event(
+        "config_saved",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+    )
+
+    return RedirectResponse(
+        url="/inbound/config",
         status_code=302,
     )
 
@@ -162,8 +455,25 @@ async def inbound_analytics(
     user=Depends(require_roles_dep("admin", "operador")),
 ):
     negocio_id = user["negocio_id"]
+    negocio = _get_negocio(db, negocio_id)
 
-    # Rango por defecto: últimos 30 días
+    # Restricción por plan para analítica inbound
+    plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
+    if not plan_cfg.get("enable_inbound_analytics", False):
+        log_inbound_error(
+            "analytics_plan_denied",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            plan=negocio.plan_tipo,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Tu plan actual no incluye analítica avanzada de inbound. "
+                "Contacta a soporte para actualizar tu plan."
+            ),
+        )
+
     ahora = datetime.utcnow()
     hace_30 = ahora - timedelta(days=30)
 
@@ -174,7 +484,6 @@ async def inbound_analytics(
         hasta=None,
     )
 
-    # Traer recepciones recientes (por ejemplo, últimas 50)
     recepciones = (
         db.query(InboundRecepcion)
         .filter(
@@ -186,7 +495,6 @@ async def inbound_analytics(
         .all()
     )
 
-    # Métricas por recepción
     recepciones_data = []
     estados_count = defaultdict(int)
     proveedores_data = defaultdict(lambda: {"total": 0, "tiempos_totales": []})
@@ -214,7 +522,6 @@ async def inbound_analytics(
             }
         )
 
-    # Calcular promedios por proveedor
     proveedores_resumen = []
     for prov, info in proveedores_data.items():
         tiempos = info["tiempos_totales"]
@@ -227,10 +534,23 @@ async def inbound_analytics(
             }
         )
 
-    # Ordenar proveedores por promedio de tiempo (los más lentos arriba)
     proveedores_resumen.sort(
         key=lambda x: (x["promedio_tiempo_total_min"] is None, x["promedio_tiempo_total_min"] or 0),
         reverse=True,
+    )
+
+    config = (
+        db.query(InboundConfig)
+        .filter(InboundConfig.negocio_id == negocio_id)
+        .first()
+    )
+
+    log_inbound_event(
+        "analytics_view",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        total_recepciones=len(recepciones),
+        resumen=resumen,
     )
 
     return templates.TemplateResponse(
@@ -245,8 +565,10 @@ async def inbound_analytics(
             "proveedores_resumen": proveedores_resumen,
             "desde": hace_30,
             "hasta": ahora,
+            "config": config,
         },
     )
+
 
 
 @router.get("/metrics/resumen", response_class=JSONResponse)
@@ -254,14 +576,9 @@ async def inbound_metrics_resumen(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_dep("admin", "operador")),
-    desde: Optional[str] = None,  # formato YYYY-MM-DD
-    hasta: Optional[str] = None,  # formato YYYY-MM-DD
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None,
 ):
-    """
-    Métricas agregadas del inbound del negocio:
-    - total de recepciones
-    - promedio de tiempos (espera, descarga, total) en minutos
-    """
     negocio_id = user["negocio_id"]
 
     dt_desde = None
@@ -270,13 +587,27 @@ async def inbound_metrics_resumen(
     if desde:
         try:
             dt_desde = datetime.fromisoformat(desde)
-        except ValueError:
+        except ValueError as e:
+            log_inbound_error(
+                "metrics_resumen_desde_invalido",
+                negocio_id=negocio_id,
+                user_email=user["email"],
+                raw_value=desde,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail="Parámetro 'desde' inválido (usar YYYY-MM-DD).")
 
     if hasta:
         try:
             dt_hasta = datetime.fromisoformat(hasta)
-        except ValueError:
+        except ValueError as e:
+            log_inbound_error(
+                "metrics_resumen_hasta_invalido",
+                negocio_id=negocio_id,
+                user_email=user["email"],
+                raw_value=hasta,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail="Parámetro 'hasta' inválido (usar YYYY-MM-DD).")
 
     metrics = calcular_metricas_negocio(
@@ -284,6 +615,15 @@ async def inbound_metrics_resumen(
         negocio_id=negocio_id,
         desde=dt_desde,
         hasta=dt_hasta,
+    )
+
+    log_inbound_event(
+        "metrics_resumen_api",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        desde=desde,
+        hasta=hasta,
+        metrics=metrics,
     )
 
     return {
@@ -302,10 +642,20 @@ async def inbound_metrics_dataset(
     desde: Optional[str] = None,
     hasta: Optional[str] = None,
 ):
-    """
-    Devuelve un dataset crudo de recepciones inbound para analytics/ML.
-    """
     negocio_id = user["negocio_id"]
+    negocio = _get_negocio(db, negocio_id)
+
+    # Restricción por plan para dataset avanzado ML/IA
+    try:
+        check_inbound_ml_dataset_permission(negocio)
+    except InboundDomainError as e:
+        log_inbound_error(
+            "metrics_dataset_plan_denied",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            error=e.message,
+        )
+        raise HTTPException(status_code=403, detail=e.message)
 
     dt_desde = None
     dt_hasta = None
@@ -313,13 +663,27 @@ async def inbound_metrics_dataset(
     if desde:
         try:
             dt_desde = datetime.fromisoformat(desde)
-        except ValueError:
+        except ValueError as e:
+            log_inbound_error(
+                "metrics_dataset_desde_invalido",
+                negocio_id=negocio_id,
+                user_email=user["email"],
+                raw_value=desde,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail="Parámetro 'desde' inválido (usar YYYY-MM-DD).")
 
     if hasta:
         try:
             dt_hasta = datetime.fromisoformat(hasta)
-        except ValueError:
+        except ValueError as e:
+            log_inbound_error(
+                "metrics_dataset_hasta_invalido",
+                negocio_id=negocio_id,
+                user_email=user["email"],
+                raw_value=hasta,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail="Parámetro 'hasta' inválido (usar YYYY-MM-DD).")
 
     q = db.query(InboundRecepcion).filter(
@@ -354,6 +718,15 @@ async def inbound_metrics_dataset(
         }
         data.append(record)
 
+    log_inbound_event(
+        "metrics_dataset_api",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        desde=desde,
+        hasta=hasta,
+        registros=len(data),
+    )
+
     return {
         "negocio_id": negocio_id,
         "cantidad_registros": len(data),
@@ -368,9 +741,6 @@ async def inbound_metrics_recepcion(
     db: Session = Depends(get_db),
     user=Depends(require_roles_dep("admin", "operador")),
 ):
-    """
-    Métricas de tiempos para una recepción específica.
-    """
     negocio_id = user["negocio_id"]
 
     recepcion = (
@@ -383,9 +753,23 @@ async def inbound_metrics_recepcion(
     )
 
     if not recepcion:
+        log_inbound_error(
+            "metrics_recepcion_not_found",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+        )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
     metrics = calcular_metricas_recepcion(recepcion)
+
+    log_inbound_event(
+        "metrics_recepcion_api",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        metrics=metrics,
+    )
 
     return {
         "inbound_id": recepcion.id,
@@ -398,6 +782,59 @@ async def inbound_metrics_recepcion(
         "fecha_fin_descarga": recepcion.fecha_fin_descarga.isoformat() if recepcion.fecha_fin_descarga else None,
         "metrics": metrics,
     }
+
+
+# ============================
+#   HEALTH DEL MÓDULO INBOUND
+# ============================
+
+@router.get("/health", response_class=JSONResponse)
+async def inbound_health(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_dep("admin", "operador")),
+):
+    negocio_id = user["negocio_id"]
+
+    try:
+        total_recepciones = (
+            db.query(InboundRecepcion)
+            .filter(InboundRecepcion.negocio_id == negocio_id)
+            .count()
+        )
+
+        payload = {
+            "status": "ok",
+            "negocio_id": negocio_id,
+            "total_recepciones": total_recepciones,
+            "timestamp_utc": datetime.utcnow().isoformat(),
+        }
+
+        log_inbound_event(
+            "health_ok",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            total_recepciones=total_recepciones,
+        )
+
+        return payload
+
+    except Exception as e:
+        log_inbound_error(
+            "health_error",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            error=str(e),
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "negocio_id": negocio_id,
+                "error": str(e),
+                "timestamp_utc": datetime.utcnow().isoformat(),
+            },
+        )
 
 
 # ============================
@@ -423,6 +860,12 @@ async def inbound_detalle(
     )
 
     if not recepcion:
+        log_inbound_error(
+            "detalle_recepcion_not_found",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+        )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
     productos = (
@@ -436,6 +879,14 @@ async def inbound_detalle(
     )
 
     metrics = calcular_metricas_recepcion(recepcion)
+
+    log_inbound_event(
+        "detalle_recepcion_view",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        estado=recepcion.estado,
+    )
 
     return templates.TemplateResponse(
         "inbound_detalle.html",
@@ -451,9 +902,6 @@ async def inbound_detalle(
 
 
 def _aplicar_cambio_estado(recepcion: InboundRecepcion, accion: str) -> None:
-    """
-    Aplica un cambio de estado de alto nivel sobre la recepción.
-    """
     ahora = datetime.utcnow()
 
     if accion == "marcar_en_espera":
@@ -500,6 +948,13 @@ async def inbound_cambiar_estado(
     )
 
     if not recepcion:
+        log_inbound_error(
+            "cambio_estado_not_found",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            accion=accion,
+        )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
     estado_anterior = recepcion.estado
@@ -522,6 +977,16 @@ async def inbound_cambiar_estado(
         },
     )
 
+    log_inbound_event(
+        "cambio_estado",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        estado_anterior=estado_anterior,
+        estado_nuevo=recepcion.estado,
+        accion=accion,
+    )
+
     return RedirectResponse(
         url=f"/inbound/{recepcion_id}",
         status_code=302,
@@ -538,7 +1003,7 @@ async def inbound_agregar_linea(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_dep("admin", "operador")),
-    producto_id: int = Form(...),
+    producto_id: int = Form(0),
     lote: str = Form(""),
     fecha_vencimiento: str = Form(""),
     cantidad_esperada: float = Form(0),
@@ -547,23 +1012,108 @@ async def inbound_agregar_linea(
     temperatura_objetivo: float = Form(None),
     temperatura_recibida: float = Form(None),
     observaciones: str = Form(""),
+
+    # 👇 NUEVOS CAMPOS PARA PRODUCTO RÁPIDO
+    nuevo_producto_nombre: str = Form(""),
+    nuevo_producto_unidad_base: str = Form(""),
 ):
     negocio_id = user["negocio_id"]
 
-    # Parse fecha_vencimiento si viene
+    # ============================
+    #   RESOLVER PRODUCTO
+    # ============================
+    producto_obj = None
+
+    # 1) Si viene producto_id válido (>0), intentamos usarlo
+    if producto_id:
+        producto_obj = (
+            db.query(Producto)
+            .filter(
+                Producto.id == producto_id,
+                Producto.negocio_id == negocio_id,
+                Producto.activo == 1,
+            )
+            .first()
+        )
+        if not producto_obj:
+            log_inbound_error(
+                "agregar_linea_producto_invalido",
+                negocio_id=negocio_id,
+                recepcion_id=recepcion_id,
+                user_email=user["email"],
+                producto_id=producto_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="El producto seleccionado no es válido para este negocio.",
+            )
+
+    # 2) Si NO hay producto_id pero viene nombre de producto rápido -> creamos uno
+    nuevo_nombre = (nuevo_producto_nombre or "").strip()
+    nuevo_unidad = (nuevo_producto_unidad_base or "").strip()
+
+    if not producto_obj and nuevo_nombre:
+        producto_obj = Producto(
+            negocio_id=negocio_id,
+            nombre=nuevo_nombre,
+            # 👇 usamos el campo real del modelo
+            unidad=nuevo_unidad or "unidad",
+            activo=1,
+            origen="inbound",  # opcional pero útil para diferenciar
+        )
+        db.add(producto_obj)
+        db.flush()  # para obtener producto_obj.id
+
+        log_inbound_event(
+            "producto_rapido_creado",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            producto_id=producto_obj.id,
+            nombre=nuevo_nombre,
+        )
+
+
+    # 3) Si no hay ni producto_id ni nombre rápido -> error
+    if not producto_obj:
+        log_inbound_error(
+            "agregar_linea_sin_producto",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Debes seleccionar un producto del catálogo o indicar un nombre de producto rápido.",
+        )
+
+    # ============================
+    #   PARSEO FECHA VENCIMIENTO
+    # ============================
     fecha_ven_dt = None
     if fecha_vencimiento:
         try:
             fecha_ven_dt = datetime.fromisoformat(fecha_vencimiento)
-        except ValueError:
+        except ValueError as e:
+            log_inbound_error(
+                "agregar_linea_fecha_venc_invalida",
+                negocio_id=negocio_id,
+                recepcion_id=recepcion_id,
+                user_email=user["email"],
+                raw_value=fecha_vencimiento,
+                error=str(e),
+            )
             raise HTTPException(status_code=400, detail="Fecha de vencimiento inválida.")
 
+    # ============================
+    #   CREAR LÍNEA DE RECEPCIÓN
+    # ============================
     try:
         linea = crear_linea_inbound(
             db=db,
             negocio_id=negocio_id,
             recepcion_id=recepcion_id,
-            producto_id=producto_id,
+            producto_id=producto_obj.id,
             lote=lote or None,
             fecha_vencimiento=fecha_ven_dt,
             cantidad_esperada=cantidad_esperada or None,
@@ -574,6 +1124,13 @@ async def inbound_agregar_linea(
             observaciones=observaciones or None,
         )
     except InboundDomainError as e:
+        log_inbound_error(
+            "agregar_linea_domain_error",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            error=e.message,
+        )
         raise HTTPException(status_code=400, detail=e.message)
 
     registrar_auditoria(
@@ -583,10 +1140,149 @@ async def inbound_agregar_linea(
         detalle={
             "inbound_id": recepcion_id,
             "linea_id": linea.id,
-            "producto_id": producto_id,
+            "producto_id": producto_obj.id,
         },
     )
 
+    log_inbound_event(
+        "agregar_linea",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        linea_id=linea.id,
+        producto_id=producto_obj.id,
+    )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/inbound/{recepcion_id}",
+        status_code=302,
+    )
+
+@router.get("/{recepcion_id}/lineas/nueva", response_class=HTMLResponse)
+async def inbound_nueva_linea_form(
+    recepcion_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_dep("admin", "operador")),
+):
+    negocio_id = user["negocio_id"]
+
+    recepcion = (
+        db.query(InboundRecepcion)
+        .filter(
+            InboundRecepcion.id == recepcion_id,
+            InboundRecepcion.negocio_id == negocio_id,
+        )
+        .first()
+    )
+
+    if not recepcion:
+        log_inbound_error(
+            "nueva_linea_recepcion_not_found",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+        )
+        raise HTTPException(status_code=404, detail="Recepción no encontrada")
+
+    productos = (
+        db.query(Producto)
+        .filter(
+            Producto.negocio_id == negocio_id,
+            Producto.activo == 1,
+        )
+        .order_by(Producto.nombre)
+        .all()
+    )
+
+    log_inbound_event(
+        "nueva_linea_form_view",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+    )
+
+    return templates.TemplateResponse(
+        "inbound_linea_form.html",
+        {
+            "request": request,
+            "user": user,
+            "recepcion": recepcion,
+            "productos": productos,
+            "modulo_nombre": "Orbion Inbound",
+        },
+    )
+
+
+@router.post("/{recepcion_id}/producto-rapido", response_class=HTMLResponse)
+async def inbound_producto_rapido(
+    recepcion_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_dep("admin", "operador")),
+    nombre: str = Form(...),
+    unidad: str = Form(""),
+):
+    negocio_id = user["negocio_id"]
+
+    # Validamos que la recepción exista y pertenezca al negocio
+    recepcion = (
+        db.query(InboundRecepcion)
+        .filter(
+            InboundRecepcion.id == recepcion_id,
+            InboundRecepcion.negocio_id == negocio_id,
+        )
+        .first()
+    )
+    if not recepcion:
+        log_inbound_error(
+            "producto_rapido_recepcion_not_found",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+        )
+        raise HTTPException(status_code=404, detail="Recepción no encontrada")
+
+    nombre_clean = (nombre or "").strip()
+    if not nombre_clean:
+        raise HTTPException(status_code=400, detail="El nombre del producto es obligatorio.")
+
+    # Crear producto básico para este negocio
+    producto = Producto(
+        negocio_id=negocio_id,
+        nombre=nombre_clean,
+        unidad=(unidad or None),
+        activo=1,
+        # Si tu modelo tiene más campos, puedes setear defaults aquí
+        # origen="INBOUND_RAPIDO",
+    )
+
+    db.add(producto)
+    db.commit()
+    db.refresh(producto)
+
+    registrar_auditoria(
+        db=db,
+        user=user,
+        accion="INBOUND_CREAR_PRODUCTO_RAPIDO",
+        detalle={
+            "inbound_id": recepcion_id,
+            "producto_id": producto.id,
+            "nombre": producto.nombre,
+        },
+    )
+
+    log_inbound_event(
+        "producto_rapido_creado",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        producto_id=producto.id,
+        nombre=producto.nombre,
+    )
+
+    # Volvemos al detalle; el producto ya aparecerá en el select
     return RedirectResponse(
         url=f"/inbound/{recepcion_id}",
         status_code=302,
@@ -610,6 +1306,14 @@ async def inbound_eliminar_linea(
             linea_id=linea_id,
         )
     except InboundDomainError as e:
+        log_inbound_error(
+            "eliminar_linea_domain_error",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            linea_id=linea_id,
+            error=e.message,
+        )
         raise HTTPException(status_code=400, detail=e.message)
 
     registrar_auditoria(
@@ -620,6 +1324,14 @@ async def inbound_eliminar_linea(
             "inbound_id": recepcion_id,
             "linea_id": linea_id,
         },
+    )
+
+    log_inbound_event(
+        "eliminar_linea",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        linea_id=linea_id,
     )
 
     return RedirectResponse(
@@ -656,6 +1368,15 @@ async def inbound_agregar_incidencia(
         incidencia.creado_por_id = user["id"]
         db.commit()
     except InboundDomainError as e:
+        log_inbound_error(
+            "agregar_incidencia_domain_error",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            tipo=tipo,
+            criticidad=criticidad,
+            error=e.message,
+        )
         raise HTTPException(status_code=400, detail=e.message)
 
     registrar_auditoria(
@@ -668,6 +1389,16 @@ async def inbound_agregar_incidencia(
             "tipo": tipo,
             "criticidad": criticidad,
         },
+    )
+
+    log_inbound_event(
+        "agregar_incidencia",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        incidencia_id=incidencia.id,
+        tipo=tipo,
+        criticidad=criticidad,
     )
 
     return RedirectResponse(
@@ -693,6 +1424,14 @@ async def inbound_eliminar_incidencia(
             incidencia_id=incidencia_id,
         )
     except InboundDomainError as e:
+        log_inbound_error(
+            "eliminar_incidencia_domain_error",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            user_email=user["email"],
+            incidencia_id=incidencia_id,
+            error=e.message,
+        )
         raise HTTPException(status_code=400, detail=e.message)
 
     registrar_auditoria(
@@ -703,6 +1442,14 @@ async def inbound_eliminar_incidencia(
             "inbound_id": recepcion_id,
             "incidencia_id": incidencia_id,
         },
+    )
+
+    log_inbound_event(
+        "eliminar_incidencia",
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        user_email=user["email"],
+        incidencia_id=incidencia_id,
     )
 
     return RedirectResponse(

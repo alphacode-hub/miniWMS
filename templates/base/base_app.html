@@ -1,0 +1,229 @@
+﻿{# core/templates/base/base_app.html #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}ORBION · Plataforma{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {# CSS principal del SaaS (Tailwind compilado / estilos propios) #}
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+
+    <div class="min-h-screen flex flex-col">
+
+        {# =========================================
+        TOPBAR ORBION (COMÚN A TODO EL APP)
+        ====================================== #}
+        <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+
+                {# Lado izquierdo: logo + texto plataforma #}
+                <div class="flex items-center gap-3 min-w-0">
+                    {# Logo / marca Orbion #}
+                    <a href="/app/dashboard" class="flex items-center gap-3 min-w-0">
+                        <div class="h-9 w-9 rounded-2xl bg-cyan-400/10 border border-cyan-400/40
+                                    flex items-center justify-center">
+                            <span class="text-sm font-semibold text-cyan-300">
+                                OB
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-xs font-semibold tracking-[0.14em] text-cyan-300 uppercase">
+                                ORBION
+                            </span>
+                            <span class="text-[11px] text-slate-400 leading-snug">
+                                Plataforma de inteligencia de inventario y operaciones
+                            </span>
+                        </div>
+                    </a>
+                </div>
+
+                {# Lado derecho: usuario + salir #}
+                <div class="flex items-center gap-3">
+
+                    {% if user %}
+                    {# Info usuario (oculta en mobile pequeño) #}
+                    <div class="hidden sm:flex flex-col items-end leading-tight">
+                        <span class="text-xs font-medium text-slate-100 truncate max-w-[160px]">
+                            {{ user.nombre or user.email or "Usuario" }}
+                        </span>
+                        <span class="text-[11px] text-slate-500">
+                            {{ user.rol_label or "Sesión activa" }}
+                        </span>
+                    </div>
+
+                    {# Avatar #}
+                    <div class="h-8 w-8 rounded-full bg-slate-900 border border-slate-600
+                                flex items-center justify-center text-[11px] font-semibold text-slate-100">
+                        {% if user.iniciales %}
+                        {{ user.iniciales }}
+                        {% elif user.email %}
+                        {{ user.email[0]|upper }}
+                        {% else %}
+                        U
+                        {% endif %}
+                    </div>
+
+                    {# Botón salir #}
+                    <form action="/app/logout" method="post" class="flex">
+                        <button type="submit"
+                                class="inline-flex items-center rounded-full border border-slate-700
+                                       px-3 py-1 text-[11px] font-medium text-slate-200
+                                       hover:border-rose-400 hover:text-rose-300
+                                       transition-colors">
+                            Salir
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="/app/login"
+                       class="inline-flex items-center rounded-full border border-slate-700
+                              px-3 py-1 text-[11px] font-medium text-slate-200
+                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                        Iniciar sesión
+                    </a>
+                    {% endif %}
+
+                </div>
+            </div>
+        </header>
+
+        {# =========================================
+        ALERTAS GLOBALES ORBION (BANNERS)
+        ====================================== #}
+        {% if alerts %}
+        <div class="max-w-6xl mx-auto px-4 pt-3 space-y-2">
+            {% for alert in alerts %}
+            {% set tipo = alert.tipo or 'info' %}
+            <div class="flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs sm:text-[13px]
+                       {% if tipo == 'success' %}
+                           border-emerald-400/40 bg-emerald-500/5 text-emerald-100
+                       {% elif tipo == 'error' %}
+                           border-rose-400/40 bg-rose-500/5 text-rose-100
+                       {% elif tipo == 'warning' %}
+                           border-amber-400/40 bg-amber-500/5 text-amber-100
+                       {% elif tipo == 'plan' %}
+                           border-cyan-400/40 bg-cyan-500/5 text-cyan-100
+                       {% else %}
+                           border-slate-600/60 bg-slate-900/70 text-slate-100
+                       {% endif %}
+                ">
+                <div class="mt-0.5 text-sm">
+                    {% if alert.icon %}
+                    {{ alert.icon }}
+                    {% elif tipo == 'success' %}
+                    ✅
+                    {% elif tipo == 'error' %}
+                    ⚠️
+                    {% elif tipo == 'warning' %}
+                    🔔
+                    {% elif tipo == 'plan' %}
+                    💼
+                    {% else %}
+                    💡
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    {% if alert.titulo %}
+                    <p class="font-medium mb-0.5">
+                        {{ alert.titulo }}
+                    </p>
+                    {% endif %}
+                    <p class="leading-snug">
+                        {{ alert.mensaje }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {# =========================================
+        CONTENIDO PRINCIPAL
+        ====================================== #}
+        <main class="flex-1">
+
+            {# Header de página (debajo del topbar / alertas) #}
+            <div class="max-w-6xl mx-auto px-4 pt-3 sm:pt-4">
+                {% block page_header %}
+                {# Por defecto vacío; las vistas que necesiten lo sobreescriben #}
+                {% endblock %}
+            </div>
+
+            {# Contenido principal #}
+            <div class="max-w-6xl mx-auto px-4 pb-6 sm:pb-8">
+                {% block content %}
+                {# Cada página define su contenido aquí #}
+                {% endblock %}
+            </div>
+
+        </main>
+
+        {# =========================================
+        FOOTER GLOBAL
+        ====================================== #}
+        <footer class="border-t border-slate-800 bg-slate-950/90">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row
+                        items-center justify-between gap-2">
+                <p class="text-[10px] text-slate-500">
+                    © {{ now().year if now is defined else "ORBION" }}
+                </p>
+                <p class="text-[10px] text-slate-500 text-center sm:text-right">
+                    Inteligencia de inventario y operaciones para negocios reales
+                </p>
+            </div>
+        </footer>
+
+    </div>
+
+    {# =========================================
+    ORBION TOASTS (FLOTANTES)
+    ====================================== #}
+    <div id="orbion-toast-root"
+         class="fixed inset-x-0 bottom-3 flex flex-col items-center space-y-2 px-4
+                sm:items-end sm:pr-6 pointer-events-none z-50">
+
+        {# Toasts enviados desde el backend (opcional) #}
+        {% if toasts %}
+        {% for toast in toasts %}
+        {% set tipo = toast.tipo or 'info' %}
+        <div class="pointer-events-auto max-w-sm w-full rounded-2xl border px-3 py-2.5
+                        text-xs text-slate-100 shadow-lg shadow-slate-950/60
+                        bg-slate-900/95 border-slate-700/80
+                        flex items-start gap-2">
+            <div class="mt-0.5 text-sm">
+                {% if toast.icon %}
+                {{ toast.icon }}
+                {% elif tipo == 'success' %}
+                ✅
+                {% elif tipo == 'error' %}
+                ⚠️
+                {% elif tipo == 'warning' %}
+                🔔
+                {% elif tipo == 'plan' %}
+                💼
+                {% else %}
+                💬
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                {% if toast.titulo %}
+                <p class="font-medium mb-0.5">
+                    {{ toast.titulo }}
+                </p>
+                {% endif %}
+                <p class="leading-snug">
+                    {{ toast.mensaje }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+    </div>
+
+</body>
+</html>

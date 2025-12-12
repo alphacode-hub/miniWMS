@@ -1,0 +1,180 @@
+﻿{# core/templates/superadmin_dashboard.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}Consola Superadmin · ORBION{% endblock %}
+
+{# HEADER DENTRO DEL TOPBAR (solo desktop / tablet) #}
+{% block page_header %}
+<div class="hidden sm:flex items-center justify-between gap-4">
+    <div class="space-y-1 min-w-0">
+        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Consola Superadmin
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-xl">
+            Vista global de todos los negocios, planes y alertas en ORBION.
+        </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <a href="/app"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Volver al hub
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# HEADER SOLO MOBILE (debajo del topbar) #}
+    <div class="sm:hidden space-y-2">
+        <div class="flex items-center justify-between gap-2">
+            <div>
+                <h1 class="text-base font-semibold text-slate-100 tracking-tight">
+                    Consola Superadmin
+                </h1>
+                <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+                    Vista global de negocios, planes y alertas en ORBION.
+                </p>
+            </div>
+
+            <a href="/app"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Hub
+            </a>
+        </div>
+    </div>
+
+    {# ============================
+    BLOQUE RESUMEN GLOBAL
+    ============================ #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-5">
+
+        {# Encabezado sección (patrón Orbion) #}
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Panel global ORBION
+            </p>
+            <p class="text-[11px] text-slate-500">
+                Estado general de los negocios, uso de la plataforma y alertas críticas.
+            </p>
+        </header>
+
+        {# Grid mobile-first de métricas #}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+            {# Negocios totales #}
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wide">
+                    Negocios totales
+                </p>
+                <p class="text-2xl font-semibold text-slate-50">
+                    {{ total_negocios or 0 }}
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Suma de todos los negocios registrados en ORBION.
+                </p>
+            </div>
+
+            {# Negocios activos #}
+            <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-emerald-300 uppercase tracking-wide">
+                    Negocios activos
+                </p>
+                <p class="text-2xl font-semibold text-emerald-50">
+                    {{ negocios_activos or 0 }}
+                </p>
+                <p class="text-[11px] text-emerald-200/80">
+                    Negocios con uso actual del sistema.
+                </p>
+            </div>
+
+            {# Negocios suspendidos #}
+            <div class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-amber-200 uppercase tracking-wide">
+                    Negocios suspendidos
+                </p>
+                <p class="text-2xl font-semibold text-amber-50">
+                    {{ negocios_suspendidos or 0 }}
+                </p>
+                <p class="text-[11px] text-amber-100/80">
+                    Casos a revisar por pagos o soporte.
+                </p>
+            </div>
+
+            {# Alertas pendientes #}
+            <div class="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-sky-200 uppercase tracking-wide">
+                    Alertas pendientes (global)
+                </p>
+                <p class="text-2xl font-semibold text-sky-50">
+                    {{ alertas_pendientes or 0 }}
+                </p>
+                <p class="text-[11px] text-sky-100/80">
+                    Alertas críticas pendientes en todos los negocios.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {# ============================
+    ACCESOS RÁPIDOS
+    ============================ #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+
+        {# Encabezado sección (mismo patrón Orbion) #}
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Accesos rápidos
+            </p>
+            <p class="text-[11px] text-slate-500">
+                Navega a vistas clave para gestionar negocios, planes y alertas globales.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {# Tarjeta: Negocios y uso de plataforma (tarjeta completa clickeable) #}
+            <a href="/superadmin/negocios"
+               class="group rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 space-y-3
+                      transition-colors hover:border-cyan-400/70 hover:bg-slate-900 flex flex-col justify-between">
+                <div class="space-y-0.5">
+                    <h2 class="text-sm font-semibold text-slate-100 group-hover:text-cyan-100">
+                        Negocios y uso de plataforma
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Estado, plan y actividad de cada negocio en ORBION.
+                    </p>
+                </div>
+                <p class="mt-1 text-[10px] text-slate-500 group-hover:text-slate-300">
+                    Entrar a vista de negocios →
+                </p>
+            </a>
+
+            {# Tarjeta: Alertas globales (tarjeta completa clickeable) #}
+            <a href="/superadmin/alertas"
+               class="group rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 space-y-3
+                      transition-colors hover:border-cyan-400/70 hover:bg-slate-900 flex flex-col justify-between">
+                <div class="space-y-0.5">
+                    <h2 class="text-sm font-semibold text-slate-100 group-hover:text-cyan-100">
+                        Alertas globales
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Seguimiento de alertas de stock, vencimientos y estado del sistema.
+                    </p>
+                </div>
+                <p class="mt-1 text-[10px] text-slate-500 group-hover:text-slate-300">
+                    Entrar a vista de alertas →
+                </p>
+            </a>
+
+        </div>
+    </section>
+
+</div>
+{% endblock %}

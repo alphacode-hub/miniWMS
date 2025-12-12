@@ -1,0 +1,183 @@
+﻿{% extends "base/base_public.html" %}
+{% block title %}Iniciar sesión | ORBION{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+
+        {# =========================
+        LADO IZQUIERDO: MENSAJE
+        ========================= #}
+        <div class="hidden lg:flex flex-col gap-4 text-slate-100">
+            <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-cyan-300">
+                Orbion · Inteligencia operacional en movimiento
+            </p>
+            <h1 class="text-2xl xl:text-3xl font-semibold leading-tight">
+                Conéctate al núcleo ORBION<br class="hidden xl:block">
+                y activa tus módulos operacionales.
+            </h1>
+            <p class="text-sm text-slate-400 max-w-md">
+                Un solo acceso para gestionar tu inventario, inbound y analítica avanzada.
+                Modular, escalable y listo para operar desde cualquier dispositivo.
+            </p>
+
+            <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/80 px-3 py-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Operación en línea</span>
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/80 px-3 py-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                    <span>Multi-módulo</span>
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-slate-700/80 px-3 py-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                    <span>Mobile-first</span>
+                </span>
+            </div>
+        </div>
+
+        {# =========================
+        LADO DERECHO: CARD LOGIN
+        ========================= #}
+        <div class="w-full max-w-md mx-auto">
+            <div class="
+                relative overflow-hidden
+                rounded-2xl bg-slate-950/70
+                border border-slate-800
+                shadow-[0_18px_60px_rgba(0,0,0,0.75)]
+                backdrop-blur-xl
+                px-5 py-6 sm:px-7 sm:py-8
+                space-y-5
+            ">
+
+                {# Glow superior #}
+                <div class="pointer-events-none absolute -top-32 -right-24 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl"></div>
+
+                {# Encabezado #}
+                <div class="relative space-y-2 text-center">
+                    <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-cyan-300/90">
+                        Acceso seguro
+                    </p>
+                    <h2 class="text-xl font-semibold text-slate-50">
+                        Inicia sesión en ORBION
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Ingresa con tu usuario para acceder a los módulos activos de tu organización.
+                    </p>
+                </div>
+
+                {# Mensaje de error #}
+                {% if error %}
+                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2">
+                    <p class="text-[11px] font-semibold text-rose-200">
+                        Error al iniciar sesión
+                    </p>
+                    <p class="text-[11px] text-rose-300 mt-0.5">
+                        {{ error }}
+                    </p>
+                </div>
+                {% endif %}
+
+                {# Formulario login #}
+                <form method="post" action="/app/login" class="relative space-y-4">
+
+                    {# Correo #}
+                    <div class="space-y-1">
+                        <label for="email" class="block text-[11px] font-medium text-slate-200">
+                            Correo electrónico
+                        </label>
+                        <input id="email"
+                               name="email"
+                               type="email"
+                               required
+                               autocomplete="email"
+                               class="
+                                   w-full block rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="usuario@tunegocio.cl" />
+                    </div>
+
+                    {# Password #}
+                    <div class="space-y-1">
+                        <label for="password" class="block text-[11px] font-medium text-slate-200">
+                            Contraseña
+                        </label>
+                        <input id="password"
+                               name="password"
+                               type="password"
+                               required
+                               autocomplete="current-password"
+                               class="
+                                   w-full block rounded-xl
+                                   border border-slate-700
+                                   bg-slate-950/70
+                                   px-3 py-2 text-sm text-slate-100
+                                   placeholder:text-slate-500
+                                   focus:outline-none
+                                   focus:ring-0
+                                   focus:border-[#00E4FF]
+                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                   transition
+                               "
+                               placeholder="••••••••" />
+                    </div>
+
+                    {# CTA principal #}
+                    <button type="submit"
+                            class="
+                                w-full inline-flex items-center justify-center gap-2
+                                rounded-xl px-3 py-2.5 text-sm font-semibold
+                                bg-[#00E4FF]
+                                text-slate-950
+                                shadow-[0_10px_40px_rgba(0,228,255,0.45)]
+                                hover:bg-cyan-300
+                                hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
+                                active:scale-[0.98]
+                                transition
+                            ">
+                        Entrar a ORBION
+                    </button>
+                </form>
+
+                {# Pie: crear negocio / ayuda #}
+                <div class="relative pt-2 space-y-1.5 text-center">
+                    <p class="text-[11px] text-slate-400">
+                        Los usuarios se crean al registrar un negocio o desde el panel de administración.
+                    </p>
+                    <p class="text-[11px] text-slate-400">
+                        ¿Aún no tienes negocio en ORBION?
+                        <a href="/app/registrar-negocio"
+                           class="font-semibold text-cyan-300 hover:text-cyan-200 hover:underline">
+                            Crear negocio
+                        </a>
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        Si olvidaste tu contraseña, contacta al administrador de tu negocio.
+                    </p>
+                </div>
+
+            </div>
+
+            {# Link discreto a la landing #}
+            <div class="mt-4 text-center">
+                <a href="/"
+                   class="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-300 transition">
+                    <span class="text-xs">←</span>
+                    <span>Volver a orbion.cl</span>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import Movimiento, Producto, Slot, Ubicacion, Zona
 from core.security import require_roles_dep
-from core.services.services_stock import calcular_estado_stock, estado_css
+from modules.basic_wms.services.services_stock import calcular_estado_stock, estado_css
 
 
 # ============================

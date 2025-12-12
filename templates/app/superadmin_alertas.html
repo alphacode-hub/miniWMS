@@ -1,0 +1,260 @@
+﻿{# core/templates/app/superadmin_alertas.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}Alertas globales · Consola Superadmin · ORBION{% endblock %}
+
+{% block page_header %}
+<div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="space-y-1 min-w-0">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Consola superadmin
+        </p>
+        <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Alertas globales
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-md">
+            Alertas generadas por reglas de stock, vencimientos y otros eventos en todos los negocios.
+        </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <a href="/superadmin/dashboard"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Consola superadmin
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# HEADER MOBILE #}
+    <div class="sm:hidden space-y-2">
+        <div class="flex items-center justify-between gap-2">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Consola superadmin
+                </p>
+                <h1 class="text-base font-semibold text-slate-100 tracking-tight">
+                    Alertas globales
+                </h1>
+            </div>
+            <a href="/superadmin/dashboard"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                      text-[10px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Dashboard
+            </a>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+            Alertas de stock, vencimientos y eventos críticos en todos los negocios de ORBION.
+        </p>
+    </div>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
+
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Panel global
+            </p>
+            <p class="text-[11px] text-slate-400 max-w-md">
+                Usa esta vista para monitorear el estado de las alertas generadas por las reglas
+                de cada negocio.
+            </p>
+        </header>
+
+        {% if alertas and alertas|length > 0 %}
+
+        {# =========================
+        MOBILE: CARDS
+        ========================== #}
+        <div class="space-y-3 md:hidden pt-2">
+            {% for a in alertas %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="space-y-0.5 min-w-0">
+                        <p class="text-[11px] text-slate-400">
+                            {{ a.negocio.nombre_fantasia if a.negocio else "—" }}
+                        </p>
+                        <p class="text-[10px] text-slate-500">
+                            ID negocio: {{ a.negocio_id }}
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        {# Tipo de alerta #}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium
+                            {% if a.tipo == 'stock_min' %}
+                                bg-red-500/10 text-red-200 border-red-500/40
+                            {% elif a.tipo == 'stock_max' %}
+                                bg-amber-500/10 text-amber-200 border-amber-500/40
+                            {% elif a.tipo == 'vencido' %}
+                                bg-rose-500/10 text-rose-200 border-rose-500/40
+                            {% elif a.tipo == 'proximo_vencer' %}
+                                bg-orange-500/10 text-orange-200 border-orange-500/40
+                            {% else %}
+                                bg-slate-700/40 text-slate-100 border-slate-600
+                            {% endif %}">
+                            {{ a.tipo }}
+                        </span>
+
+                        {# Estado #}
+                        {% if a.estado == "pendiente" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                    bg-amber-500/10 text-amber-200 border border-amber-500/40">
+                            Pendiente
+                        </span>
+                        {% elif a.estado == "enviada" or a.estado == "leida" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                    bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                            {{ a.estado|capitalize }}
+                        </span>
+                        {% elif a.estado == "error" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                    bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                            Error
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                    bg-slate-700/40 text-slate-100 border border-slate-600">
+                            {{ a.estado|capitalize }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="text-[11px] text-slate-100">
+                        {{ a.mensaje }}
+                    </p>
+                    <p class="text-[10px] text-slate-500">
+                        Creación:
+                        <span class="text-slate-300">
+                            {{ a.fecha_creacion.strftime("%d-%m-%Y %H:%M") if a.fecha_creacion else "—" }}
+                        </span>
+                        {% if a.fecha_envio %}
+                        · Envío:
+                        <span class="text-slate-300">
+                            {{ a.fecha_envio.strftime("%d-%m-%Y %H:%M") }}
+                        </span>
+                        {% endif %}
+                    </p>
+                    {% if a.origen %}
+                    <p class="text-[10px] text-slate-500">
+                        Origen: <span class="text-slate-300">{{ a.origen }}</span>
+                    </p>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {# =========================
+        DESKTOP/TABLET: TABLA
+        ========================== #}
+        <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto">
+            <table class="min-w-full text-xs sm:text-sm text-left">
+                <thead class="bg-slate-900/80">
+                    <tr class="text-[11px] sm:text-xs font-medium text-slate-400 uppercase tracking-wide">
+                        <th class="px-4 py-2">Negocio</th>
+                        <th class="px-4 py-2">Tipo</th>
+                        <th class="px-4 py-2">Mensaje</th>
+                        <th class="px-4 py-2">Estado</th>
+                        <th class="px-4 py-2 whitespace-nowrap">Creación</th>
+                        <th class="px-4 py-2 whitespace-nowrap">Envío</th>
+                        <th class="px-4 py-2">Origen</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/80">
+                    {% for a in alertas %}
+                    <tr class="hover:bg-slate-900 align-top">
+                        <!-- Negocio -->
+                        <td class="px-4 py-2">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-slate-100">
+                                    {{ a.negocio.nombre_fantasia if a.negocio else "—" }}
+                                </span>
+                                <span class="text-[11px] text-slate-500">
+                                    ID {{ a.negocio_id }}
+                                </span>
+                            </div>
+                        </td>
+
+                        <!-- Tipo -->
+                        <td class="px-4 py-2 text-[11px] sm:text-xs text-slate-200">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
+                                {% if a.tipo == 'stock_min' %}
+                                    bg-red-500/10 text-red-200 border-red-500/40
+                                {% elif a.tipo == 'stock_max' %}
+                                    bg-amber-500/10 text-amber-200 border-amber-500/40
+                                {% elif a.tipo == 'vencido' %}
+                                    bg-rose-500/10 text-rose-200 border-rose-500/40
+                                {% elif a.tipo == 'proximo_vencer' %}
+                                    bg-orange-500/10 text-orange-200 border-orange-500/40
+                                {% else %}
+                                    bg-slate-700/40 text-slate-100 border-slate-600
+                                {% endif %}">
+                                {{ a.tipo }}
+                            </span>
+                        </td>
+
+                        <!-- Mensaje -->
+                        <td class="px-4 py-2 text-xs sm:text-sm text-slate-100">
+                            {{ a.mensaje }}
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="px-4 py-2">
+                            {% if a.estado == "pendiente" %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                        bg-amber-500/10 text-amber-200 border border-amber-500/40">
+                                Pendiente
+                            </span>
+                            {% elif a.estado == "enviada" or a.estado == "leida" %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                        bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                                {{ a.estado|capitalize }}
+                            </span>
+                            {% elif a.estado == "error" %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                        bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                                Error
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                        bg-slate-700/40 text-slate-100 border border-slate-600">
+                                {{ a.estado|capitalize }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Fechas -->
+                        <td class="px-4 py-2 text-[11px] text-slate-400 whitespace-nowrap">
+                            {{ a.fecha_creacion.strftime("%d-%m-%Y %H:%M") if a.fecha_creacion else "—" }}
+                        </td>
+                        <td class="px-4 py-2 text-[11px] text-slate-400 whitespace-nowrap">
+                            {{ a.fecha_envio.strftime("%d-%m-%Y %H:%M") if a.fecha_envio else "—" }}
+                        </td>
+
+                        <!-- Origen -->
+                        <td class="px-4 py-2 text-[11px] sm:text-xs text-slate-300">
+                            {{ a.origen or "—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
+            No se han generado alertas aún.
+        </div>
+        {% endif %}
+
+    </section>
+
+</div>
+{% endblock %}

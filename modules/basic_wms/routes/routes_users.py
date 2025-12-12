@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import Usuario
 from core.security import require_roles_dep, hash_password
-from core.services.services_plan_limits import check_plan_limit
+from modules.basic_wms.services.services_plan_limits import check_plan_limit
 
 
 # ============================

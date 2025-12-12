@@ -84,6 +84,12 @@ class Negocio(Base):
         back_populates="negocio",
         cascade="all, delete-orphan",
     )
+    inbound_config = relationship(
+        "InboundConfig",
+        back_populates="negocio",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class Usuario(Base):
@@ -190,6 +196,8 @@ class Producto(Base):
     # 🔢 Códigos de identificación
     sku = Column(String, nullable=True, index=True)    # Código interno / SKU
     ean13 = Column(String, nullable=True, index=True)  # Código de barras / EAN / QR simple
+
+    origen = Column(String, default="core")
 
     negocio = relationship("Negocio", back_populates="productos")
 
@@ -302,8 +310,12 @@ class InboundLinea(Base):
 
     observaciones = Column(Text, nullable=True)
 
+    peso_kg = Column(Float, nullable=True)
+    bultos = Column(Integer, nullable=True)
+
     recepcion = relationship("InboundRecepcion", back_populates="lineas")
     producto = relationship("Producto")
+
 
 
 class InboundIncidencia(Base):
@@ -321,3 +333,31 @@ class InboundIncidencia(Base):
 
     recepcion = relationship("InboundRecepcion", back_populates="incidencias")
     creado_por = relationship("Usuario")
+
+class InboundConfig(Base):
+    __tablename__ = "inbound_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=False, unique=True, index=True)
+
+    # Objetivos de SLA (en minutos)
+    sla_espera_obj_min = Column(Float, nullable=True)   # Arribo -> inicio descarga
+    sla_descarga_obj_min = Column(Float, nullable=True) # Inicio -> fin descarga
+    sla_total_obj_min = Column(Float, nullable=True)    # Arribo -> fin descarga
+
+    # Reglas de incidencias
+    max_incidencias_criticas_por_recepcion = Column(Integer, nullable=True)
+
+    # Flags de alertas automáticas
+    habilitar_alertas_sla = Column(Boolean, default=True, nullable=False)
+    habilitar_alertas_incidencias = Column(Boolean, default=True, nullable=False)
+
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    negocio = relationship("Negocio", back_populates="inbound_config")

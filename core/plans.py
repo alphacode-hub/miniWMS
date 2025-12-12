@@ -1,9 +1,10 @@
-﻿
+﻿# core/plans.py
+
 # ============================
-#   DICCIONARIO PLANES
+#   PLANES CORE MINIWMS
 # ============================
 
-PLANES_CONFIG = {
+PLANES_CORE_WMS = {
     "demo": {
         "max_usuarios": 1,
         "max_productos": 50,
@@ -41,3 +42,44 @@ PLANES_CONFIG = {
         "exportaciones_habilitadas": True,
     },
 }
+
+# ============================
+#   PLANES MÓDULO INBOUND
+# ============================
+
+PLANES_INBOUND = {
+    "demo": {
+        "max_recepciones_mes": 50,
+        "max_incidencias_mes": 200,
+        "enable_inbound_analytics": True,
+        "enable_inbound_ml_dataset": True,
+    },
+    "free": {
+        "max_recepciones_mes": 200,
+        "max_incidencias_mes": 1000,
+        "enable_inbound_analytics": True,
+        "enable_inbound_ml_dataset": True,
+    },
+    "basic": {
+        "max_recepciones_mes": 2000,
+        "max_incidencias_mes": 10000,
+        "enable_inbound_analytics": True,
+        "enable_inbound_ml_dataset": True,
+    },
+    "pro": {
+        "max_recepciones_mes": 100000,
+        "max_incidencias_mes": 500000,
+        "enable_inbound_analytics": True,
+        "enable_inbound_ml_dataset": True,
+    },
+}
+
+
+def get_core_plan_config(plan_tipo: str) -> dict:
+    plan = (plan_tipo or "demo").lower()
+    return PLANES_CORE_WMS.get(plan, PLANES_CORE_WMS["demo"])
+
+
+def get_inbound_plan_config(plan_tipo: str) -> dict:
+    plan = (plan_tipo or "demo").lower()
+    return PLANES_INBOUND.get(plan, PLANES_INBOUND["demo"])

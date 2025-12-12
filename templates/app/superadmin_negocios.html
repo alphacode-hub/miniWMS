@@ -1,0 +1,241 @@
+﻿{# core/templates/app/superadmin_negocios.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}Negocios · Consola Superadmin · ORBION{% endblock %}
+
+{# HEADER BAJO EL TOPBAR (SOLO DESKTOP/TABLET) #}
+{% block page_header %}
+<div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="space-y-1 min-w-0">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Consola superadmin
+        </p>
+        <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Negocios de la plataforma
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-md">
+            Vista global de negocios, planes y uso reciente en ORBION.
+        </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <a href="/superadmin/dashboard"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Consola superadmin
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# HEADER MOBILE (CON BACK) #}
+    <div class="sm:hidden space-y-2">
+        <div class="flex items-center justify-between gap-2">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Consola superadmin
+                </p>
+                <h1 class="text-base font-semibold text-slate-100 tracking-tight">
+                    Negocios de la plataforma
+                </h1>
+            </div>
+            <a href="/superadmin/dashboard"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                      text-[10px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Dashboard
+            </a>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+            Vista global de negocios, planes y uso reciente en ORBION.
+        </p>
+    </div>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
+
+        {# Encabezado sección (patrón Orbion) #}
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Panel global
+                </p>
+                <h2 class="text-sm sm:text-base font-semibold text-slate-100">
+                    Negocios y uso de plataforma
+                </h2>
+                <p class="text-[11px] text-slate-400 max-w-md">
+                    Revisa el estado, plan y actividad reciente de cada negocio conectado a ORBION.
+                </p>
+            </div>
+
+            {% if negocios and negocios|length > 0 %}
+            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                <span class="mr-1 text-slate-500">Negocios:</span>
+                <span class="font-semibold text-slate-100">{{ negocios|length }}</span>
+            </div>
+            {% endif %}
+        </header>
+
+        {% if negocios and negocios|length > 0 %}
+
+        {# ============================
+        MOBILE: CARDS
+        ============================ #}
+        <div class="space-y-3 md:hidden">
+            {% for n in negocios %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="space-y-0.5">
+                        <h3 class="text-sm font-semibold text-slate-100">
+                            {{ n.nombre }}
+                        </h3>
+                        <p class="text-[10px] text-slate-500">
+                            ID {{ n.id }}
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                     bg-indigo-500/10 text-indigo-200 border border-indigo-500/40">
+                            {{ n.plan|upper }}
+                        </span>
+                        {% if n.estado == "activo" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                     bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                            Activo
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                     bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                            {{ n.estado|capitalize }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <dl class="grid grid-cols-3 gap-2 text-[11px] text-slate-300">
+                    <div>
+                        <dt class="text-[10px] text-slate-500">Usuarios</dt>
+                        <dd class="font-semibold">{{ n.usuarios }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[10px] text-slate-500">Productos</dt>
+                        <dd class="font-semibold">{{ n.productos }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[10px] text-slate-500">Mov. 30 días</dt>
+                        <dd class="font-semibold">{{ n.movimientos_30d }}</dd>
+                    </div>
+                </dl>
+
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <p class="text-[10px] text-slate-500">
+                        Último acceso:
+                        {% if n.ultimo_acceso %}
+                        {{ n.ultimo_acceso.strftime("%d-%m-%Y %H:%M") }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </p>
+                    <a href="/superadmin/negocios/{{ n.id }}"
+                       class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-medium
+                              border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
+                              transition-colors">
+                        Detalle
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {# ============================
+        DESKTOP/TABLET: TABLA
+        ============================ #}
+        <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto bg-slate-900/80">
+            <table class="min-w-full text-[11px] sm:text-xs">
+                <thead class="bg-slate-900/90">
+                    <tr class="font-medium text-slate-400 uppercase tracking-wide">
+                        <th class="px-4 py-2 text-left">Negocio</th>
+                        <th class="px-4 py-2 text-left">Plan</th>
+                        <th class="px-4 py-2 text-left">Estado</th>
+                        <th class="px-4 py-2 text-right">Usuarios</th>
+                        <th class="px-4 py-2 text-right">Productos</th>
+                        <th class="px-4 py-2 text-right whitespace-nowrap">Mov. 30 días</th>
+                        <th class="px-4 py-2 text-left whitespace-nowrap">Último acceso</th>
+                        <th class="px-4 py-2 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/80">
+                    {% for n in negocios %}
+                    <tr class="hover:bg-slate-900">
+                        <td class="px-4 py-2 align-middle">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-slate-100">
+                                    {{ n.nombre }}
+                                </span>
+                                <span class="text-[11px] text-slate-500">
+                                    ID {{ n.id }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 align-middle">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-indigo-500/10 text-indigo-200 border border-indigo-500/40">
+                                {{ n.plan|upper }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-2 align-middle">
+                            {% if n.estado == "activo" %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                                Activo
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+                                         bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                                {{ n.estado|capitalize }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-right align-middle text-slate-200">
+                            {{ n.usuarios }}
+                        </td>
+                        <td class="px-4 py-2 text-right align-middle text-slate-200">
+                            {{ n.productos }}
+                        </td>
+                        <td class="px-4 py-2 text-right align-middle text-slate-200">
+                            {{ n.movimientos_30d }}
+                        </td>
+                        <td class="px-4 py-2 align-middle text-[11px] sm:text-xs text-slate-400 whitespace-nowrap">
+                            {% if n.ultimo_acceso %}
+                            {{ n.ultimo_acceso.strftime("%d-%m-%Y %H:%M") }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-right align-middle">
+                            <a href="/superadmin/negocios/{{ n.id }}"
+                               class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium
+                                      border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
+                                      transition-colors">
+                                Detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
+            Aún no hay negocios registrados en la plataforma.
+        </div>
+        {% endif %}
+
+    </section>
+
+</div>
+{% endblock %}

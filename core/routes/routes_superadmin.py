@@ -1,6 +1,7 @@
-﻿# routes_superadmin.py
+﻿# core/routes/routes_superadmin.py
 from datetime import datetime, timedelta
 from pathlib import Path
+import math
 
 from fastapi import (
     APIRouter,
@@ -8,7 +9,6 @@ from fastapi import (
     Depends,
     Form,
     HTTPException,
-    Query,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -16,15 +16,20 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import Negocio, Producto, Movimiento, Alerta, Usuario, Auditoria
-from core.security import require_superadmin_dep, _get_session_payload_from_request, _set_session_cookie_from_payload
-from core.plans import PLANES_CONFIG
+from core.security import (
+    require_superadmin_dep,
+    _get_session_payload_from_request,
+    _set_session_cookie_from_payload,
+)
+from core.plans import PLANES_CORE_WMS
 
 
 # ============================
 #   TEMPLATES
 # ============================
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# core/routes -> core -> proyecto -> templates
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
@@ -61,7 +66,7 @@ async def superadmin_dashboard(
     alertas_pendientes = db.query(Alerta).filter(Alerta.estado == "pendiente").count()
 
     return templates.TemplateResponse(
-        "superadmin_dashboard.html",
+        "app/superadmin_dashboard.html",
         {
             "request": request,
             "user": user,
@@ -110,7 +115,7 @@ async def superadmin_negocios(
         )
 
     return templates.TemplateResponse(
-        "superadmin_negocios.html",
+        "app/superadmin_negocios.html",
         {
             "request": request,
             "user": user,
@@ -130,7 +135,6 @@ async def superadmin_negocio_detalle(
     if not negocio:
         raise HTTPException(status_code=404, detail="Negocio no encontrado")
 
-    # 👉 últimos eventos de auditoría de este negocio (para preview opcional)
     eventos = (
         db.query(Auditoria)
         .filter(Auditoria.negocio_id == negocio_id)
@@ -140,12 +144,12 @@ async def superadmin_negocio_detalle(
     )
 
     return templates.TemplateResponse(
-        "superadmin_negocio_detalle.html",
+        "app/superadmin_negocio_detalle.html",
         {
             "request": request,
             "user": user,
             "negocio": negocio,
-            "planes": PLANES_CONFIG.keys(),
+            "planes": PLANES_CORE_WMS.keys(),
             "eventos_auditoria": eventos,
         },
     )
@@ -189,7 +193,7 @@ async def superadmin_alertas(
     )
 
     return templates.TemplateResponse(
-        "superadmin_alertas.html",
+        "app/superadmin_alertas.html",
         {
             "request": request,
             "user": user,
@@ -205,11 +209,6 @@ async def superadmin_ver_como_negocio(
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    """
-    Activa 'modo negocio' para el superadmin.
-    A partir de aquí, se comporta como admin de ese negocio en rutas de negocio.
-    """
-
     negocio = (
         db.query(Negocio)
         .filter(Negocio.id == negocio_id)
@@ -220,8 +219,8 @@ async def superadmin_ver_como_negocio(
 
     payload = _get_session_payload_from_request(request)
     if not payload:
-        # sesión inválida -> fuera
-        return RedirectResponse("/login", status_code=302)
+        # Sesión inválida → login nuevo de la app
+        return RedirectResponse("/app/login", status_code=302)
 
     # Guardamos datos de modo negocio
     payload["acting_negocio_id"] = negocio.id
@@ -237,13 +236,9 @@ async def superadmin_salir_modo_negocio(
     request: Request,
     user: dict = Depends(require_superadmin_dep),
 ):
-    """
-    Desactiva 'modo negocio' y devuelve al dashboard global del superadmin.
-    """
-
     payload = _get_session_payload_from_request(request)
     if not payload:
-        return RedirectResponse("/login", status_code=302)
+        return RedirectResponse("/app/login", status_code=302)
 
     payload.pop("acting_negocio_id", None)
     payload.pop("acting_negocio_nombre", None)
@@ -262,7 +257,7 @@ async def superadmin_auditoria_negocio(
 ):
     """
     Auditoría de un negocio específico vista por el superadmin.
-    Permite filtrar por rango de fecha, texto libre y nivel de criticidad.
+    Con filtros + paginación.
     """
 
     negocio = (
@@ -282,6 +277,18 @@ async def superadmin_auditoria_negocio(
     fecha_desde_str = (params.get("desde") or "").strip()
     fecha_hasta_str = (params.get("hasta") or "").strip()
     nivel_str = (params.get("nivel") or "").strip()  # 'critico', 'warning', 'info', 'normal', ''
+    page_str = (params.get("page") or "").strip()
+
+    # Página actual (1-based)
+    try:
+        page = int(page_str) if page_str else 1
+    except ValueError:
+        page = 1
+
+    if page < 1:
+        page = 1
+
+    PAGE_SIZE = 5  # tamaño de página (puedes ajustar a gusto)
 
     fecha_desde = None
     fecha_hasta = None
@@ -303,40 +310,57 @@ async def superadmin_auditoria_negocio(
     # ============================
     # Query base (sin nivel aún)
     # ============================
-    query = (
+    base_query = (
         db.query(Auditoria)
         .filter(Auditoria.negocio_id == negocio_id)
     )
 
     if fecha_desde:
-        query = query.filter(Auditoria.fecha >= fecha_desde)
+        base_query = base_query.filter(Auditoria.fecha >= fecha_desde)
     if fecha_hasta:
-        query = query.filter(Auditoria.fecha <= fecha_hasta)
+        base_query = base_query.filter(Auditoria.fecha <= fecha_hasta)
 
     # Búsqueda por texto libre (usuario, acción, detalle)
     if texto:
         like_expr = f"%{texto}%"
-        query = query.filter(
+        base_query = base_query.filter(
             Auditoria.usuario.ilike(like_expr)
             | Auditoria.accion.ilike(like_expr)
             | Auditoria.detalle.ilike(like_expr)
         )
 
-    # Traemos un máximo de 500 desde BD
+    # ============================
+    # Total de registros filtrados
+    # ============================
+    total_filtrado = base_query.count()
+
+    # Cálculo de total de páginas
+    if total_filtrado == 0:
+        total_pages = 1
+    else:
+        total_pages = math.ceil(total_filtrado / PAGE_SIZE)
+
+    # Ajuste por si la página pedida es mayor al máximo
+    if page > total_pages:
+        page = total_pages
+
+    # ============================
+    # Traemos SOLO la página actual
+    # ============================
     registros_db = (
-        query
+        base_query
         .order_by(Auditoria.fecha.desc(), Auditoria.id.desc())
-        .limit(500)
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
         .all()
     )
 
     # ============================
-    # Enriquecemos con nivel y filtramos en memoria
+    # Enriquecemos con nivel y filtramos por nivel en memoria
     # ============================
     registros: list[Auditoria] = []
     for r in registros_db:
         nivel = clasificar_evento_auditoria(r.accion, r.detalle)
-        # le agregamos un atributo dinámico para usar en el template
         setattr(r, "nivel", nivel)
         registros.append(r)
 
@@ -344,8 +368,26 @@ async def superadmin_auditoria_negocio(
     if nivel_str in {"critico", "warning", "info", "normal"}:
         registros = [r for r in registros if getattr(r, "nivel", "normal") == nivel_str]
 
+    # Ojo: al filtrar por nivel en memoria, el total_filtrado no se recalcula.
+    # Si quisieras que el total respete también el nivel, tendrías que incorporar
+    # ese criterio en la query base, pero para efectos visuales generales está bien.
+
+    # ============================
+    # Objeto de paginación
+    # ============================
+    paginacion = {
+        "page": page,
+        "page_size": PAGE_SIZE,
+        "total": total_filtrado,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "prev_page": page - 1 if page > 1 else None,
+        "next_page": page + 1 if page < total_pages else None,
+    }
+
     return templates.TemplateResponse(
-        "superadmin_auditoria.html",
+        "app/superadmin_auditoria.html",
         {
             "request": request,
             "user": user,
@@ -357,8 +399,10 @@ async def superadmin_auditoria_negocio(
                 "hasta": fecha_hasta_str,
                 "nivel": nivel_str,
             },
+            "paginacion": paginacion,
         },
     )
+
 
 
 # ============================
@@ -366,20 +410,8 @@ async def superadmin_auditoria_negocio(
 # ============================
 
 def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:
-    """
-    Devuelve un nivel de criticidad para un evento de auditoría.
-
-    Niveles posibles:
-      - 'critico'
-      - 'warning'
-      - 'info'
-      - 'normal'
-
-    Puedes ajustar los mapeos según los nombres reales de tus acciones.
-    """
     a = (accion or "").lower()
 
-    # ⚠️ Críticos: cosas que realmente importan
     if a in {
         "negocio_suspendido",
         "negocio_reactivado",
@@ -390,7 +422,6 @@ def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:
     }:
         return "critico"
 
-    # 🟡 Advertencias
     if a in {
         "salida_merma",
         "stock_critico",
@@ -400,7 +431,6 @@ def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:
     }:
         return "warning"
 
-    # 🔵 Informativos
     if a in {
         "login_ok",
         "logout",
@@ -411,5 +441,4 @@ def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:
     }:
         return "info"
 
-    # Gris / normal
     return "normal"

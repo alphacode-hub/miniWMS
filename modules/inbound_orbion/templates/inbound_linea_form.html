@@ -1,0 +1,268 @@
+﻿{# modules/inbound_orbion/templates/inbound_linea_form.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Nueva línea inbound{% endblock %}
+
+{% block page_header %}
+<div class="hidden sm:flex items-center justify-between gap-4">
+    <div class="min-w-0 space-y-1">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Módulo inbound · Nueva línea
+        </p>
+        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Recepción {{ recepcion.codigo }} · {{ recepcion.proveedor or "Sin proveedor" }}
+        </h1>
+        <p class="text-xs text-slate-400 truncate max-w-xl">
+            {{ recepcion.referencia_externa or 'Sin referencia externa' }}
+        </p>
+    </div>
+
+    <div class="flex flex-col items-end gap-2">
+        <a href="/inbound/{{ recepcion.id }}"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Volver al detalle
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6 sm:space-y-8">
+
+    {# HEADER MOBILE #}
+    <div class="sm:hidden space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Módulo inbound · Nueva línea
+                </p>
+                <h1 class="text-base font-semibold text-slate-100 tracking-tight truncate">
+                    Recepción {{ recepcion.codigo }}
+                </h1>
+                <p class="text-[11px] text-slate-400 truncate max-w-xs">
+                    {{ recepcion.proveedor or "Sin proveedor" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <a href="/inbound/{{ recepcion.id }}"
+               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Volver al detalle
+            </a>
+        </div>
+    </div>
+
+    {# FORMULARIO LÍNEA #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <form method="post" action="/inbound/{{ recepcion.id }}/lineas" class="space-y-4 sm:space-y-5">
+
+            {# PRODUCTO: CATÁLOGO + PRODUCTO RÁPIDO #}
+            <div class="space-y-3">
+                {% if productos %}
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Producto (catálogo)
+                    </label>
+                    <select name="producto_id"
+                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                   text-xs sm:text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                        <option value="">Selecciona un producto</option>
+                        {% for p in productos %}
+                        <option value="{{ p.id }}">{{ p.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-[10px] text-slate-500 mt-1">
+                        El catálogo proviene del módulo core WMS / configuración del negocio.
+                    </p>
+                </div>
+                {% else %}
+                <p class="text-[11px] text-amber-300">
+                    No hay productos activos en el catálogo core WMS para este negocio.
+                </p>
+                {% endif %}
+
+                <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-3 space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-300">
+                        Producto rápido inbound (opcional)
+                    </p>
+                    <p class="text-[10px] text-slate-400">
+                        Si no encuentras el producto en el catálogo o aún no usas el core WMS,
+                        puedes registrar un producto rápido para esta recepción. Se creará en el catálogo del negocio.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="space-y-1.5">
+                            <label class="block text-[11px] font-semibold text-slate-200">
+                                Nombre producto rápido
+                            </label>
+                            <input type="text" name="nuevo_producto_nombre"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                          text-xs sm:text-sm text-slate-100
+                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                   placeholder="Ej: Pollo entero congelado 2kg">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-[11px] font-semibold text-slate-200">
+                                Unidad base
+                            </label>
+                            <input type="text" name="nuevo_producto_unidad_base"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                          text-xs sm:text-sm text-slate-100
+                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                   placeholder="Ej: cajas, kg, pallets">
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-slate-500">
+                        Reglas:
+                        <span class="text-slate-300">
+                            si eliges un producto del catálogo, se usará ese. Si no eliges ninguno pero
+                            completas el nombre rápido, se creará y se usará automáticamente.
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            {# Cantidades #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Cantidad recibida
+                    </label>
+                    <input type="number" step="0.01" min="0" name="cantidad_recibida"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: 100">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Cantidad esperada
+                    </label>
+                    <input type="number" step="0.01" min="0" name="cantidad_esperada"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+            </div>
+
+            {# Lote / Vencimiento #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Lote
+                    </label>
+                    <input type="text" name="lote"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Fecha vencimiento
+                    </label>
+                    <input type="date" name="fecha_vencimiento"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                </div>
+            </div>
+
+            {# Unidad / Bultos / Kilos #}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Unidad
+                    </label>
+                    <input type="text" name="unidad"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: cajas, kg, pallets">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Bultos
+                    </label>
+                    <input type="number" step="0.01" min="0" name="bultos"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Kilos
+                    </label>
+                    <input type="number" step="0.01" min="0" name="kilos"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+            </div>
+
+            {# Temperaturas #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Temp. objetivo (°C)
+                    </label>
+                    <input type="number" step="0.1" name="temperatura_objetivo"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Temp. recibida (°C)
+                    </label>
+                    <input type="number" step="0.1" name="temperatura_recibida"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Opcional">
+                </div>
+            </div>
+
+            {# Observaciones #}
+            <div class="space-y-1.5">
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Observaciones
+                </label>
+                <textarea name="observaciones" rows="3"
+                          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                 text-xs sm:text-sm text-slate-100
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          placeholder="Notas sobre esta línea (daños, embalaje, etc.)."></textarea>
+            </div>
+
+            {# Botones #}
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <a href="/inbound/{{ recepcion.id }}"
+                   class="inline-flex items-center rounded-full px-3 py-1.5
+                          text-[11px] font-semibold text-slate-300 border border-slate-700
+                          hover:border-slate-500 hover:text-slate-50">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5
+                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                               hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Guardar línea
+                </button>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,260 @@
+﻿{# modules/inbound_orbion/templates/inbound_config.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Configuración Inbound{% endblock %}
+
+{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
+{% block page_header %}
+<div class="hidden sm:flex items-center justify-between gap-4">
+    <div class="space-y-1 min-w-0">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Módulo inbound · Configuración
+        </p>
+        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Configuración de SLA y alertas inbound
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-xl">
+            Define los objetivos de tiempo y el comportamiento de alertas para las recepciones de este negocio.
+        </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <a href="/inbound"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Recepciones inbound
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
+
+    {# HEADER MOBILE (BAJO TOPBAR) #}
+    <div class="sm:hidden space-y-3">
+        <div class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Configuración
+            </p>
+            <h1 class="text-base font-semibold text-slate-100 tracking-tight">
+                Configuración de SLA y alertas
+            </h1>
+            <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+                Ajusta los tiempos objetivo y el comportamiento de alertas automáticas para tus recepciones.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <a href="/inbound"
+               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Recepciones inbound
+            </a>
+        </div>
+    </div>
+
+    {# =========================
+    RESUMEN DEL PLAN INBOUND
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Plan inbound del negocio
+                </p>
+                <p class="text-[11px] text-slate-400 max-w-md">
+                    Estos límites provienen del plan contratado por el negocio y se usan como referencia para tu operación inbound.
+                </p>
+            </div>
+
+            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                        text-[11px] text-slate-300">
+                <span class="mr-1 text-slate-500">Plan:</span>
+                <span class="font-semibold text-slate-100">
+                    {{ (negocio.plan_tipo or 'demo')|upper }}
+                </span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Recepciones / mes
+                </p>
+                <p class="text-lg font-semibold text-slate-100">
+                    {{ plan_cfg.max_recepciones_mes }}
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Límite estimado de recepciones inbound por mes.
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Incidencias / mes
+                </p>
+                <p class="text-lg font-semibold text-slate-100">
+                    {{ plan_cfg.max_incidencias_mes }}
+                </p>
+                <p class="text-[11px] text-slate-500">
+                    Límite referencial de incidencias registradas por mes.
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Analítica & dataset
+                </p>
+                <p class="text-[11px] text-slate-300">
+                    {% if plan_cfg.enable_inbound_analytics %}
+                    • Analítica inbound: <span class="text-emerald-300 font-semibold">Incluida</span><br>
+                    {% else %}
+                    • Analítica inbound: <span class="text-slate-400">No incluida</span><br>
+                    {% endif %}
+                    {% if plan_cfg.enable_inbound_ml_dataset %}
+                    • Dataset ML/IA: <span class="text-emerald-300 font-semibold">Incluido</span>
+                    {% else %}
+                    • Dataset ML/IA: <span class="text-slate-400">No incluido</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {# =========================
+    FORMULARIO DE CONFIGURACIÓN
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-5">
+        <form method="post"
+              action="/inbound/config"
+              class="space-y-5">
+
+            {# Objetivos SLA #}
+            <div class="space-y-2">
+                <header class="space-y-1">
+                    <h2 class="text-sm font-semibold text-slate-100">
+                        Objetivos de SLA (minutos)
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Estos tiempos se utilizan para evaluar el desempeño de las recepciones y generar alertas cuando se superan los límites.
+                    </p>
+                </header>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-200">
+                            Espera (arribo → inicio descarga)
+                        </label>
+                        <input type="number" step="0.1" min="0"
+                               name="sla_espera_obj_min"
+                               value="{{ config.sla_espera_obj_min or '' }}"
+                               class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                      text-xs sm:text-sm text-slate-100
+                                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-200">
+                            Descarga (inicio → fin)
+                        </label>
+                        <input type="number" step="0.1" min="0"
+                               name="sla_descarga_obj_min"
+                               value="{{ config.sla_descarga_obj_min or '' }}"
+                               class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                      text-xs sm:text-sm text-slate-100
+                                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-200">
+                            Total (arribo → fin)
+                        </label>
+                        <input type="number" step="0.1" min="0"
+                               name="sla_total_obj_min"
+                               value="{{ config.sla_total_obj_min or '' }}"
+                               class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                      text-xs sm:text-sm text-slate-100
+                                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-4 space-y-2">
+                <header class="space-y-1">
+                    <h2 class="text-sm font-semibold text-slate-100">
+                        Incidencias críticas
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Define cuántas incidencias de criticidad <span class="font-semibold text-slate-100">alta</span> se toleran por recepción antes de generar una alerta.
+                    </p>
+                </header>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-semibold text-slate-200">
+                            Máx. incidencias críticas por recepción
+                        </label>
+                        <input type="number" min="0"
+                               name="max_incidencias_criticas_por_recepcion"
+                               value="{{ config.max_incidencias_criticas_por_recepcion or '' }}"
+                               class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                      text-xs sm:text-sm text-slate-100
+                                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-4 space-y-2">
+                <header class="space-y-1">
+                    <h2 class="text-sm font-semibold text-slate-100">
+                        Alertas automáticas
+                    </h2>
+                    <p class="text-[11px] text-slate-400">
+                        Controla qué tipo de alertas se generan automáticamente en la bandeja de alertas del negocio.
+                    </p>
+                </header>
+
+                <div class="space-y-2">
+                    <label class="inline-flex items-start gap-2 text-xs text-slate-200">
+                        <input type="checkbox"
+                               name="habilitar_alertas_sla"
+                               {% if config.habilitar_alertas_sla %}checked{% endif %}
+                               class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
+                                      focus:ring-cyan-500 focus:ring-offset-0" />
+                        <span>
+                            Generar alertas cuando se superen los objetivos de SLA definidos arriba
+                            (espera, descarga y tiempo total).
+                        </span>
+                    </label>
+
+                    <label class="inline-flex items-start gap-2 text-xs text-slate-200">
+                        <input type="checkbox"
+                               name="habilitar_alertas_incidencias"
+                               {% if config.habilitar_alertas_incidencias %}checked{% endif %}
+                               class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
+                                      focus:ring-cyan-500 focus:ring-offset-0" />
+                        <span>
+                            Generar alertas cuando exista un número de incidencias de criticidad
+                            <span class="font-semibold text-rose-300">alta</span> superior al máximo permitido por recepción.
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-3 flex justify-end">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full px-5 py-2
+                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                               hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Guardar configuración inbound
+                </button>
+            </div>
+        </form>
+    </section>
+
+</div>
+{% endblock %}

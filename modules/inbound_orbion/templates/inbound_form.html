@@ -1,128 +1,206 @@
-﻿{% extends "base.html" %}
-{% block title %}Orbion Inbound - Nueva recepción{% endblock %}
+﻿{# modules/inbound_orbion/templates/inbound_form.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Nueva recepción inbound{% endblock %}
+
+{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
+{% block page_header %}
+<div class="hidden sm:flex items-center justify-between gap-4">
+    <div class="space-y-1 min-w-0">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Módulo inbound · Nueva recepción
+        </p>
+        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+            Registrar nueva recepción inbound
+        </h1>
+        <p class="text-xs text-slate-400 leading-snug max-w-xl">
+            Crea un pre-registro del contenedor o camión para iniciar el seguimiento de tiempos y control operativo.
+        </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <a href="/inbound"
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                  transition-colors">
+            ← Volver a recepciones
+        </a>
+    </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-2xl mx-auto px-4 py-4 space-y-4">
+<div class="space-y-6 sm:space-y-8 max-w-2xl mx-auto">
 
-    <!-- Header -->
-    <div class="flex items-center justify-between gap-3">
-        <div>
-            <h1 class="text-xl font-bold text-slate-900">
+    {# HEADER MOBILE (BAJO TOPBAR) #}
+    <div class="sm:hidden space-y-3">
+        <div class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Nueva recepción
+            </p>
+            <h1 class="text-base font-semibold text-slate-100 tracking-tight">
                 Nueva recepción inbound
             </h1>
-            <p class="text-xs text-slate-500">
+            <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
                 Registra los datos básicos del contenedor o camión que será descargado.
             </p>
         </div>
-        <a href="/inbound"
-           class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
-                  border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-            Volver
-        </a>
+
+        <div class="flex flex-wrap gap-2">
+            <a href="/inbound"
+               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Recepciones inbound
+            </a>
+        </div>
     </div>
 
-    <!-- Formulario -->
-    <form method="post" action="/inbound/nuevo" class="space-y-4">
+    {# =========================
+    FORMULARIO NUEVA RECEPCIÓN
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <form method="post"
+              action="/inbound/nuevo"
+              class="space-y-5">
 
-        <!-- Proveedor / Referencia -->
-        <div class="grid grid-cols-1 gap-3">
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Proveedor <span class="text-red-500">*</span>
-                </label>
-                <input type="text" name="proveedor" required
-                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       placeholder="Ej: Proveedor Logístico SPA">
-            </div>
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Referencia externa
-                </label>
-                <input type="text" name="referencia_externa"
-                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       placeholder="OC, BL, factura, guía, etc.">
-            </div>
-        </div>
+            {# Proveedor / Referencia #}
+            <div class="space-y-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Proveedor <span class="text-rose-400">*</span>
+                    </label>
+                    <input type="text"
+                           name="proveedor"
+                           required
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: Proveedor Logístico SPA">
+                    <p class="text-[10px] text-slate-500">
+                        Nombre del proveedor, cliente o dueño de la carga.
+                    </p>
+                </div>
 
-        <!-- Contenedor / Patente -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Nº contenedor
-                </label>
-                <input type="text" name="contenedor"
-                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                              uppercase tracking-wide
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       placeholder="Ej: MSKU1234567">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Referencia externa
+                    </label>
+                    <input type="text"
+                           name="referencia_externa"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="OC, BL, factura, guía, etc.">
+                    <p class="text-[10px] text-slate-500">
+                        Identificador externo para cruzar información (OC, BL, factura, guía, booking, etc.).
+                    </p>
+                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Patente camión
-                </label>
-                <input type="text" name="patente_camion"
-                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                              uppercase tracking-wide
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       placeholder="Ej: AB-CD12">
+
+            {# Contenedor / Patente #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Nº contenedor
+                    </label>
+                    <input type="text"
+                           name="contenedor"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: MSKU1234567">
+                    <p class="text-[10px] text-slate-500">
+                        Opcional. Úsalo cuando la recepción venga en contenedor marítimo.
+                    </p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Patente camión
+                    </label>
+                    <input type="text"
+                           name="patente_camion"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: AB-CD12">
+                    <p class="text-[10px] text-slate-500">
+                        Opcional. Identifica el camión que ingresa a descargar.
+                    </p>
+                </div>
             </div>
-        </div>
 
-        <!-- Tipo de carga / ETA -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Tipo de carga
-                </label>
-                <select name="tipo_carga"
-                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                               bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="">Selecciona tipo</option>
-                    <option value="congelado">Congelado</option>
-                    <option value="refrigerado">Refrigerado</option>
-                    <option value="seco">Seco</option>
-                    <option value="palletizado">Palletizado</option>
-                    <option value="granel">Granel</option>
-                </select>
+            {# Tipo de carga / ETA #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Tipo de carga
+                    </label>
+                    <select name="tipo_carga"
+                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                   text-xs sm:text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                        <option value="">Selecciona tipo</option>
+                        <option value="congelado">Congelado</option>
+                        <option value="refrigerado">Refrigerado</option>
+                        <option value="seco">Seco</option>
+                        <option value="palletizado">Palletizado</option>
+                        <option value="granel">Granel</option>
+                    </select>
+                    <p class="text-[10px] text-slate-500">
+                        Ayuda a clasificar la recepción según la naturaleza del producto.
+                    </p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Fecha estimada de llegada (ETA)
+                    </label>
+                    <input type="date"
+                           name="fecha_estimada_llegada"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                    <p class="text-[10px] text-slate-500">
+                        Opcional. Útil para comparar ETA vs. hora real de arribo.
+                    </p>
+                </div>
             </div>
-            <div>
-                <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Fecha estimada de llegada (ETA)
+
+            {# Observaciones #}
+            <div class="space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Observaciones
                 </label>
-                <input type="date" name="fecha_estimada_llegada"
-                       class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <textarea name="observaciones"
+                          rows="3"
+                          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                 text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          placeholder="Notas relevantes para la recepción, incidencias esperadas, instrucciones especiales, etc."></textarea>
             </div>
-        </div>
 
-        <!-- Observaciones -->
-        <div>
-            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
-                Observaciones
-            </label>
-            <textarea name="observaciones" rows="3"
-                      class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Notas relevantes para la recepción, incidencias esperadas, instrucciones especiales, etc."></textarea>
-        </div>
+            {# Botones #}
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <a href="/inbound"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                          transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-5 py-1.5
+                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                               hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Crear recepción
+                </button>
+            </div>
+        </form>
+    </section>
 
-        <!-- Botones -->
-        <div class="flex items-center justify-end gap-2 pt-2">
-            <a href="/inbound"
-               class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold
-                      border border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
-                Cancelar
-            </a>
-            <button type="submit"
-                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold
-                           bg-indigo-600 text-white hover:bg-indigo-700
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                Crear recepción
-            </button>
-        </div>
-
-    </form>
 </div>
 {% endblock %}

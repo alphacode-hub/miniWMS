@@ -16,7 +16,7 @@ from sqlalchemy import func
 from core.database import get_db
 from core.models import Producto
 from core.security import require_roles_dep
-from core.services.services_plan_limits import check_plan_limit
+from modules.basic_wms.services.services_plan_limits import check_plan_limit
 from core.services.services_audit import registrar_auditoria
 
 

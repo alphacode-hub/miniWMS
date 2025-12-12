@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- METADATA BÁSICA -->
+    <meta charset="UTF-8">
+    <title>{% block title %}ORBION{% endblock %}</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ORBION - Inteligencia operacional en movimiento">
+    <meta name="theme-color" content="#0A0F24">
+
+    <!-- FAVICON (ajusta la ruta cuando tengas el definitivo) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+
+    <!-- FUENTE (moderna, legible, SaaS-friendly) -->
+    <!-- Inter es excelente para dashboards y mobile -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- TAILWIND / CSS PRINCIPAL -->
+    <!-- Asumo que ya estás compilando Tailwind a static/css/app.css -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- ESTILOS BASE ORBION -->
+    <style>
+        html {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+
+<body class="bg-[#0A0F24] text-slate-100 antialiased">
+
+    {#
+    ======================================================
+    ORBION BASE
+    ------------------------------------------------------
+    - NO navegación
+    - NO lógica de usuario
+    - SOLO branding + layout raíz
+    ======================================================
+    #}
+
+    {% block body %}
+    <!-- El contenido real lo definen base_public o base_app -->
+    {% endblock %}
+
+    {% block scripts %}
+    <!-- Scripts globales (si algún día los necesitas) -->
+    {% endblock %}
+</body>
+</html>

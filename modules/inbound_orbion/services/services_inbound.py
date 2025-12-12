@@ -123,14 +123,16 @@ def crear_linea_inbound(
     negocio_id: int,
     recepcion_id: int,
     producto_id: int,
-    lote: Optional[str],
-    fecha_vencimiento: Optional[datetime],
-    cantidad_esperada: Optional[float],
-    cantidad_recibida: Optional[float],
-    unidad: Optional[str],
-    temperatura_objetivo: Optional[float],
-    temperatura_recibida: Optional[float],
-    observaciones: Optional[str],
+    lote: Optional[str] = None,
+    fecha_vencimiento: Optional[datetime] = None,
+    cantidad_esperada: Optional[float] = None,
+    cantidad_recibida: Optional[float] = None,
+    unidad: Optional[str] = None,
+    temperatura_objetivo: Optional[float] = None,
+    temperatura_recibida: Optional[float] = None,
+    observaciones: Optional[str] = None,
+    peso_kg: Optional[float] = None,
+    bultos: Optional[int] = None,
 ) -> InboundLinea:
     config = InboundConfig.from_negocio(db, negocio_id)
     recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
@@ -162,6 +164,8 @@ def crear_linea_inbound(
         temperatura_objetivo=temperatura_objetivo,
         temperatura_recibida=temperatura_recibida,
         observaciones=observaciones or None,
+        peso_kg=peso_kg,
+        bultos=bultos,
     )
 
     db.add(linea)
