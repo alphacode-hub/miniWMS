@@ -27,7 +27,7 @@ SUPERADMIN_PREFIXES = (
     "/superadmin",
 )
 
-# Rutas del negocio (admin/operador)
+# Rutas del negocio (admin/operador FULL WMS + inbound)
 ADMIN_PREFIXES = (
     "/dashboard",
     "/productos",
@@ -42,7 +42,15 @@ ADMIN_PREFIXES = (
     "/zonas",
     "/slots",
     "/transferencia",
-    "/inbound",
+    "/inbound",   # 👈 todo lo que sea inbound va bajo este prefijo
+)
+
+# 🆕 Roles especializados SOLO inbound
+INBOUND_ONLY_ROLES = (
+    "operador_inbound",
+    "supervisor_inbound",
+    "auditor_inbound",
+    "transportista",
 )
 
 
@@ -73,7 +81,7 @@ async def redirect_middleware(request: Request, call_next):
         if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
             return await call_next(request)
 
-        # Rutas de negocio como admin
+        # Rutas de negocio (incluye /inbound) → OK
         if any(path.startswith(prefix) for prefix in ADMIN_PREFIXES):
             return await call_next(request)
 
@@ -100,7 +108,7 @@ async def redirect_middleware(request: Request, call_next):
         return await call_next(request)
 
     # ============================================
-    # C) ADMIN DE NEGOCIO u OPERADOR
+    # C) ADMIN DE NEGOCIO u OPERADOR (FULL WMS)
     # ============================================
     if rol_efectivo in ("admin", "operador"):
         # No pueden entrar a nada de /superadmin
@@ -111,7 +119,7 @@ async def redirect_middleware(request: Request, call_next):
         if path == "/app":
             return await call_next(request)
 
-        # Rutas del negocio → OK (WMS, inbound, etc.)
+        # Rutas del negocio → OK (WMS completo + inbound)
         if any(path.startswith(prefix) for prefix in ADMIN_PREFIXES):
             return await call_next(request)
 
@@ -119,6 +127,26 @@ async def redirect_middleware(request: Request, call_next):
         return RedirectResponse("/app")
 
     # ============================================
-    # D) Fallback de seguridad (rol desconocido)
+    # D) ROLES ESPECIALIZADOS SOLO INBOUND
+    #    (operador_inbound, supervisor_inbound, auditor_inbound, transportista)
+    # ============================================
+    if rol_efectivo in INBOUND_ONLY_ROLES:
+        # Nunca pueden entrar a /superadmin
+        if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
+            return RedirectResponse("/app")
+
+        # Hub ORBION /app → permitido (para menú, cambio de clave, etc.)
+        if path == "/app":
+            return await call_next(request)
+
+        # Solo pueden acceder a todo lo que esté bajo /inbound
+        if path.startswith("/inbound"):
+            return await call_next(request)
+
+        # Cualquier otra ruta de negocio (productos, stock, etc.) → lo devolvemos a inbound
+        return RedirectResponse("/inbound")
+
+    # ============================================
+    # E) Fallback de seguridad (rol desconocido)
     # ============================================
     return RedirectResponse("/app/login")

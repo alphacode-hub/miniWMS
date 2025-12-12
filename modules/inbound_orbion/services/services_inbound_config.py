@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from core.models import Negocio, InboundConfig, InboundRecepcion, Alerta
 from core.plans import get_inbound_plan_config
-from modules.inbound_orbion.services.services_inbound import (
-    InboundDomainError,
+from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
+from modules.inbound_orbion.services.services_inbound_analytics import (
     calcular_metricas_recepcion,
 )
 from core.logging_config import logger
