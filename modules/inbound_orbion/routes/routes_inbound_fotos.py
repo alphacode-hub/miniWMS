@@ -1,5 +1,7 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_fotos.py
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -11,7 +13,7 @@ from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
     log_inbound_error,
 )
-from modules.inbound_orbion.services.services_inbound_core import (
+from modules.inbound_orbion.services.services_inbound import (
     InboundDomainError,
     obtener_recepcion_segura,
 )
@@ -29,7 +31,7 @@ router = APIRouter()
 #   LISTA DE FOTOS
 # ============================
 
-@router.get("/{recepcion_id}/fotos", response_class=HTMLResponse)
+@router.get("/recepciones/{recepcion_id}/fotos", response_class=HTMLResponse)
 async def inbound_fotos_lista(
     recepcion_id: int,
     request: Request,
@@ -38,7 +40,6 @@ async def inbound_fotos_lista(
 ):
     negocio_id = user["negocio_id"]
 
-    # Validar que la recepción exista y pertenezca al negocio
     try:
         recepcion = obtener_recepcion_segura(
             db=db,
@@ -49,7 +50,7 @@ async def inbound_fotos_lista(
         log_inbound_error(
             "fotos_recepcion_not_found",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             recepcion_id=recepcion_id,
             error=e.message,
         )
@@ -68,7 +69,7 @@ async def inbound_fotos_lista(
     log_inbound_event(
         "fotos_lista_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         recepcion_id=recepcion_id,
         total_fotos=len(fotos),
     )
@@ -89,7 +90,7 @@ async def inbound_fotos_lista(
 #   NUEVA FOTO / EVIDENCIA
 # ============================
 
-@router.post("/{recepcion_id}/fotos/nueva", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/fotos/nueva", response_class=HTMLResponse)
 async def inbound_fotos_nueva(
     recepcion_id: int,
     db: Session = Depends(get_db),
@@ -110,14 +111,13 @@ async def inbound_fotos_nueva(
             descripcion=descripcion,
             ruta_archivo=ruta_archivo,
             mime_type=mime_type,
-            subido_por_id=user["id"],
-            # En el futuro podrías pasar linea_id / incidencia_id aquí
+            subido_por_id=user.get("id"),
         )
     except InboundDomainError as e:
         log_inbound_error(
             "foto_crear_domain_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             recepcion_id=recepcion_id,
             error=e.message,
         )
@@ -126,14 +126,14 @@ async def inbound_fotos_nueva(
     log_inbound_event(
         "foto_agregada",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         recepcion_id=recepcion_id,
         foto_id=foto.id,
         tipo=foto.tipo,
     )
 
     return RedirectResponse(
-        url=f"/inbound/{recepcion_id}/fotos",
+        url=f"/inbound/recepciones/{recepcion_id}/fotos",
         status_code=302,
     )
 
@@ -142,7 +142,7 @@ async def inbound_fotos_nueva(
 #   ELIMINAR FOTO
 # ============================
 
-@router.post("/{recepcion_id}/fotos/{foto_id}/eliminar", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/fotos/{foto_id}/eliminar", response_class=HTMLResponse)
 async def inbound_fotos_eliminar(
     recepcion_id: int,
     foto_id: int,
@@ -155,14 +155,13 @@ async def inbound_fotos_eliminar(
         eliminar_foto_inbound(
             db=db,
             negocio_id=negocio_id,
-            recepcion_id=recepcion_id,
             foto_id=foto_id,
         )
     except InboundDomainError as e:
         log_inbound_error(
             "foto_eliminar_domain_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             recepcion_id=recepcion_id,
             foto_id=foto_id,
             error=e.message,
@@ -172,12 +171,12 @@ async def inbound_fotos_eliminar(
     log_inbound_event(
         "foto_eliminada",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         recepcion_id=recepcion_id,
         foto_id=foto_id,
     )
 
     return RedirectResponse(
-        url=f"/inbound/{recepcion_id}/fotos",
+        url=f"/inbound/recepciones/{recepcion_id}/fotos",
         status_code=302,
     )

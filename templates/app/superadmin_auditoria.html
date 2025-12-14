@@ -1,9 +1,9 @@
-﻿{# core/templates/app/superadmin_auditoria.html #}
+﻿<!-- templates/app/superadmin_auditoria.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}Auditoría · {{ negocio.nombre_fantasia }} · ORBION{% endblock %}
 
-{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET, COHERENTE CON HUB Y SUPERADMIN) #}
+{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
 {% block page_header %}
 <div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div class="space-y-1 min-w-0">
@@ -24,7 +24,7 @@
             </span>
             <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-indigo-500/40 bg-indigo-500/10
                          text-[11px] font-medium text-indigo-200">
-                Plan: {{ negocio.plan_tipo|upper }}
+                Plan: {{ (negocio.plan_tipo or "demo")|upper }}
             </span>
             <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-medium
                          {% if negocio.estado == 'activo' %}
@@ -32,7 +32,7 @@
                          {% else %}
                             border border-rose-500/40 bg-rose-500/10 text-rose-200
                          {% endif %}">
-                Estado: {{ negocio.estado|capitalize }}
+                Estado: {{ (negocio.estado or "desconocido")|capitalize }}
             </span>
         </div>
     </div>
@@ -51,7 +51,7 @@
 {% block content %}
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
-    {# HEADER MOBILE (COHERENTE CON RESTO) #}
+    {# HEADER MOBILE #}
     <div class="sm:hidden space-y-2">
         <div class="flex items-center justify-between gap-2">
             <div class="space-y-1">
@@ -72,7 +72,7 @@
                     </span>
                     <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-indigo-500/40 bg-indigo-500/10
                                  text-[10px] font-medium text-indigo-200">
-                        Plan: {{ negocio.plan_tipo|upper }}
+                        Plan: {{ (negocio.plan_tipo or "demo")|upper }}
                     </span>
                     <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-medium
                                  {% if negocio.estado == 'activo' %}
@@ -80,7 +80,7 @@
                                  {% else %}
                                     border border-rose-500/40 bg-rose-500/10 text-rose-200
                                  {% endif %}">
-                        {{ negocio.estado|capitalize }}
+                        {{ (negocio.estado or "desconocido")|capitalize }}
                     </span>
                 </div>
             </div>
@@ -96,17 +96,15 @@
 
     {# =========================
     FILTROS
-    ========================== #}
+    ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
 
-        <!-- Encabezado filtros -->
         <header class="space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
                 Filtros de auditoría
             </p>
             <p class="text-[11px] text-slate-400 max-w-md">
-                Filtra por usuario, acción, rango de fechas y nivel de criticidad para encontrar
-                eventos específicos.
+                Filtra por usuario, acción, rango de fechas y nivel de criticidad para encontrar eventos específicos.
             </p>
         </header>
 
@@ -166,10 +164,10 @@
                                text-xs sm:text-sm text-slate-100
                                focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="" {% if not filtros.nivel %}selected{% endif %}>Todos</option>
-                    <option value="critico" {% if filtros.nivel == "critico" %}selected{% endif %}>Crítico</option>
-                    <option value="warning" {% if filtros.nivel == "warning" %}selected{% endif %}>Advertencia</option>
-                    <option value="info" {% if filtros.nivel == "info" %}selected{% endif %}>Informativo</option>
-                    <option value="normal" {% if filtros.nivel == "normal" %}selected{% endif %}>Normal</option>
+                    <option value="critico" {% if filtros.nivel=="critico" %}selected{% endif %}>Crítico</option>
+                    <option value="warning" {% if filtros.nivel=="warning" %}selected{% endif %}>Advertencia</option>
+                    <option value="info" {% if filtros.nivel=="info" %}selected{% endif %}>Informativo</option>
+                    <option value="normal" {% if filtros.nivel=="normal" %}selected{% endif %}>Normal</option>
                 </select>
             </div>
 
@@ -191,7 +189,7 @@
 
     {# =========================
     LISTA DE REGISTROS
-    ========================== #}
+    ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p class="text-xs sm:text-sm text-slate-400">
@@ -212,15 +210,10 @@
                 {% if filtros.nivel %}
                 · Nivel:
                 <span class="font-medium text-slate-100">
-                    {% if filtros.nivel == "critico" %}
-                    Crítico
-                    {% elif filtros.nivel == "warning" %}
-                    Advertencia
-                    {% elif filtros.nivel == "info" %}
-                    Informativo
-                    {% else %}
-                    Normal
-                    {% endif %}
+                    {% if filtros.nivel == "critico" %}Crítico
+                    {% elif filtros.nivel == "warning" %}Advertencia
+                    {% elif filtros.nivel == "info" %}Informativo
+                    {% else %}Normal{% endif %}
                 </span>
                 {% endif %}
                 {% endif %}
@@ -240,7 +233,6 @@
 
         {% if paginacion and paginacion.total_pages > 1 %}
         <div class="flex justify-end gap-2 text-[11px]">
-            {# Botón anterior #}
             {% if paginacion.has_prev %}
             <a href="/superadmin/negocios/{{ negocio.id }}/auditoria?q={{ filtros.q }}&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&nivel={{ filtros.nivel }}&page={{ paginacion.prev_page }}"
                class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-700
@@ -254,7 +246,6 @@
             </span>
             {% endif %}
 
-            {# Botón siguiente #}
             {% if paginacion.has_next %}
             <a href="/superadmin/negocios/{{ negocio.id }}/auditoria?q={{ filtros.q }}&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&nivel={{ filtros.nivel }}&page={{ paginacion.next_page }}"
                class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-700
@@ -270,12 +261,9 @@
         </div>
         {% endif %}
 
-
         {% if registros and registros|length > 0 %}
 
-        {# =========================
-        MOBILE: CARDS
-        ========================== #}
+        {# MOBILE: CARDS #}
         <div class="space-y-3 md:hidden">
             {% for r in registros %}
             {% set nivel = r.nivel if r.nivel is defined else "normal" %}
@@ -321,9 +309,7 @@
                 <div class="pt-1">
                     {% if r.detalle %}
                     <pre class="whitespace-pre-wrap break-words bg-slate-950/70 rounded-lg px-2 py-1
-                                border border-slate-800 max-h-40 overflow-auto text-[11px] text-slate-200">
-{{ r.detalle }}
-                    </pre>
+                                border border-slate-800 max-h-40 overflow-auto text-[11px] text-slate-200">{{ r.detalle }}</pre>
                     {% else %}
                     <span class="text-[11px] text-slate-500">Sin detalle</span>
                     {% endif %}
@@ -332,9 +318,7 @@
             {% endfor %}
         </div>
 
-        {# =========================
-        DESKTOP/TABLET: TABLA
-        ========================== #}
+        {# DESKTOP/TABLET: TABLA #}
         <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto">
             <table class="min-w-full text-xs sm:text-sm">
                 <thead class="bg-slate-900/80">
@@ -364,7 +348,6 @@
                     {% endif %}
 
                     <tr class="hover:bg-slate-900 align-top">
-                        <!-- Fecha -->
                         <td class="px-3 sm:px-4 py-2 text-[11px] text-slate-400 whitespace-nowrap">
                             {% if r.fecha %}
                             {{ r.fecha.strftime("%d-%m-%Y %H:%M") }}
@@ -373,12 +356,10 @@
                             {% endif %}
                         </td>
 
-                        <!-- Usuario -->
                         <td class="px-3 sm:px-4 py-2 text-[11px] sm:text-xs text-slate-200 whitespace-nowrap">
                             {{ r.usuario or "—" }}
                         </td>
 
-                        <!-- Acción + nivel -->
                         <td class="px-3 sm:px-4 py-2">
                             <div class="flex flex-col gap-1">
                                 <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-semibold border {{ badge_classes }}">
@@ -390,13 +371,10 @@
                             </div>
                         </td>
 
-                        <!-- Detalle -->
                         <td class="px-3 sm:px-4 py-2 text-[11px] sm:text-xs text-slate-200">
                             {% if r.detalle %}
                             <pre class="whitespace-pre-wrap break-words bg-slate-950/70 rounded-lg px-2 py-1
-                                        border border-slate-800 max-h-40 overflow-auto">
-{{ r.detalle }}
-                            </pre>
+                                        border border-slate-800 max-h-40 overflow-auto">{{ r.detalle }}</pre>
                             {% else %}
                             <span class="text-slate-500">Sin detalle</span>
                             {% endif %}

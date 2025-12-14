@@ -1,34 +1,59 @@
 ﻿# core/middleware/auth_redirect.py
+"""
+Middleware de redirección / autorización por rutas – ORBION (SaaS enterprise)
+
+✔ Public routes (exact + prefixes)
+✔ Separación clara:
+  - Superadmin global
+  - Superadmin impersonando negocio
+  - Admin/Operador (WMS full)
+  - Roles inbound-only (solo /inbound)
+✔ Redirecciones consistentes (sin loops)
+✔ Login centralizado en /app/login
+"""
+
+from __future__ import annotations
 
 from fastapi import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from core.security import get_current_user
 
-# Rutas públicas que NO requieren autenticación (coincidencia exacta)
-PUBLIC_EXACT_PATHS = {
-    "/",                # Landing ORBION
-    # Rutas nuevas bajo /app
-    "/app/login",       # Login oficial
+
+# ============================
+# PUBLIC ROUTES (NO AUTH)
+# ============================
+
+PUBLIC_EXACT_PATHS: set[str] = {
+    "/",                     # Landing ORBION
+    "/app/login",
     "/app/logout",
     "/app/registrar-negocio",
     "/favicon.ico",
 }
 
-# Prefijos públicos (static, docs, etc.)
-PUBLIC_PREFIXES = (
+PUBLIC_PREFIXES: tuple[str, ...] = (
     "/static",
     "/docs",
     "/openapi.json",
 )
 
-# Rutas del superadmin (panel global, gestión de negocios, etc.)
-SUPERADMIN_PREFIXES = (
+
+# ============================
+# ROUTE GROUPS
+# ============================
+
+SUPERADMIN_PREFIXES: tuple[str, ...] = (
     "/superadmin",
 )
 
-# Rutas del negocio (admin/operador FULL WMS + inbound)
-ADMIN_PREFIXES = (
+# Hub (menú) – lo permitimos a casi todos ya autenticados
+HUB_EXACT_PATHS: set[str] = {
+    "/app",
+}
+
+# Rutas de negocio (WMS + inbound)
+ADMIN_PREFIXES: tuple[str, ...] = (
     "/dashboard",
     "/productos",
     "/movimientos",
@@ -42,11 +67,11 @@ ADMIN_PREFIXES = (
     "/zonas",
     "/slots",
     "/transferencia",
-    "/inbound",   # 👈 todo lo que sea inbound va bajo este prefijo
+    "/inbound",
 )
 
-# 🆕 Roles especializados SOLO inbound
-INBOUND_ONLY_ROLES = (
+# Roles restringidos SOLO inbound
+INBOUND_ONLY_ROLES: tuple[str, ...] = (
     "operador_inbound",
     "supervisor_inbound",
     "auditor_inbound",
@@ -54,99 +79,113 @@ INBOUND_ONLY_ROLES = (
 )
 
 
-async def redirect_middleware(request: Request, call_next):
+# ============================
+# HELPERS
+# ============================
+
+def _is_public(path: str) -> bool:
+    if path in PUBLIC_EXACT_PATHS:
+        return True
+    return any(path.startswith(prefix) for prefix in PUBLIC_PREFIXES)
+
+
+def _starts_with_any(path: str, prefixes: tuple[str, ...]) -> bool:
+    return any(path.startswith(p) for p in prefixes)
+
+
+def _redirect(url: str) -> RedirectResponse:
+    # 302 por defecto es suficiente y compatible
+    return RedirectResponse(url=url, status_code=302)
+
+
+# ============================
+# MIDDLEWARE
+# ============================
+
+async def redirect_middleware(request: Request, call_next) -> Response:
     path = request.url.path
 
-    # 1) RUTAS PÚBLICAS → pasan directo
-    if path in PUBLIC_EXACT_PATHS or any(
-        path.startswith(prefix) for prefix in PUBLIC_PREFIXES
-    ):
+    # 1) Public routes -> pasan directo
+    if _is_public(path):
         return await call_next(request)
 
-    # 2) OBTENER USUARIO
+    # 2) Auth
     user = get_current_user(request)
     if not user:
-        # No autenticado → SIEMPRE al login nuevo
-        return RedirectResponse("/app/login")
+        return _redirect("/app/login")
 
     rol_real = user.get("rol_real") or user.get("rol")
     rol_efectivo = user.get("rol")
-    impersonando = user.get("impersonando_negocio_id")
+    impersonando = bool(user.get("impersonando_negocio_id"))
 
-    # ============================================
-    # A) SUPERADMIN en MODO NEGOCIO (impersonando)
-    # ============================================
+    # ============================
+    # A) SUPERADMIN impersonando
+    # ============================
     if rol_real == "superadmin" and impersonando:
-        # Puede entrar a /superadmin/* (para salir de modo negocio o ver consola)
-        if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
+        # Puede entrar al superadmin (para salir del modo negocio / consola)
+        if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return await call_next(request)
 
-        # Rutas de negocio (incluye /inbound) → OK
-        if any(path.startswith(prefix) for prefix in ADMIN_PREFIXES):
+        # Puede acceder rutas de negocio completas (incluye inbound)
+        if _starts_with_any(path, ADMIN_PREFIXES):
             return await call_next(request)
 
-        # Hub ORBION /app → permitido
-        if path == "/app":
+        # Puede entrar al hub /app
+        if path in HUB_EXACT_PATHS:
             return await call_next(request)
 
-        # Cualquier otra cosa rara → dashboard del negocio
-        return RedirectResponse("/dashboard")
+        # Default seguro
+        return _redirect("/dashboard")
 
-    # ============================================
-    # B) SUPERADMIN GLOBAL (SIN modo negocio)
-    # ============================================
+    # ============================
+    # B) SUPERADMIN global
+    # ============================
     if rol_real == "superadmin":
-        # Puede acceder libremente a /superadmin/*
-        if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
+        # Acceso libre a panel superadmin
+        if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return await call_next(request)
 
-        # Si intenta ir a rutas de negocio, lo regresamos a su panel global
-        if any(path.startswith(prefix) for prefix in ADMIN_PREFIXES):
-            return RedirectResponse("/superadmin/dashboard")
+        # Si intenta entrar a rutas negocio, lo enviamos al panel global
+        if _starts_with_any(path, ADMIN_PREFIXES):
+            return _redirect("/superadmin/dashboard")
 
-        # Cualquier otra ruta (hub /app, health, etc.) la dejamos pasar
+        # Hub y otras rutas internas (health, etc.) permitidas
         return await call_next(request)
 
-    # ============================================
-    # C) ADMIN DE NEGOCIO u OPERADOR (FULL WMS)
-    # ============================================
-    if rol_efectivo in ("admin", "operador"):
-        # No pueden entrar a nada de /superadmin
-        if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
-            return RedirectResponse("/app")
+    # ============================
+    # C) ADMIN / OPERADOR (WMS full)
+    # ============================
+    if rol_efectivo in {"admin", "operador"}:
+        # Bloqueo duro a /superadmin
+        if _starts_with_any(path, SUPERADMIN_PREFIXES):
+            return _redirect("/app")
 
-        # Hub ORBION /app → permitido
-        if path == "/app":
+        if path in HUB_EXACT_PATHS:
             return await call_next(request)
 
-        # Rutas del negocio → OK (WMS completo + inbound)
-        if any(path.startswith(prefix) for prefix in ADMIN_PREFIXES):
+        if _starts_with_any(path, ADMIN_PREFIXES):
             return await call_next(request)
 
-        # Cualquier otra cosa rara → al hub ORBION
-        return RedirectResponse("/app")
+        return _redirect("/app")
 
-    # ============================================
-    # D) ROLES ESPECIALIZADOS SOLO INBOUND
-    #    (operador_inbound, supervisor_inbound, auditor_inbound, transportista)
-    # ============================================
+    # ============================
+    # D) ROLES inbound-only
+    # ============================
     if rol_efectivo in INBOUND_ONLY_ROLES:
-        # Nunca pueden entrar a /superadmin
-        if any(path.startswith(prefix) for prefix in SUPERADMIN_PREFIXES):
-            return RedirectResponse("/app")
+        # Bloqueo a superadmin
+        if _starts_with_any(path, SUPERADMIN_PREFIXES):
+            return _redirect("/app")
 
-        # Hub ORBION /app → permitido (para menú, cambio de clave, etc.)
-        if path == "/app":
+        if path in HUB_EXACT_PATHS:
             return await call_next(request)
 
-        # Solo pueden acceder a todo lo que esté bajo /inbound
+        # Solo inbound
         if path.startswith("/inbound"):
             return await call_next(request)
 
-        # Cualquier otra ruta de negocio (productos, stock, etc.) → lo devolvemos a inbound
-        return RedirectResponse("/inbound")
+        return _redirect("/inbound")
 
-    # ============================================
-    # E) Fallback de seguridad (rol desconocido)
-    # ============================================
-    return RedirectResponse("/app/login")
+    # ============================
+    # E) fallback (rol desconocido)
+    # ============================
+    return _redirect("/app/login")

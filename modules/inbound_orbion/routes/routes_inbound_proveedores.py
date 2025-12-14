@@ -1,18 +1,34 @@
-﻿# modules/inbound_orbion/routes/routes_inbound_proveedores.py
-
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+﻿# modules/inbound_orbion/routes/routes_inbound_proveedores.py #
+from fastapi import (
+    APIRouter,
+    Request,
+    Depends,
+    Form,
+    HTTPException,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import (
-    Proveedor,
-    InboundPlantillaProveedor,
-    InboundPlantillaProveedorLinea,
-    Producto,
+
+from modules.inbound_orbion.services.services_inbound_proveedores import (
+    listar_proveedores,
+    crear_proveedor,
+    actualizar_proveedor,
+    cambiar_estado_proveedor,
+    crear_plantilla_proveedor,
+    actualizar_plantilla_proveedor,
+    cambiar_estado_plantilla_proveedor,
+    eliminar_plantilla_proveedor,
+    agregar_lineas_a_plantilla_proveedor,
+    reemplazar_lineas_plantilla_proveedor,
 )
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
+    log_inbound_error,
+)
+from modules.inbound_orbion.services.services_inbound_core import (
+    InboundDomainError,
 )
 
 from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
@@ -20,12 +36,12 @@ from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
 router = APIRouter()
 
 
-# ============================
-#   LISTA DE PLANTILLAS
-# ============================
+# ==========================================================
+#   PROVEEDORES
+# ==========================================================
 
-@router.get("/proveedores/plantillas", response_class=HTMLResponse)
-async def inbound_proveedores_plantillas_lista(
+@router.get("/proveedores", response_class=HTMLResponse)
+async def inbound_proveedores_lista(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
@@ -33,12 +49,133 @@ async def inbound_proveedores_plantillas_lista(
     negocio_id = user["negocio_id"]
     get_negocio_or_404(db, negocio_id)
 
-    # Traemos plantillas y proveedor asociado
+    proveedores = listar_proveedores(
+        db=db,
+        negocio_id=negocio_id,
+        solo_activos=False,
+    )
+
+    log_inbound_event(
+        "proveedores_lista_view",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        total=len(proveedores),
+    )
+
+    return templates.TemplateResponse(
+        "inbound_proveedores.html",
+        {
+            "request": request,
+            "user": user,
+            "proveedores": proveedores,
+            "modulo_nombre": "Orbion Inbound",
+        },
+    )
+
+
+@router.post("/proveedores/nuevo", response_class=HTMLResponse)
+async def inbound_proveedor_crear(
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+    nombre: str = Form(...),
+    rut: str = Form(""),
+    contacto: str = Form(""),
+    telefono: str = Form(""),
+    email: str = Form(""),
+    direccion: str = Form(""),
+    observaciones: str = Form(""),
+):
+    negocio_id = user["negocio_id"]
+
+    try:
+        proveedor = crear_proveedor(
+            db=db,
+            negocio_id=negocio_id,
+            nombre=nombre,
+            rut=rut,
+            contacto=contacto,
+            telefono=telefono,
+            email=email,
+            direccion=direccion,
+            observaciones=observaciones,
+        )
+    except InboundDomainError as e:
+        log_inbound_error(
+            "proveedor_crear_domain_error",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            error=e.message,
+        )
+        raise HTTPException(status_code=400, detail=e.message)
+
+    log_inbound_event(
+        "proveedor_creado",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        proveedor_id=proveedor.id,
+    )
+
+    return RedirectResponse("/inbound/proveedores", status_code=302)
+
+
+@router.post("/proveedores/{proveedor_id}/estado", response_class=HTMLResponse)
+async def inbound_proveedor_toggle(
+    proveedor_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+    activo: str = Form(...),
+):
+    negocio_id = user["negocio_id"]
+    flag = activo.lower() in ("true", "on", "1", "si", "sí")
+
+    try:
+        proveedor = cambiar_estado_proveedor(
+            db=db,
+            negocio_id=negocio_id,
+            proveedor_id=proveedor_id,
+            activo=flag,
+        )
+    except InboundDomainError as e:
+        log_inbound_error(
+            "proveedor_toggle_domain_error",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            proveedor_id=proveedor_id,
+            error=e.message,
+        )
+        raise HTTPException(status_code=400, detail=e.message)
+
+    log_inbound_event(
+        "proveedor_estado_cambiado",
+        negocio_id=negocio_id,
+        user_email=user["email"],
+        proveedor_id=proveedor.id,
+        activo=proveedor.activo,
+    )
+
+    return RedirectResponse("/inbound/proveedores", status_code=302)
+
+
+# ==========================================================
+#   PLANTILLAS DE PROVEEDOR
+# ==========================================================
+
+@router.get("/proveedores/plantillas", response_class=HTMLResponse)
+async def inbound_plantillas_lista(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+):
+    negocio_id = user["negocio_id"]
+    get_negocio_or_404(db, negocio_id)
+
+    # Las plantillas se listan vía join en template
+    from core.models import InboundPlantillaProveedor
+
     plantillas = (
         db.query(InboundPlantillaProveedor)
-        .join(Proveedor, Proveedor.id == InboundPlantillaProveedor.proveedor_id)
         .filter(InboundPlantillaProveedor.negocio_id == negocio_id)
-        .order_by(Proveedor.nombre.asc(), InboundPlantillaProveedor.nombre.asc())
+        .order_by(InboundPlantillaProveedor.nombre.asc())
         .all()
     )
 
@@ -53,272 +190,77 @@ async def inbound_proveedores_plantillas_lista(
     )
 
 
-# ============================
-#   CREAR PLANTILLA
-# ============================
-
-@router.post("/proveedores/plantillas/nueva", response_class=HTMLResponse)
-async def inbound_proveedores_plantillas_nueva(
+@router.post("/proveedores/{proveedor_id}/plantillas/nueva", response_class=HTMLResponse)
+async def inbound_plantilla_crear(
+    proveedor_id: int,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
-    proveedor_id: int = Form(...),
-    nombre_plantilla: str = Form(...),
+    nombre: str = Form(...),
     descripcion: str = Form(""),
 ):
-    """
-    Crea una nueva plantilla ligada a un proveedor existente.
-    """
     negocio_id = user["negocio_id"]
-    get_negocio_or_404(db, negocio_id)
 
-    proveedor = (
-        db.query(Proveedor)
-        .filter(
-            Proveedor.id == proveedor_id,
-            Proveedor.negocio_id == negocio_id,
+    try:
+        plantilla = crear_plantilla_proveedor(
+            db=db,
+            negocio_id=negocio_id,
+            proveedor_id=proveedor_id,
+            nombre=nombre,
+            descripcion=descripcion,
         )
-        .first()
-    )
-    if not proveedor:
-        raise HTTPException(status_code=400, detail="Proveedor inválido para esta plantilla.")
-
-    if not nombre_plantilla.strip():
-        raise HTTPException(status_code=400, detail="El nombre de la plantilla es obligatorio.")
-
-    plantilla = InboundPlantillaProveedor(
-        negocio_id=negocio_id,
-        proveedor_id=proveedor.id,
-        nombre=nombre_plantilla.strip(),
-        descripcion=descripcion.strip() or None,
-        activo=True,
-    )
-
-    db.add(plantilla)
-    db.commit()
-    db.refresh(plantilla)
+    except InboundDomainError as e:
+        log_inbound_error(
+            "plantilla_crear_domain_error",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            proveedor_id=proveedor_id,
+            error=e.message,
+        )
+        raise HTTPException(status_code=400, detail=e.message)
 
     log_inbound_event(
-        "proveedor_plantilla_creada",
+        "plantilla_creada",
         negocio_id=negocio_id,
         user_email=user["email"],
         plantilla_id=plantilla.id,
-        proveedor_id=proveedor.id,
     )
 
-    return RedirectResponse(
-        url="/inbound/proveedores/plantillas",
-        status_code=302,
-    )
+    return RedirectResponse("/inbound/proveedores/plantillas", status_code=302)
 
 
-# ============================
-#   ACTIVAR / DESACTIVAR PLANTILLA
-# ============================
-
-@router.post("/proveedores/plantillas/{plantilla_id}/toggle", response_class=HTMLResponse)
-async def inbound_proveedores_plantillas_toggle(
+@router.post("/proveedores/plantillas/{plantilla_id}/estado", response_class=HTMLResponse)
+async def inbound_plantilla_toggle(
     plantilla_id: int,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
+    activo: str = Form(...),
 ):
     negocio_id = user["negocio_id"]
-    get_negocio_or_404(db, negocio_id)
+    flag = activo.lower() in ("true", "on", "1", "si", "sí")
 
-    plantilla = (
-        db.query(InboundPlantillaProveedor)
-        .filter(
-            InboundPlantillaProveedor.id == plantilla_id,
-            InboundPlantillaProveedor.negocio_id == negocio_id,
+    try:
+        plantilla = cambiar_estado_plantilla_proveedor(
+            db=db,
+            negocio_id=negocio_id,
+            plantilla_id=plantilla_id,
+            activo=flag,
         )
-        .first()
-    )
-    if not plantilla:
-        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-
-    plantilla.activo = not plantilla.activo
-    db.commit()
-    db.refresh(plantilla)
+    except InboundDomainError as e:
+        log_inbound_error(
+            "plantilla_toggle_domain_error",
+            negocio_id=negocio_id,
+            user_email=user["email"],
+            plantilla_id=plantilla_id,
+            error=e.message,
+        )
+        raise HTTPException(status_code=400, detail=e.message)
 
     log_inbound_event(
-        "proveedor_plantilla_toggle",
+        "plantilla_estado_cambiado",
         negocio_id=negocio_id,
         user_email=user["email"],
         plantilla_id=plantilla.id,
         activo=plantilla.activo,
     )
 
-    return RedirectResponse(
-        url="/inbound/proveedores/plantillas",
-        status_code=302,
-    )
-
-
-# ============================
-#   DETALLE DE PLANTILLA
-# ============================
-
-@router.get("/proveedores/plantillas/{plantilla_id}", response_class=HTMLResponse)
-async def inbound_proveedores_plantilla_detalle(
-    plantilla_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
-):
-    negocio_id = user["negocio_id"]
-    get_negocio_or_404(db, negocio_id)
-
-    plantilla = (
-        db.query(InboundPlantillaProveedor)
-        .filter(
-            InboundPlantillaProveedor.id == plantilla_id,
-            InboundPlantillaProveedor.negocio_id == negocio_id,
-        )
-        .first()
-    )
-    if not plantilla:
-        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-
-    productos_plantilla = (
-        db.query(InboundPlantillaProveedorLinea)
-        .filter(InboundPlantillaProveedorLinea.plantilla_id == plantilla_id)
-        .all()
-    )
-
-    productos_catalogo = (
-        db.query(Producto)
-        .filter(
-            Producto.negocio_id == negocio_id,
-            Producto.activo == 1,
-        )
-        .order_by(Producto.nombre.asc())
-        .all()
-    )
-
-    return templates.TemplateResponse(
-        "inbound_proveedores_plantilla_detalle.html",
-        {
-            "request": request,
-            "user": user,
-            "plantilla": plantilla,
-            "productos_plantilla": productos_plantilla,
-            "productos_catalogo": productos_catalogo,
-            "modulo_nombre": "Orbion Inbound",
-        },
-    )
-
-
-# ============================
-#   AGREGAR PRODUCTO A PLANTILLA
-# ============================
-
-@router.post("/proveedores/plantillas/{plantilla_id}/productos/nuevo", response_class=HTMLResponse)
-async def inbound_proveedores_plantilla_producto_nuevo(
-    plantilla_id: int,
-    db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
-    producto_id: int = Form(...),
-    unidad: str = Form(""),
-    cantidad_por_defecto: float = Form(None),
-    peso_kg_sugerido: float = Form(None),
-):
-    """
-    Agrega una línea a la plantilla. Ahora la línea está SIEMPRE ligada
-    a un Producto del catálogo (no se guarda texto libre de nombre).
-    """
-    negocio_id = user["negocio_id"]
-    get_negocio_or_404(db, negocio_id)
-
-    plantilla = (
-        db.query(InboundPlantillaProveedor)
-        .filter(
-            InboundPlantillaProveedor.id == plantilla_id,
-            InboundPlantillaProveedor.negocio_id == negocio_id,
-        )
-        .first()
-    )
-    if not plantilla:
-        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-
-    producto = (
-        db.query(Producto)
-        .filter(
-            Producto.id == producto_id,
-            Producto.negocio_id == negocio_id,
-            Producto.activo == 1,
-        )
-        .first()
-    )
-    if not producto:
-        raise HTTPException(status_code=400, detail="Producto inválido para la plantilla.")
-
-    linea = InboundPlantillaProveedorLinea(
-        plantilla_id=plantilla_id,
-        producto_id=producto.id,
-        cantidad_sugerida=cantidad_por_defecto,
-        unidad=unidad.strip() or None,
-        peso_kg_sugerido=peso_kg_sugerido,
-    )
-
-    db.add(linea)
-    db.commit()
-    db.refresh(linea)
-
-    log_inbound_event(
-        "proveedor_plantilla_producto_agregado",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        plantilla_id=plantilla_id,
-        producto_id=producto.id,
-    )
-
-    return RedirectResponse(
-        url=f"/inbound/proveedores/plantillas/{plantilla_id}",
-        status_code=302,
-    )
-
-
-# ============================
-#   ELIMINAR PRODUCTO DE PLANTILLA
-# ============================
-
-@router.post("/proveedores/plantillas/{plantilla_id}/productos/{linea_id}/eliminar", response_class=HTMLResponse)
-async def inbound_proveedores_plantilla_producto_eliminar(
-    plantilla_id: int,
-    linea_id: int,
-    db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
-):
-    negocio_id = user["negocio_id"]
-    get_negocio_or_404(db, negocio_id)
-
-    linea = (
-        db.query(InboundPlantillaProveedorLinea)
-        .join(
-            InboundPlantillaProveedor,
-            InboundPlantillaProveedor.id == InboundPlantillaProveedorLinea.plantilla_id,
-        )
-        .filter(
-            InboundPlantillaProveedorLinea.id == linea_id,
-            InboundPlantillaProveedor.id == plantilla_id,
-            InboundPlantillaProveedor.negocio_id == negocio_id,
-        )
-        .first()
-    )
-    if not linea:
-        raise HTTPException(status_code=404, detail="Producto de plantilla no encontrado")
-
-    db.delete(linea)
-    db.commit()
-
-    log_inbound_event(
-        "proveedor_plantilla_producto_eliminado",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        plantilla_id=plantilla_id,
-        linea_id=linea_id,
-    )
-
-    return RedirectResponse(
-        url=f"/inbound/proveedores/plantillas/{plantilla_id}",
-        status_code=302,
-    )
+    return RedirectResponse("/inbound/proveedores/plantillas", status_code=302)

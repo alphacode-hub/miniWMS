@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1dfda33c-77d5-4ddc-86ca-aa77a2ff5eb6</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>miniWMS.py</StartupFile>
+    <StartupFile>main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -28,12 +28,29 @@
     <Compile Include="core\logging_config.py" />
     <Compile Include="core\middleware\auth_redirect.py" />
     <Compile Include="core\middleware\__init__.py" />
+    <Compile Include="core\models\enums.py" />
+    <Compile Include="core\models\inbound\checklist.py" />
+    <Compile Include="core\models\inbound\citas.py" />
+    <Compile Include="core\models\inbound\config.py" />
+    <Compile Include="core\models\inbound\documentos.py" />
+    <Compile Include="core\models\inbound\fotos.py" />
+    <Compile Include="core\models\inbound\incidencias.py" />
+    <Compile Include="core\models\inbound\lineas.py" />
+    <Compile Include="core\models\inbound\pallets.py" />
+    <Compile Include="core\models\inbound\plantillas.py" />
+    <Compile Include="core\models\inbound\prealertas.py" />
+    <Compile Include="core\models\inbound\proveedores.py" />
+    <Compile Include="core\models\inbound\recepciones.py" />
+    <Compile Include="core\models\inbound\__init__.py" />
+    <Compile Include="core\models\time.py" />
+    <Compile Include="core\models\__init__.py" />
     <Compile Include="core\routes\routes_app_hub.py" />
     <Compile Include="core\routes\routes_health.py" />
     <Compile Include="core\services\services_modules.py" />
     <Compile Include="core\services\services_observability.py" />
-    <Compile Include="miniWMS.py" />
-    <Compile Include="core\models.py" />
+    <Compile Include="core\templates.py" />
+    <Compile Include="core\web.py" />
+    <Compile Include="main.py" />
     <Compile Include="core\plans.py" />
     <Compile Include="modules\basic_wms\services\__init__.py" />
     <Compile Include="modules\inbound_orbion\routes\inbound_common.py" />
@@ -110,6 +127,8 @@
     <Content Include=".env.staging" />
     <Content Include="Dockerfile" />
     <Content Include="modules\inbound_orbion\templates\inbound_linea_form.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_pallets.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_pallets_detalle.html" />
     <Content Include="static\favicon.ico" />
     <Content Include="static\img\orbion.png" />
     <Content Include="static\img\orbion.svg" />
@@ -159,6 +178,8 @@
   <ItemGroup>
     <Folder Include="core\middleware\" />
     <Folder Include="core\" />
+    <Folder Include="core\models\" />
+    <Folder Include="core\models\inbound\" />
     <Folder Include="core\routes\" />
     <Folder Include="modules\" />
     <Folder Include="modules\basic_wms\" />

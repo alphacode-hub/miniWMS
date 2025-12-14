@@ -1,7 +1,11 @@
-﻿{# modules/inbound_orbion/templates/inbound_detalle.html #}
+﻿<!-- modules/inbound_orbion/templates/inbound_detalle.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}ORBION · {{ recepcion.codigo }}{% endblock %}
+
+{% set estado_recepcion = (recepcion.estado or 'PRE_REGISTRADO') %}
+{% set estado_label = estado_recepcion.replace('_', ' ') %}
+{% set es_cerrada = (estado_recepcion == 'CERRADO') %}
 
 {# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
 {% block page_header %}
@@ -20,18 +24,18 @@
 
     <div class="flex flex-col items-end gap-2">
         <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-            {% if recepcion.estado == 'CERRADO' %}
+            {% if estado_recepcion == 'CERRADO' %}
                 bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-            {% elif recepcion.estado == 'EN_DESCARGA' %}
+            {% elif estado_recepcion == 'EN_DESCARGA' %}
                 bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-            {% elif recepcion.estado == 'EN_CONTROL_CALIDAD' %}
+            {% elif estado_recepcion == 'EN_CONTROL_CALIDAD' %}
                 bg-amber-500/10 text-amber-200 border-amber-500/40
-            {% elif recepcion.estado == 'EN_ESPERA' %}
+            {% elif estado_recepcion == 'EN_ESPERA' %}
                 bg-sky-500/10 text-sky-200 border-sky-500/40
             {% else %}
                 bg-slate-700/40 text-slate-100 border-slate-600
             {% endif %}">
-            {{ recepcion.estado.replace('_', ' ') }}
+            {{ estado_label }}
         </span>
 
         <a href="/inbound"
@@ -61,19 +65,20 @@
                     {{ recepcion.referencia_externa or 'Sin referencia externa' }}
                 </p>
             </div>
+
             <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                {% if recepcion.estado == 'CERRADO' %}
+                {% if estado_recepcion == 'CERRADO' %}
                     bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-                {% elif recepcion.estado == 'EN_DESCARGA' %}
+                {% elif estado_recepcion == 'EN_DESCARGA' %}
                     bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-                {% elif recepcion.estado == 'EN_CONTROL_CALIDAD' %}
+                {% elif estado_recepcion == 'EN_CONTROL_CALIDAD' %}
                     bg-amber-500/10 text-amber-200 border-amber-500/40
-                {% elif recepcion.estado == 'EN_ESPERA' %}
+                {% elif estado_recepcion == 'EN_ESPERA' %}
                     bg-sky-500/10 text-sky-200 border-sky-500/40
                 {% else %}
                     bg-slate-700/40 text-slate-100 border-slate-600
                 {% endif %}">
-                {{ recepcion.estado.replace('_', ' ') }}
+                {{ estado_label }}
             </span>
         </div>
 
@@ -86,6 +91,57 @@
             </a>
         </div>
     </div>
+
+    {# =========================
+    ACCESOS RÁPIDOS OPERATIVOS
+    ========================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="space-y-0.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Operación de recepción
+                </p>
+                <p class="text-[11px] text-slate-400 max-w-md">
+                    Accesos directos a pallets, checklist, documentos y evidencias.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Pallets
+                </a>
+                <a href="/inbound/recepciones/{{ recepcion.id }}/checklist"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Checklist
+                </a>
+                <a href="/inbound/recepciones/{{ recepcion.id }}/documentos"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Documentos
+                </a>
+                <a href="/inbound/recepciones/{{ recepcion.id }}/fotos"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Fotos / evidencia
+                </a>
+            </div>
+        </div>
+
+        {% if es_cerrada %}
+        <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+            <p class="text-[11px] text-emerald-200">
+                Esta recepción está <span class="font-semibold">cerrada</span>. Solo lectura: no se permiten modificaciones.
+            </p>
+        </div>
+        {% endif %}
+    </section>
 
     {# =========================
     DATOS BÁSICOS
@@ -159,19 +215,13 @@
     TIMELINE + MÉTRICAS
     ========================== #}
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {# Timeline #}
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                 Timeline de recepción
             </p>
             <ol class="space-y-3 text-xs text-slate-200">
                 <li class="flex items-start gap-2">
-                    <div class="mt-[3px] h-2 w-2 rounded-full
-                                {% if recepcion.fecha_arribo %}
-                                    bg-emerald-400
-                                {% else %}
-                                    bg-slate-500
-                                {% endif %}"></div>
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if recepcion.fecha_arribo %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
                     <div>
                         <p class="font-semibold text-slate-100">Arribo al recinto</p>
                         <p class="text-[11px] text-slate-400">
@@ -184,12 +234,7 @@
                     </div>
                 </li>
                 <li class="flex items-start gap-2">
-                    <div class="mt-[3px] h-2 w-2 rounded-full
-                                {% if recepcion.fecha_inicio_descarga %}
-                                    bg-emerald-400
-                                {% else %}
-                                    bg-slate-500
-                                {% endif %}"></div>
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if recepcion.fecha_inicio_descarga %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
                     <div>
                         <p class="font-semibold text-slate-100">Inicio de descarga</p>
                         <p class="text-[11px] text-slate-400">
@@ -202,12 +247,7 @@
                     </div>
                 </li>
                 <li class="flex items-start gap-2">
-                    <div class="mt-[3px] h-2 w-2 rounded-full
-                                {% if recepcion.fecha_fin_descarga %}
-                                    bg-emerald-400
-                                {% else %}
-                                    bg-slate-500
-                                {% endif %}"></div>
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if recepcion.fecha_fin_descarga %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
                     <div>
                         <p class="font-semibold text-slate-100">Fin de descarga</p>
                         <p class="text-[11px] text-slate-400">
@@ -220,16 +260,11 @@
                     </div>
                 </li>
                 <li class="flex items-start gap-2">
-                    <div class="mt-[3px] h-2 w-2 rounded-full
-                                {% if recepcion.estado == 'CERRADO' %}
-                                    bg-emerald-400
-                                {% else %}
-                                    bg-slate-500
-                                {% endif %}"></div>
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if es_cerrada %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
                     <div>
                         <p class="font-semibold text-slate-100">Cierre de recepción</p>
                         <p class="text-[11px] text-slate-400">
-                            {% if recepcion.estado == 'CERRADO' %}
+                            {% if es_cerrada %}
                             Recepción cerrada.
                             {% else %}
                             Aún no cerrada.
@@ -240,120 +275,101 @@
             </ol>
         </div>
 
-        {# Indicadores #}
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
                 Indicadores de eficiencia
             </p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                        Tiempo de espera
-                    </p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de espera</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics.tiempo_espera_min is not none %}
+                        {% if metrics and metrics.tiempo_espera_min is not none %}
                         {{ metrics.tiempo_espera_min|round(1) }} min
-                        {% else %}
-                        -
-                        {% endif %}
+                        {% else %}-{% endif %}
                     </p>
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Desde arribo hasta inicio de descarga.
-                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Desde arribo hasta inicio de descarga.</p>
                 </div>
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                        Tiempo de descarga
-                    </p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de descarga</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics.tiempo_descarga_min is not none %}
+                        {% if metrics and metrics.tiempo_descarga_min is not none %}
                         {{ metrics.tiempo_descarga_min|round(1) }} min
-                        {% else %}
-                        -
-                        {% endif %}
+                        {% else %}-{% endif %}
                     </p>
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Desde inicio hasta fin de descarga.
-                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Desde inicio hasta fin de descarga.</p>
                 </div>
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                        Tiempo total
-                    </p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo total</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics.tiempo_total_min is not none %}
+                        {% if metrics and metrics.tiempo_total_min is not none %}
                         {{ metrics.tiempo_total_min|round(1) }} min
-                        {% else %}
-                        -
-                        {% endif %}
+                        {% else %}-{% endif %}
                     </p>
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Desde arribo hasta fin de descarga.
-                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Desde arribo hasta fin de descarga.</p>
                 </div>
             </div>
         </div>
     </section>
 
     {# =========================
-    ACCIONES DE ESTADO (BRANDING ORBION)
+    ACCIONES DE ESTADO
     ========================== #}
-    {% if recepcion.estado != 'CERRADO' %}
+    {% if not es_cerrada %}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-2">
         <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
             Acciones sobre la recepción
         </p>
         <div class="flex flex-wrap items-center gap-2">
-            {% if recepcion.estado == 'PRE_REGISTRADO' %}
-            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+
+            {% if estado_recepcion == 'PRE_REGISTRADO' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
                 <input type="hidden" name="accion" value="marcar_en_espera">
                 <button type="submit"
                         class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                               text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
                                transition-transform transition-colors">
                     Marcar arribado
                 </button>
             </form>
-            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
                 <input type="hidden" name="accion" value="iniciar_descarga">
                 <button type="submit"
                         class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                               text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
                                transition-transform transition-colors">
                     Iniciar descarga
                 </button>
             </form>
-            {% elif recepcion.estado == 'EN_ESPERA' %}
-            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+
+            {% elif estado_recepcion == 'EN_ESPERA' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
                 <input type="hidden" name="accion" value="iniciar_descarga">
                 <button type="submit"
                         class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                               text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
                                transition-transform transition-colors">
                     Iniciar descarga
                 </button>
             </form>
-            {% elif recepcion.estado == 'EN_DESCARGA' %}
-            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+
+            {% elif estado_recepcion == 'EN_DESCARGA' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
                 <input type="hidden" name="accion" value="finalizar_descarga">
                 <button type="submit"
                         class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                               text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
                                transition-transform transition-colors">
                     Finalizar descarga / Enviar a control
                 </button>
             </form>
-            {% elif recepcion.estado in ['EN_CONTROL_CALIDAD'] %}
-            <form method="post" action="/inbound/{{ recepcion.id }}/estado">
+
+            {% elif estado_recepcion == 'EN_CONTROL_CALIDAD' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
                 <input type="hidden" name="accion" value="cerrar_recepcion">
                 <button type="submit"
                         class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                               text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
                                transition-transform transition-colors">
                     Cerrar recepción
                 </button>
@@ -368,19 +384,33 @@
     ========================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
         <div class="flex items-center justify-between gap-2">
-            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-                Líneas de recepción
-            </p>
+            <div class="flex items-center gap-2">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Líneas de recepción
+                </p>
+                {% if recepcion.lineas %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 px-2 py-[2px]
+                             text-[10px] text-slate-300">
+                    {{ recepcion.lineas|length }}
+                </span>
+                {% endif %}
+            </div>
 
-            <a href="/inbound/{{ recepcion.id }}/lineas/nueva"
+            {% if not es_cerrada %}
+            <a href="/inbound/recepciones/{{ recepcion.id }}/lineas/nueva"
                class="inline-flex items-center rounded-full px-3 py-1.5
-                  text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
-                  hover:bg-cyan-300 active:scale-[0.97]
-                  transition-transform transition-colors">
+                      text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                      hover:bg-cyan-300 active:scale-[0.97]
+                      transition-transform transition-colors">
                 + Agregar línea
             </a>
+            {% else %}
+            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                         text-[11px] font-semibold text-slate-500 bg-slate-900/60 cursor-not-allowed">
+                + Agregar línea
+            </span>
+            {% endif %}
         </div>
-
 
         {% if recepcion.lineas %}
         <div class="space-y-2">
@@ -404,7 +434,6 @@
                         {% if linea.unidad %}<span class="text-slate-200">{{ linea.unidad }}</span>{% endif %}
                     </p>
 
-                    {# Bultos / kilos opcionales #}
                     {% if linea.bultos is not none or linea.kilos is not none %}
                     <p class="text-[11px] text-slate-400">
                         {% if linea.bultos is not none %}Bultos: <span class="text-slate-200">{{ linea.bultos }}</span>{% endif %}
@@ -422,15 +451,25 @@
                     </p>
                     {% endif %}
                 </div>
+
                 <div class="flex items-center justify-end gap-2">
-                    <form method="post" action="/inbound/{{ recepcion.id }}/lineas/{{ linea.id }}/eliminar">
+                    {% if not es_cerrada %}
+                    <form method="post"
+                          action="/inbound/recepciones/{{ recepcion.id }}/lineas/{{ linea.id }}/eliminar"
+                          onsubmit="return confirm('¿Eliminar esta línea de recepción? Esta acción no se puede deshacer.');">
                         <button type="submit"
                                 class="inline-flex items-center rounded-full px-3 py-1.5 text-[10px] font-semibold
-                                   border border-red-500/40 text-red-300 bg-red-500/10
-                                   hover:bg-red-500/20 transition-colors">
+                                       border border-red-500/40 text-red-300 bg-red-500/10
+                                       hover:bg-red-500/20 transition-colors">
                             Eliminar
                         </button>
                     </form>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full px-3 py-1.5 text-[10px] font-semibold
+                                 border border-slate-800 text-slate-500 bg-slate-900/60 cursor-not-allowed">
+                        Eliminar
+                    </span>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -447,9 +486,17 @@
     ========================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
         <div class="flex items-center justify-between gap-2">
-            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-                Incidencias
-            </p>
+            <div class="flex items-center gap-2">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Incidencias
+                </p>
+                {% if recepcion.incidencias %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 px-2 py-[2px]
+                             text-[10px] text-slate-300">
+                    {{ recepcion.incidencias|length }}
+                </span>
+                {% endif %}
+            </div>
         </div>
 
         {% if recepcion.incidencias %}
@@ -459,15 +506,15 @@
                 <div class="min-w-0 space-y-0.5">
                     <p class="text-xs font-semibold text-slate-100">
                         {{ inc.tipo|capitalize }} ·
-                        <span class="text-[11px]
+                        <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
                             {% if inc.criticidad == 'alta' %}
-                                text-red-300
+                                bg-red-500/10 text-red-200 border-red-500/40
                             {% elif inc.criticidad == 'media' %}
-                                text-amber-300
+                                bg-amber-500/10 text-amber-200 border-amber-500/40
                             {% else %}
-                                text-slate-300
+                                bg-slate-700/40 text-slate-100 border-slate-600
                             {% endif %}">
-                            Criticidad: {{ inc.criticidad }}
+                            {{ inc.criticidad }}
                         </span>
                     </p>
                     <p class="text-[11px] text-slate-300 whitespace-pre-line">
@@ -482,8 +529,12 @@
                         {% endif %}
                     </p>
                 </div>
+
                 <div class="flex items-center justify-end gap-2">
-                    <form method="post" action="/inbound/{{ recepcion.id }}/incidencias/{{ inc.id }}/eliminar">
+                    {% if not es_cerrada %}
+                    <form method="post"
+                          action="/inbound/recepciones/{{ recepcion.id }}/incidencias/{{ inc.id }}/eliminar"
+                          onsubmit="return confirm('¿Eliminar esta incidencia? Esta acción no se puede deshacer.');">
                         <button type="submit"
                                 class="inline-flex items-center rounded-full px-3 py-1.5 text-[10px] font-semibold
                                        border border-red-500/40 text-red-300 bg-red-500/10
@@ -491,6 +542,12 @@
                             Eliminar
                         </button>
                     </form>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full px-3 py-1.5 text-[10px] font-semibold
+                                 border border-slate-800 text-slate-500 bg-slate-900/60 cursor-not-allowed">
+                        Eliminar
+                    </span>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -505,12 +562,18 @@
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Registrar incidencia
             </p>
-            <form method="post" action="/inbound/{{ recepcion.id }}/incidencias" class="space-y-3">
+
+            {% if es_cerrada %}
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <p class="text-[11px] text-slate-400">
+                    La recepción está cerrada. No puedes registrar nuevas incidencias.
+                </p>
+            </div>
+            {% else %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/incidencias" class="space-y-3">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="space-y-1">
-                        <label class="block text-[11px] font-semibold text-slate-200">
-                            Tipo
-                        </label>
+                        <label class="block text-[11px] font-semibold text-slate-200">Tipo</label>
                         <select name="tipo"
                                 class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                        text-xs sm:text-sm text-slate-100
@@ -525,10 +588,9 @@
                             <option value="otro">Otro</option>
                         </select>
                     </div>
+
                     <div class="space-y-1">
-                        <label class="block text-[11px] font-semibold text-slate-200">
-                            Criticidad
-                        </label>
+                        <label class="block text-[11px] font-semibold text-slate-200">Criticidad</label>
                         <select name="criticidad"
                                 class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                        text-xs sm:text-sm text-slate-100
@@ -541,9 +603,7 @@
                 </div>
 
                 <div class="space-y-1">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Descripción
-                    </label>
+                    <label class="block text-[11px] font-semibold text-slate-200">Descripción</label>
                     <textarea name="descripcion" rows="3" required
                               class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                      text-xs sm:text-sm text-slate-100
@@ -561,9 +621,9 @@
                     </button>
                 </div>
             </form>
+            {% endif %}
         </div>
     </section>
 
-   
 </div>
 {% endblock %}

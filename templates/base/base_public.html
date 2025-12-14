@@ -1,14 +1,22 @@
-﻿{% extends "base/base_orbion.html" %}
+﻿<!-- templates/base/base_public.html -->
+{% extends "base/base_orbion.html" %}
 
 {# ======================================================
-   BASE PUBLIC ORBION
+   BASE PUBLIC ORBION (ENTERPRISE)
    ------------------------------------------------------
-   - Landing
-   - Marketing pages
-   - Acceso a la plataforma
+   - Landing + marketing pages
+   - Sin lógica de usuario
+   - CTA hacia /app/login
+   - Mobile-first (luego md+)
    ====================================================== #}
 
 {% block body %}
+
+{# Skip link (a11y) #}
+<a href="#main"
+   class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[9999] focus:rounded-lg focus:bg-slate-900 focus:px-3 focus:py-2 focus:text-sm focus:text-white focus:ring-2 focus:ring-[#00E4FF]">
+    Saltar al contenido
+</a>
 
 <!-- ========================= -->
 <!-- NAVBAR PÚBLICO ORBION -->
@@ -17,12 +25,14 @@
     <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
 
         <!-- Logo + nombre -->
-        <a href="/" class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-3 group" aria-label="Ir a la página principal de ORBION">
             <img src="/static/img/orbion.svg"
                  alt="ORBION"
-                 class="h-8 w-8 sm:h-9 sm:w-9">
+                 class="h-8 w-8 sm:h-9 sm:w-9"
+                 loading="eager"
+                 decoding="async">
             <div class="hidden sm:flex flex-col leading-tight">
-                <span class="text-xs font-semibold tracking-[0.18em] uppercase text-[#00E4FF]">
+                <span class="text-xs font-semibold tracking-[0.18em] uppercase text-[#00E4FF] group-hover:opacity-95">
                     ORBION
                 </span>
                 <span class="text-[11px] text-slate-400">
@@ -32,24 +42,32 @@
         </a>
 
         <!-- Navegación desktop -->
-        <nav class="hidden md:flex items-center gap-6 text-sm text-slate-300">
-            <a href="#modulos" class="hover:text-[#00E4FF] transition-colors">
+        <nav class="hidden md:flex items-center gap-6 text-sm text-slate-300" aria-label="Navegación pública">
+            <a href="#modulos" class="hover:text-[#00E4FF] transition-colors focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24] rounded">
                 Módulos
             </a>
-            <a href="#planes" class="hover:text-[#00E4FF] transition-colors">
+            <a href="#planes" class="hover:text-[#00E4FF] transition-colors focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24] rounded">
                 Planes
             </a>
-            <a href="#por-que-orbion" class="hover:text-[#00E4FF] transition-colors">
+            <a href="#por-que-orbion" class="hover:text-[#00E4FF] transition-colors focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24] rounded">
                 Por qué ORBION
             </a>
         </nav>
 
-        <!-- CTA -->
-        <div class="flex items-center gap-3">
+        <!-- CTA + Menú mobile -->
+        <div class="flex items-center gap-2 sm:gap-3">
             <a href="/app/login"
-               class="inline-flex items-center justify-center rounded-full border border-slate-600 px-4 py-1.5 text-xs sm:text-sm font-medium text-slate-100 hover:border-[#00E4FF] hover:text-[#00E4FF] transition-colors">
+               class="inline-flex items-center justify-center rounded-full border border-slate-600 px-4 py-1.5 text-xs sm:text-sm font-medium text-slate-100 hover:border-[#00E4FF] hover:text-[#00E4FF] transition-colors focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24]">
                 Acceder
             </a>
+
+            <!-- Menú mobile (simple, sin JS: anclas rápidas) -->
+            <div class="md:hidden">
+                <a href="#modulos"
+                   class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-slate-500 transition-colors">
+                    Ver módulos
+                </a>
+            </div>
         </div>
 
     </div>
@@ -58,7 +76,7 @@
 <!-- ========================= -->
 <!-- CONTENIDO PÚBLICO -->
 <!-- ========================= -->
-<main>
+<main id="main">
     {% block content %}{% endblock %}
 </main>
 
@@ -73,7 +91,9 @@
             <div class="flex items-center gap-2">
                 <img src="/static/img/orbion.svg"
                      alt="ORBION"
-                     class="h-6 w-6">
+                     class="h-6 w-6"
+                     loading="lazy"
+                     decoding="async">
                 <span class="text-sm font-semibold tracking-wide text-slate-100">
                     ORBION
                 </span>
@@ -86,11 +106,12 @@
 
         <!-- Links -->
         <div class="flex flex-col sm:items-end gap-2 text-sm text-slate-400">
-            <a href="/app/login" class="hover:text-[#00E4FF] transition-colors">
+            <a href="/app/login"
+               class="hover:text-[#00E4FF] transition-colors focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24] rounded">
                 Acceso a la plataforma
             </a>
             <span class="text-xs text-slate-500">
-                © {{ now().year if now is defined else "ORBION" }}
+                © {{ app_year() }} ORBION
             </span>
         </div>
 

@@ -1,7 +1,10 @@
-﻿{# modules/inbound_orbion/templates/inbound_linea_form.html #}
+﻿<!-- modules/inbound_orbion/templates/inbound_linea_form.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}ORBION · Nueva línea inbound{% endblock %}
+
+{% set estado_recepcion = (recepcion.estado or 'PRE_REGISTRADO') %}
+{% set es_cerrada = (estado_recepcion == 'CERRADO') %}
 
 {% block page_header %}
 <div class="hidden sm:flex items-center justify-between gap-4">
@@ -18,7 +21,7 @@
     </div>
 
     <div class="flex flex-col items-end gap-2">
-        <a href="/inbound/{{ recepcion.id }}"
+        <a href="/inbound/recepciones/{{ recepcion.id }}"
            class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
                   text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
                   transition-colors">
@@ -48,7 +51,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-            <a href="/inbound/{{ recepcion.id }}"
+            <a href="/inbound/recepciones/{{ recepcion.id }}"
                class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
                       text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
                       transition-colors">
@@ -57,9 +60,19 @@
         </div>
     </div>
 
+    {% if es_cerrada %}
+    <section class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4">
+        <p class="text-[11px] text-emerald-200">
+            Esta recepción está cerrada. No se pueden agregar nuevas líneas.
+        </p>
+    </section>
+    {% else %}
+
     {# FORMULARIO LÍNEA #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
-        <form method="post" action="/inbound/{{ recepcion.id }}/lineas" class="space-y-4 sm:space-y-5">
+        <form id="frmLineaInbound" method="post"
+              action="/inbound/recepciones/{{ recepcion.id }}/lineas"
+              class="space-y-4 sm:space-y-5">
 
             {# PRODUCTO: CATÁLOGO + PRODUCTO RÁPIDO #}
             <div class="space-y-3">
@@ -68,23 +81,30 @@
                     <label class="block text-[11px] font-semibold text-slate-200">
                         Producto (catálogo)
                     </label>
-                    <select name="producto_id"
+
+                    <select id="producto_id" name="producto_id"
                             class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                    text-xs sm:text-sm text-slate-100
                                    focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                         <option value="">Selecciona un producto</option>
                         {% for p in productos %}
-                        <option value="{{ p.id }}">{{ p.nombre }}</option>
+                        <option value="{{ p.id }}" data-unidad="{{ p.unidad or '' }}">
+                            {{ p.nombre }}
+                        </option>
                         {% endfor %}
                     </select>
+
                     <p class="text-[10px] text-slate-500 mt-1">
-                        El catálogo proviene del módulo core WMS / configuración del negocio.
+                        Si seleccionas un producto del catálogo, el producto rápido queda deshabilitado.
                     </p>
                 </div>
                 {% else %}
-                <p class="text-[11px] text-amber-300">
-                    No hay productos activos en el catálogo core WMS para este negocio.
-                </p>
+                <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-3">
+                    <p class="text-[11px] text-amber-200">
+                        No hay productos activos en el catálogo core WMS para este negocio.
+                        Puedes usar producto rápido.
+                    </p>
+                </div>
                 {% endif %}
 
                 <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-3 space-y-2">
@@ -92,8 +112,8 @@
                         Producto rápido inbound (opcional)
                     </p>
                     <p class="text-[10px] text-slate-400">
-                        Si no encuentras el producto en el catálogo o aún no usas el core WMS,
-                        puedes registrar un producto rápido para esta recepción. Se creará en el catálogo del negocio.
+                        Si no encuentras el producto en el catálogo, puedes crearlo rápido.
+                        Se guardará en el catálogo del negocio.
                     </p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -101,17 +121,18 @@
                             <label class="block text-[11px] font-semibold text-slate-200">
                                 Nombre producto rápido
                             </label>
-                            <input type="text" name="nuevo_producto_nombre"
+                            <input id="nuevo_producto_nombre" type="text" name="nuevo_producto_nombre"
                                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                           text-xs sm:text-sm text-slate-100
                                           focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                                    placeholder="Ej: Pollo entero congelado 2kg">
                         </div>
+
                         <div class="space-y-1.5">
                             <label class="block text-[11px] font-semibold text-slate-200">
-                                Unidad base
+                                Unidad base (producto rápido)
                             </label>
-                            <input type="text" name="nuevo_producto_unidad_base"
+                            <input id="nuevo_producto_unidad_base" type="text" name="nuevo_producto_unidad_base"
                                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                           text-xs sm:text-sm text-slate-100
                                           focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
@@ -120,12 +141,17 @@
                     </div>
 
                     <p class="text-[10px] text-slate-500">
-                        Reglas:
+                        Regla enterprise:
                         <span class="text-slate-300">
-                            si eliges un producto del catálogo, se usará ese. Si no eliges ninguno pero
-                            completas el nombre rápido, se creará y se usará automáticamente.
+                            Debes elegir un producto del catálogo o ingresar nombre de producto rápido.
                         </span>
                     </p>
+
+                    <div id="msgProducto" class="hidden rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+                        <p class="text-[11px] text-red-200">
+                            Debes seleccionar un producto del catálogo o indicar un nombre de producto rápido.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -176,37 +202,20 @@
                 </div>
             </div>
 
-            {# Unidad / Bultos / Kilos #}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {# Unidad (esta SÍ existe en tu route) #}
+            <div class="grid grid-cols-1 sm:grid-cols-1 gap-3">
                 <div class="space-y-1.5">
                     <label class="block text-[11px] font-semibold text-slate-200">
-                        Unidad
+                        Unidad (línea)
                     </label>
-                    <input type="text" name="unidad"
+                    <input id="unidad_linea" type="text" name="unidad"
                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                   text-xs sm:text-sm text-slate-100
                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                            placeholder="Ej: cajas, kg, pallets">
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Bultos
-                    </label>
-                    <input type="number" step="0.01" min="0" name="bultos"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Kilos
-                    </label>
-                    <input type="number" step="0.01" min="0" name="kilos"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
+                    <p class="text-[10px] text-slate-500 mt-1">
+                        Tip: al elegir un producto del catálogo, intentamos sugerir su unidad automáticamente.
+                    </p>
                 </div>
             </div>
 
@@ -248,7 +257,7 @@
 
             {# Botones #}
             <div class="flex items-center justify-end gap-2 pt-2">
-                <a href="/inbound/{{ recepcion.id }}"
+                <a href="/inbound/recepciones/{{ recepcion.id }}"
                    class="inline-flex items-center rounded-full px-3 py-1.5
                           text-[11px] font-semibold text-slate-300 border border-slate-700
                           hover:border-slate-500 hover:text-slate-50">
@@ -262,7 +271,86 @@
                     Guardar línea
                 </button>
             </div>
+
         </form>
     </section>
+
+    {# JS liviano: mutual exclusivity + sugerir unidad + validación mínima #}
+    <script>
+        (function () {
+            const form = document.getElementById('frmLineaInbound');
+            const sel = document.getElementById('producto_id');
+            const unidadLinea = document.getElementById('unidad_linea');
+
+            const quickName = document.getElementById('nuevo_producto_nombre');
+            const quickUnit = document.getElementById('nuevo_producto_unidad_base');
+            const msgProducto = document.getElementById('msgProducto');
+
+            function toggleQuickDisabled(disabled) {
+                if (!quickName || !quickUnit) return;
+                quickName.disabled = disabled;
+                quickUnit.disabled = disabled;
+
+                if (disabled) {
+                    quickName.value = '';
+                    quickUnit.value = '';
+                }
+            }
+
+            function suggestUnidadFromSelected() {
+                if (!sel || !unidadLinea) return;
+                const opt = sel.options[sel.selectedIndex];
+                const u = (opt && opt.dataset) ? (opt.dataset.unidad || '') : '';
+                // solo sugerimos si está vacío (no pisamos al usuario)
+                if (u && !unidadLinea.value) {
+                    unidadLinea.value = u;
+                }
+            }
+
+            function validateProducto() {
+                const hasCatalog = sel && sel.value && String(sel.value).trim() !== '';
+                const hasQuick = quickName && quickName.value && quickName.value.trim() !== '';
+                const ok = hasCatalog || hasQuick;
+
+                if (msgProducto) {
+                    msgProducto.classList.toggle('hidden', ok);
+                }
+                return ok;
+            }
+
+            if (sel) {
+                sel.addEventListener('change', function () {
+                    const hasCatalog = sel.value && String(sel.value).trim() !== '';
+                    toggleQuickDisabled(!!hasCatalog);
+                    suggestUnidadFromSelected();
+                    validateProducto();
+                });
+            }
+
+            if (quickName) {
+                quickName.addEventListener('input', function () {
+                    // si el usuario empieza a escribir producto rápido, deselecciona catálogo (para evitar ambigüedad)
+                    if (sel && quickName.value.trim() !== '') {
+                        sel.value = '';
+                        toggleQuickDisabled(false);
+                    }
+                    validateProducto();
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    if (!validateProducto()) {
+                        e.preventDefault();
+                        // foco inteligente
+                        if (sel) sel.focus();
+                        return false;
+                    }
+                });
+            }
+        })();
+    </script>
+
 </div>
+{% endif %}
 {% endblock %}

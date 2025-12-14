@@ -3,14 +3,19 @@
 
 {% block content %}
 <div class="min-h-screen bg-[#0A0F24] text-slate-100">
-    <!-- Contenedor principal -->
-    <div class="mx-auto max-w-6xl px-4 py-6 sm:py-8 lg:py-12 space-y-10">
 
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:py-8 lg:py-12 space-y-12">
+
+        <!-- ========================= -->
         <!-- HERO -->
-        <section class="grid gap-8 lg:grid-cols-2 lg:items-center" id="hero">
-            <!-- Texto -->
-            <div class="space-y-5">
-                <p class="inline-flex items-center rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-[#00E4FF] ring-1 ring-slate-700/60">
+        <!-- ========================= -->
+        <section class="grid gap-10 lg:grid-cols-2 lg:items-center" id="hero">
+
+            <!-- TEXTO -->
+            <div class="space-y-6">
+                <p class="inline-flex items-center rounded-full bg-slate-900/60 px-3 py-1
+                          text-xs font-medium text-[#00E4FF] ring-1 ring-slate-700/60">
                     Plataforma modular de inteligencia operacional
                 </p>
 
@@ -23,406 +28,184 @@
 
                 <p class="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
                     ORBION es una plataforma modular que conecta logística, inventario y análisis
-                    en un solo ecosistema inteligente. Menos fricción. Más control. Decisiones en tiempo real.
+                    en un solo ecosistema inteligente. Menos fricción. Más control.
+                    Decisiones en tiempo real.
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
                     <a href="/app/login"
-                       class="inline-flex items-center justify-center rounded-full bg-[#00E4FF] px-6 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 hover:opacity-95 transition">
+                       class="inline-flex items-center justify-center rounded-full bg-[#00E4FF]
+                              px-6 py-2.5 text-sm font-semibold text-slate-950
+                              shadow-lg shadow-cyan-500/30 hover:opacity-95 transition">
                         Acceder a la plataforma
                     </a>
                     <a href="#modulos"
-                       class="inline-flex items-center justify-center rounded-full border border-slate-600 px-5 py-2 text-xs sm:text-sm font-medium text-slate-100 hover:border-[#00E4FF] hover:text-[#00E4FF] transition">
+                       class="inline-flex items-center justify-center rounded-full
+                              border border-slate-600 px-5 py-2
+                              text-xs sm:text-sm font-medium text-slate-100
+                              hover:border-[#00E4FF] hover:text-[#00E4FF] transition">
                         Ver módulos en órbita
                     </a>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 pt-4 text-xs sm:text-sm">
-                    <div class="space-y-1">
-                        <p class="font-semibold text-slate-200">Diseñado para operación real</p>
+                    <div>
+                        <p class="font-semibold text-slate-200">
+                            Diseñado para operación real
+                        </p>
                         <p class="text-slate-400">
                             Pensado para bodegas, logística y equipos que no pueden detenerse.
                         </p>
                     </div>
-                    <div class="space-y-1">
-                        <p class="font-semibold text-slate-200">Mobile-first</p>
+                    <div>
+                        <p class="font-semibold text-slate-200">
+                            Mobile-first
+                        </p>
                         <p class="text-slate-400">
-                            Funciona desde el piso de la bodega hasta el escritorio de gerencia.
+                            Desde el piso de la bodega hasta la gerencia.
                         </p>
                     </div>
                 </div>
             </div>
-        </section>
 
-            <!-- Visual / Orbita -->
+            <!-- VISUAL ORBITAL -->
             <div class="flex items-center justify-center">
                 <div class="relative h-64 w-64 sm:h-72 sm:w-72 lg:h-80 lg:w-80">
-                    <!-- Fondo suave -->
+
+                    <!-- HALO -->
                     <div class="absolute inset-0 rounded-full bg-cyan-500/10 blur-3xl"></div>
 
-                    <!-- Núcleo -->
+                    <!-- NÚCLEO -->
                     <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="h-28 w-28 sm:h-32 sm:w-32 rounded-full bg-[#00E4FF] shadow-[0_0_40px_rgba(0,228,255,0.7)] orbion-core"></div>
+                        <div class="h-28 w-28 sm:h-32 sm:w-32 rounded-full bg-[#00E4FF]
+                                    shadow-[0_0_40px_rgba(0,228,255,0.7)]
+                                    orbion-core">
+                        </div>
                     </div>
 
-                    <!-- Órbitas -->
+                    <!-- ÓRBITAS -->
                     <div class="absolute inset-0 flex items-center justify-center orbion-orbit-outer">
-                        <div class="h-52 w-52 sm:h-56 sm:w-56 rounded-full border-2 border-transparent">
-                            <div class="relative h-full w-full">
-                                <!-- Segmento superior -->
-                                <div class="absolute inset-0 rounded-full border-[3px] border-[#BFC7D5] border-b-transparent border-l-transparent opacity-80"></div>
+                        <div class="h-52 w-52 sm:h-56 sm:w-56 rounded-full">
+                            <div class="absolute inset-0 rounded-full
+                                        border-[3px] border-[#BFC7D5]
+                                        border-b-transparent border-l-transparent opacity-80">
                             </div>
                         </div>
                     </div>
 
                     <div class="absolute inset-0 flex items-center justify-center orbion-orbit-inner">
-                        <div class="h-48 w-48 sm:h-52 sm:w-52 rounded-full border-2 border-transparent">
-                            <div class="relative h-full w-full">
-                                <!-- Segmento inferior -->
-                                <div class="absolute inset-0 rounded-full border-[3px] border-[#BFC7D5]/60 border-t-transparent border-r-transparent opacity-60"></div>
+                        <div class="h-48 w-48 sm:h-52 sm:w-52 rounded-full">
+                            <div class="absolute inset-0 rounded-full
+                                        border-[3px] border-[#BFC7D5]/60
+                                        border-t-transparent border-r-transparent opacity-60">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Punto orbital -->
+                    <!-- PUNTO ORBITAL -->
                     <div class="absolute inset-0 flex items-center justify-center orbion-dot-wrapper">
-                        <div class="h-6 w-6 rounded-full bg-[#00E4FF] shadow-[0_0_28px_rgba(0,228,255,0.9)]"></div>
+                        <div class="h-6 w-6 rounded-full bg-[#00E4FF]
+                                    shadow-[0_0_28px_rgba(0,228,255,0.9)]">
+                        </div>
                     </div>
+
                 </div>
             </div>
+        </section>
 
+        <!-- ========================= -->
+        <!-- PROBLEMAS -->
+        <!-- ========================= -->
+        <section class="space-y-6" id="por-que-orbion">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-50">
+                Los datos existen. El problema es cómo operarlos.
+            </h2>
 
-            <!-- PROBLEMAS REALES -->
-            <section class="space-y-6" id="por-que-orbion">
-                <div class="space-y-2">
-                    <h2 class="text-xl sm:text-2xl font-semibold text-slate-50">
-                        Los datos existen. El problema es cómo operarlos.
-                    </h2>
-                    <p class="text-sm sm:text-base text-slate-300 max-w-2xl">
-                        Muchas operaciones críticas siguen dependiendo de Excel, sistemas rígidos o herramientas
-                        desconectadas. ORBION nace desde la operación real para resolver esos vacíos.
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+                {% for i, titulo, texto in [
+                (1,"Falta de visibilidad","Inventarios y flujos operan con datos tardíos."),
+                (2,"Datos dispersos","Sistemas y planillas sin un núcleo común."),
+                (3,"Decisiones reactivas","Se responde tarde a quiebres y mermas."),
+                (4,"Software rígido","Herramientas que no se adaptan a la realidad.")
+                ] %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Problema {{ "%02d"|format(i) }}
+                    </p>
+                    <p class="mt-2 font-medium text-slate-100">{{ titulo }}</p>
+                    <p class="mt-2 text-slate-400">{{ texto }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- ========================= -->
+        <!-- CTA FINAL -->
+        <!-- ========================= -->
+        <section class="border-t border-slate-800 pt-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center
+                        justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold text-slate-50">
+                        ORBION — Inteligencia operacional en movimiento.
+                    </p>
+                    <p class="text-sm text-slate-300">
+                        Entra, opera y deja que tus datos orbiten donde deben estar.
                     </p>
                 </div>
+                <a href="/app/login"
+                   class="inline-flex items-center justify-center rounded-full bg-[#00E4FF]
+                          px-6 py-2.5 text-sm font-semibold text-slate-950
+                          shadow-lg shadow-cyan-500/30 hover:opacity-95 transition">
+                    Acceder a ORBION
+                </a>
+            </div>
+        </section>
 
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Problema 01
-                        </p>
-                        <p class="mt-2 font-medium text-slate-100">
-                            Falta de visibilidad en tiempo real.
-                        </p>
-                        <p class="mt-2 text-slate-400">
-                            El inventario y los flujos operan a ciegas o con reportes desactualizados.
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Problema 02
-                        </p>
-                        <p class="mt-2 font-medium text-slate-100">
-                            Datos dispersos y poco accionables.
-                        </p>
-                        <p class="mt-2 text-slate-400">
-                            Múltiples sistemas, planillas y correos sin un núcleo de decisión central.
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Problema 03
-                        </p>
-                        <p class="mt-2 font-medium text-slate-100">
-                            Decisiones reactivas, no anticipadas.
-                        </p>
-                        <p class="mt-2 text-slate-400">
-                            La operación responde tarde a quiebres de stock, atrasos o mermas.
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Problema 04
-                        </p>
-                        <p class="mt-2 font-medium text-slate-100">
-                            Software que no se adapta a la realidad.
-                        </p>
-                        <p class="mt-2 text-slate-400">
-                            Sistemas rígidos, caros o sobredimensionados para la operación real.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ORBION COMO ECOSISTEMA -->
-            <section class="space-y-6">
-                <div class="space-y-2">
-                    <h2 class="text-xl sm:text-2xl font-semibold text-slate-50">
-                        Un ecosistema modular en órbita constante.
-                    </h2>
-                    <p class="text-sm sm:text-base text-slate-300 max-w-2xl">
-                        ORBION conecta un núcleo de datos inteligente con módulos especializados que orbitan a su
-                        alrededor. Activas solo lo que necesitas hoy, manteniendo todo listo para crecer mañana.
-                    </p>
-                </div>
-
-                <div class="grid gap-4 sm:grid-cols-3 text-sm">
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                            Núcleo activo
-                        </p>
-                        <p class="font-medium text-slate-100">
-                            Datos en movimiento, no estáticos.
-                        </p>
-                        <p class="text-slate-400">
-                            Auditoría, registros y flujos que alimentan una vista única de la operación.
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                            Módulos en órbita
-                        </p>
-                        <p class="font-medium text-slate-100">
-                            Funcionalidades especializadas.
-                        </p>
-                        <p class="text-slate-400">
-                            WMS, Inbound y futuros módulos se integran sin perder independencia.
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                            Expansión continua
-                        </p>
-                        <p class="font-medium text-slate-100">
-                            Siempre en expansión, nunca cerrado.
-                        </p>
-                        <p class="text-slate-400">
-                            La arquitectura abierta permite sumar analítica avanzada, IA y más sin rehacer la base.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- MÓDULOS -->
-            <section class="space-y-6" id="modulos">
-                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-semibold text-slate-50">
-                            Módulos en órbita
-                        </h2>
-                        <p class="text-sm sm:text-base text-slate-300 max-w-xl">
-                            Comienza con los módulos esenciales y habilita nuevas capacidades a medida que tu operación evoluciona.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-3 text-sm">
-                    <!-- Core WMS -->
-                    <article class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                                Activo
-                            </p>
-                            <h3 class="font-semibold text-slate-50">
-                                ORBION Core WMS
-                            </h3>
-                            <p class="text-slate-300">
-                                Control de inventario, ubicaciones, rotación y auditoría. El núcleo operativo para tu bodega.
-                            </p>
-                        </div>
-                        <div class="mt-4">
-                            <p class="text-[11px] font-medium text-slate-400 mb-2 uppercase tracking-wide">
-                                Ideal para
-                            </p>
-                            <p class="text-slate-400">
-                                Empresas que necesitan pasar de Excel a control real de stock y movimiento.
-                            </p>
-                        </div>
-                    </article>
-
-                    <!-- Inbound -->
-                    <article class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                                Activo
-                            </p>
-                            <h3 class="font-semibold text-slate-50">
-                                ORBION Inbound
-                            </h3>
-                            <p class="text-slate-300">
-                                Módulo especializado en descarga de contenedores, recepción y validación de entradas.
-                                Diseñado para uso intensivo en mobile.
-                            </p>
-                        </div>
-                        <div class="mt-4">
-                            <p class="text-[11px] font-medium text-slate-400 mb-2 uppercase tracking-wide">
-                                Ideal para
-                            </p>
-                            <p class="text-slate-400">
-                                Operaciones con alto flujo de recepción y necesidad de trazabilidad desde el minuto cero.
-                            </p>
-                        </div>
-                    </article>
-
-                    <!-- Próximamente / IA / Analytics -->
-                    <article class="rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 p-5 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                En órbita próxima
-                            </p>
-                            <h3 class="font-semibold text-slate-300">
-                                Analytics & IA Operacional
-                            </h3>
-                            <p class="text-slate-400">
-                                Métricas avanzadas, proyecciones y modelos inteligentes para anticipar quiebres,
-                                mermas y necesidades de capacidad.
-                            </p>
-                        </div>
-                        <div class="mt-4">
-                            <p class="text-[11px] font-medium text-slate-500 mb-2 uppercase tracking-wide">
-                                Importante
-                            </p>
-                            <p class="text-slate-500">
-                                No todo debe estar hoy. Pero en ORBION todo está en órbita, listo para activarse.
-                            </p>
-                        </div>
-                    </article>
-                </div>
-            </section>
-
-            <!-- PLANES -->
-            <section class="space-y-6" id="planes">
-                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-semibold text-slate-50">
-                            Planes pensados en operación, no en licencias.
-                        </h2>
-                        <p class="text-sm sm:text-base text-slate-300 max-w-xl">
-                            Comienza con lo esencial y escala por módulos, usuarios y capacidades a medida que tu operación crece.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-3 text-sm">
-                    <!-- Plan base -->
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Plan Base
-                        </p>
-                        <h3 class="mt-1 text-lg font-semibold text-slate-50">Operación Esencial</h3>
-                        <p class="mt-2 text-slate-300">
-                            Ideal para validar el modelo, controlar inventario y operar con un solo equipo.
-                        </p>
-                        <ul class="mt-4 space-y-1 text-slate-400">
-                            <li>• Acceso a ORBION Core WMS</li>
-                            <li>• Usuarios limitados</li>
-                            <li>• Reportes operacionales básicos</li>
-                        </ul>
-                    </div>
-
-                    <!-- Plan intermedio -->
-                    <div class="rounded-2xl border border-[#00E4FF] bg-slate-900/60 p-5 flex flex-col ring-1 ring-cyan-500/30">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#00E4FF]">
-                            Recomendado
-                        </p>
-                        <h3 class="mt-1 text-lg font-semibold text-slate-50">Operación en Flujo</h3>
-                        <p class="mt-2 text-slate-300">
-                            Para operaciones que requieren inbound estructurado y trazabilidad más profunda.
-                        </p>
-                        <ul class="mt-4 space-y-1 text-slate-200">
-                            <li>• Core WMS + Inbound</li>
-                            <li>• Más usuarios y roles</li>
-                            <li>• Auditoría y registros avanzados</li>
-                        </ul>
-                    </div>
-
-                    <!-- Plan avanzado -->
-                    <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Próximo
-                        </p>
-                        <h3 class="mt-1 text-lg font-semibold text-slate-50">Operación Inteligente</h3>
-                        <p class="mt-2 text-slate-300">
-                            Pensado para cuando tu operación necesite analítica avanzada y modelos predictivos.
-                        </p>
-                        <ul class="mt-4 space-y-1 text-slate-400">
-                            <li>• Módulos de analítica & IA</li>
-                            <li>• Integraciones y APIs</li>
-                            <li>• Soporte y acompañamiento estratégico</li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
-            <!-- CTA FINAL -->
-            <section class="border-t border-slate-800 pt-6 mt-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div class="space-y-1">
-                        <p class="text-sm font-semibold text-slate-50">
-                            ORBION — Inteligencia operacional en movimiento.
-                        </p>
-                        <p class="text-sm text-slate-300">
-                            El siguiente paso es simple: entrar, operar y dejar que tus datos orbitan donde deben estar.
-                        </p>
-                    </div>
-                    <a href="/app/login"
-                       class="inline-flex items-center justify-center rounded-full bg-[#00E4FF] px-6 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 hover:opacity-95 transition">
-                        Acceder a ORBION
-                    </a>
-                </div>
-            </section>
-
-</div>
+    </div>
 </div>
 {% endblock %}
 
 {% block head %}
 <style>
-    /* Núcleo respirando */
     @keyframes orbion-core-pulse {
-        0%, 100% {
+        0%,100% {
             transform: scale(1);
-            box-shadow: 0 0 40px rgba(0, 228, 255, 0.7);
+            box-shadow: 0 0 40px rgba(0,228,255,.7);
         }
 
         50% {
             transform: scale(1.06);
-            box-shadow: 0 0 70px rgba(0, 228, 255, 0.95);
+            box-shadow: 0 0 70px rgba(0,228,255,.95);
         }
     }
 
-    /* Órbita exterior girando lento */
     @keyframes orbion-orbit-outer {
-        0% {
-            transform: rotate(6deg);
+        from {
+            transform: rotate(0deg);
         }
 
-        100% {
-            transform: rotate(366deg);
+        to {
+            transform: rotate(360deg);
         }
     }
 
-    /* Órbita interior girando en sentido contrario */
     @keyframes orbion-orbit-inner {
-        0% {
-            transform: rotate(-6deg);
+        from {
+            transform: rotate(360deg);
         }
 
-        100% {
-            transform: rotate(-366deg);
+        to {
+            transform: rotate(0deg);
         }
     }
 
-    /* Punto orbital dando vueltas alrededor del núcleo */
     @keyframes orbion-dot-orbit {
-        0% {
+        from {
             transform: rotate(0deg) translateX(40%);
         }
 
-        100% {
+        to {
             transform: rotate(360deg) translateX(40%);
         }
     }
@@ -433,17 +216,14 @@
 
     .orbion-orbit-outer {
         animation: orbion-orbit-outer 22s linear infinite;
-        transform-origin: center;
     }
 
     .orbion-orbit-inner {
         animation: orbion-orbit-inner 30s linear infinite;
-        transform-origin: center;
     }
 
     .orbion-dot-wrapper {
         animation: orbion-dot-orbit 18s linear infinite;
-        transform-origin: center;
     }
 </style>
 {% endblock %}

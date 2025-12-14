@@ -1,4 +1,4 @@
-﻿{# core/templates/app/superadmin_alertas.html #}
+﻿<!-- templates/app/superadmin_alertas.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}Alertas globales · Consola Superadmin · ORBION{% endblock %}
@@ -70,19 +70,20 @@
 
         {# =========================
         MOBILE: CARDS
-        ========================== #}
+        ========================= #}
         <div class="space-y-3 md:hidden pt-2">
             {% for a in alertas %}
             <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
                 <div class="flex items-start justify-between gap-2">
                     <div class="space-y-0.5 min-w-0">
-                        <p class="text-[11px] text-slate-400">
+                        <p class="text-[11px] text-slate-400 truncate">
                             {{ a.negocio.nombre_fantasia if a.negocio else "—" }}
                         </p>
                         <p class="text-[10px] text-slate-500">
                             ID negocio: {{ a.negocio_id }}
                         </p>
                     </div>
+
                     <div class="flex flex-col items-end gap-1">
                         {# Tipo de alerta #}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium
@@ -97,29 +98,29 @@
                             {% else %}
                                 bg-slate-700/40 text-slate-100 border-slate-600
                             {% endif %}">
-                            {{ a.tipo }}
+                            {{ a.tipo or "—" }}
                         </span>
 
                         {# Estado #}
                         {% if a.estado == "pendiente" %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                                    bg-amber-500/10 text-amber-200 border border-amber-500/40">
+                                     bg-amber-500/10 text-amber-200 border border-amber-500/40">
                             Pendiente
                         </span>
                         {% elif a.estado == "enviada" or a.estado == "leida" %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                                    bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                                     bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
                             {{ a.estado|capitalize }}
                         </span>
                         {% elif a.estado == "error" %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                                    bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                                     bg-rose-500/10 text-rose-200 border border-rose-500/40">
                             Error
                         </span>
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                                    bg-slate-700/40 text-slate-100 border border-slate-600">
-                            {{ a.estado|capitalize }}
+                                     bg-slate-700/40 text-slate-100 border border-slate-600">
+                            {{ (a.estado or "—")|capitalize }}
                         </span>
                         {% endif %}
                     </div>
@@ -127,8 +128,9 @@
 
                 <div class="space-y-1">
                     <p class="text-[11px] text-slate-100">
-                        {{ a.mensaje }}
+                        {{ a.mensaje or "—" }}
                     </p>
+
                     <p class="text-[10px] text-slate-500">
                         Creación:
                         <span class="text-slate-300">
@@ -141,6 +143,7 @@
                         </span>
                         {% endif %}
                     </p>
+
                     {% if a.origen %}
                     <p class="text-[10px] text-slate-500">
                         Origen: <span class="text-slate-300">{{ a.origen }}</span>
@@ -153,7 +156,7 @@
 
         {# =========================
         DESKTOP/TABLET: TABLA
-        ========================== #}
+        ========================= #}
         <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto">
             <table class="min-w-full text-xs sm:text-sm text-left">
                 <thead class="bg-slate-900/80">
@@ -167,6 +170,7 @@
                         <th class="px-4 py-2">Origen</th>
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-slate-800/80">
                     {% for a in alertas %}
                     <tr class="hover:bg-slate-900 align-top">
@@ -196,36 +200,36 @@
                                 {% else %}
                                     bg-slate-700/40 text-slate-100 border-slate-600
                                 {% endif %}">
-                                {{ a.tipo }}
+                                {{ a.tipo or "—" }}
                             </span>
                         </td>
 
                         <!-- Mensaje -->
                         <td class="px-4 py-2 text-xs sm:text-sm text-slate-100">
-                            {{ a.mensaje }}
+                            {{ a.mensaje or "—" }}
                         </td>
 
                         <!-- Estado -->
                         <td class="px-4 py-2">
                             {% if a.estado == "pendiente" %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                        bg-amber-500/10 text-amber-200 border border-amber-500/40">
+                                         bg-amber-500/10 text-amber-200 border border-amber-500/40">
                                 Pendiente
                             </span>
                             {% elif a.estado == "enviada" or a.estado == "leida" %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                        bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+                                         bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
                                 {{ a.estado|capitalize }}
                             </span>
                             {% elif a.estado == "error" %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                        bg-rose-500/10 text-rose-200 border border-rose-500/40">
+                                         bg-rose-500/10 text-rose-200 border border-rose-500/40">
                                 Error
                             </span>
                             {% else %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                        bg-slate-700/40 text-slate-100 border border-slate-600">
-                                {{ a.estado|capitalize }}
+                                         bg-slate-700/40 text-slate-100 border border-slate-600">
+                                {{ (a.estado or "—")|capitalize }}
                             </span>
                             {% endif %}
                         </td>
@@ -253,7 +257,6 @@
             No se han generado alertas aún.
         </div>
         {% endif %}
-
     </section>
 
 </div>

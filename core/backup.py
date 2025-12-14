@@ -1,4 +1,17 @@
-﻿# backup.py
+﻿# core/backup.py
+"""
+Backup de base de datos a nivel aplicación.
+
+✔ Se mantiene SOLO para SQLite (desarrollo / pruebas / demo offline)
+✖ NO reemplaza backups de PostgreSQL en producción (eso es responsabilidad
+  del proveedor: Railway / Azure / cron / snapshots)
+
+Este archivo es válido y útil en un SaaS enterprise como:
+- entorno DEV
+- entorno DEMO
+- modo offline / single-tenant
+"""
+
 from datetime import datetime
 from pathlib import Path
 import shutil
@@ -7,41 +20,63 @@ from core.config import settings
 from core.logging_config import logger
 
 
-BACKUP_DIR = Path("backups")
-BACKUP_DIR.mkdir(exist_ok=True)
+# ============================
+#   CONFIGURACIÓN
+# ============================
 
-# Cuántos backups mantener (los más recientes)
-MAX_BACKUPS = 2
+BASE_DIR = Path(__file__).resolve().parent.parent
+BACKUP_DIR = BASE_DIR / "backups"
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
+# Cuántos backups SQLite mantener (rotación simple)
+MAX_BACKUPS = 3
+
+
+# ============================
+#   HELPERS
+# ============================
 
 def _is_sqlite_url(url: str) -> bool:
-    return url.startswith("sqlite:///") or url.startswith("sqlite:///")
+    """
+    Detecta si DATABASE_URL corresponde a SQLite.
+    """
+    return url.startswith("sqlite:///")
 
+
+def _get_sqlite_db_path(url: str) -> Path:
+    """
+    Extrae la ruta del archivo SQLite desde DATABASE_URL.
+    """
+    return Path(url.replace("sqlite:///", "", 1)).resolve()
+
+
+# ============================
+#   BACKUP SQLITE
+# ============================
 
 def backup_sqlite_db() -> tuple[bool, str | None]:
     """
-    Crea un backup de la BD SQLite si DATABASE_URL es de tipo sqlite.
-    Devuelve (ok, path_str) donde ok indica si se realizó el backup
-    y path_str es la ruta del archivo creado (o None si no aplica).
+    Crea un backup de la BD SQLite SOLO si DATABASE_URL es SQLite.
+
+    Retorna:
+        (True, ruta_backup)  -> backup creado
+        (False, None)        -> no aplica o error
     """
     db_url = settings.DATABASE_URL
 
     if not _is_sqlite_url(db_url):
-        logger.warning(
-            "[BACKUP] backup_sqlite_db() llamado pero DATABASE_URL no es SQLite "
-            f"({db_url}). Se omite backup a nivel aplicación."
+        logger.debug(
+            "[BACKUP] DATABASE_URL no es SQLite. "
+            "Backup a nivel aplicación no requerido."
         )
         return False, None
 
-    # Extraer la ruta del archivo a partir del URL sqlite:///...
-    db_path_str = db_url.replace("sqlite:///", "", 1)
-    db_path = Path(db_path_str).resolve()
+    db_path = _get_sqlite_db_path(db_url)
 
     if not db_path.exists():
-        logger.error(f"[BACKUP] Archivo de BD SQLite no existe: {db_path}")
+        logger.error(f"[BACKUP] Archivo SQLite no encontrado: {db_path}")
         return False, None
 
-    # Nombre del backup: miniWMS_YYYYMMDD_HHMMSS.db
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     backup_filename = f"{db_path.stem}_{timestamp}{db_path.suffix}"
     backup_path = BACKUP_DIR / backup_filename
@@ -53,14 +88,19 @@ def backup_sqlite_db() -> tuple[bool, str | None]:
         _cleanup_old_backups()
 
         return True, str(backup_path)
-    except Exception as e:
-        logger.error(f"[BACKUP] Error al crear backup SQLite: {e}")
+
+    except Exception as exc:
+        logger.exception(f"[BACKUP] Error creando backup SQLite: {exc}")
         return False, None
 
 
-def _cleanup_old_backups():
+# ============================
+#   ROTACIÓN
+# ============================
+
+def _cleanup_old_backups() -> None:
     """
-    Mantiene solo los últimos MAX_BACKUPS archivos en BACKUP_DIR.
+    Mantiene solo los últimos MAX_BACKUPS backups SQLite.
     """
     backups = sorted(
         BACKUP_DIR.glob("*.db"),
@@ -68,12 +108,11 @@ def _cleanup_old_backups():
         reverse=True,
     )
 
-    if len(backups) <= MAX_BACKUPS:
-        return
-
     for old_backup in backups[MAX_BACKUPS:]:
         try:
             old_backup.unlink()
-            logger.info(f"[BACKUP] Backup antiguo eliminado: {old_backup}")
-        except Exception as e:
-            logger.warning(f"[BACKUP] No se pudo eliminar backup antiguo {old_backup}: {e}")
+            logger.info(f"[BACKUP] Backup eliminado: {old_backup.name}")
+        except Exception as exc:
+            logger.warning(
+                f"[BACKUP] No se pudo eliminar backup {old_backup.name}: {exc}"
+            )

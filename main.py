@@ -1,15 +1,16 @@
-﻿# miniWMS.py
+﻿# main.py
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, FileResponse
 
 from core.config import settings
 from core.database import init_db
 from core.logging_config import setup_logging, logger
+from core.templates import create_templates  # ✅ nuevo
+from core.web import templates
 
 # Routers
 from core.routes import routes_health
@@ -28,12 +29,11 @@ from modules.basic_wms.routes.routes_stock import router as stock_router
 from modules.basic_wms.routes.routes_inventory import router as inventory_router
 from modules.basic_wms.routes.routes_audit import router as audit_router
 from modules.basic_wms.routes.routes_alerts import router as alerts_router
-
 from modules.basic_wms.routes.routes_backups import router as backups_router
 from modules.basic_wms.routes.routes_export import router as export_router
+
 from core.middleware.auth_redirect import redirect_middleware
 from modules.inbound_orbion.routes import routes_inbound
-
 
 
 # ============================
@@ -42,10 +42,8 @@ from modules.inbound_orbion.routes import routes_inbound
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 🔹 Startup
-    init_db()  # crea tablas y seed de superadmin
+    init_db()
     yield
-    # 🔹 Aquí podrías poner código de "shutdown" si algún día lo necesitas
 
 
 setup_logging()
@@ -59,12 +57,12 @@ app = FastAPI(
 
 logger.info("ORBION iniciado")
 
-# Archivos estáticos
+# Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Templates globales (APUNTANDO AL NUEVO DIRECTORIO /templates)
+# Templates (global)
 BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+templates = create_templates(BASE_DIR)
 
 
 # ============================
@@ -73,15 +71,14 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 async def landing_page(request: Request):
-    """
-    Landing pública de ORBION.
-    Debe existir templates/public/landing.html
-    que extienda base/base_public.html
-    """
     return templates.TemplateResponse(
         "public/landing.html",
-        {"request": request},
+        {
+            "request": request,
+            # opcional: puedes pasar flags/metadata aquí si quieres
+        },
     )
+
 
 # ============================
 #   RUTA FAVICON
@@ -89,10 +86,11 @@ async def landing_page(request: Request):
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse("static/favicon.ico")
+    return FileResponse("static/img/favicon.ico")
+
 
 # ============================
-#   INCLUIR ROUTERS
+#   MIDDLEWARE + ROUTERS
 # ============================
 
 app.middleware("http")(redirect_middleware)
@@ -118,16 +116,12 @@ app.include_router(export_router)
 app.include_router(routes_inbound.router)
 
 
-# ============================
-#      MAIN (modo script)
-# ============================
-
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "miniWMS:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.APP_DEBUG,  # reload solo en desarrollo
+        reload=settings.APP_DEBUG,
     )

@@ -1,42 +1,106 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_analytics.py
+"""
+Rutas de analítica / métricas – Inbound ORBION
 
-from datetime import datetime, timedelta
-from typing import Optional
+✔ UI: /inbound/analytics
+✔ API: /inbound/metrics/*
+✔ Restricciones por plan (analytics + dataset ML)
+✔ Logging estructurado inbound.*
+✔ Validación robusta de fechas y multi-tenant
+
+Notas enterprise:
+- Evitamos importar modelos no usados.
+- Normalizamos y validamos rangos de fecha.
+- Ordenamientos consistentes (proveedores por peor promedio / mayor demora).
+"""
+
+from __future__ import annotations
+
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-    HTTPException,
-)
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import InboundRecepcion, InboundConfig
+from core.models import InboundConfig, InboundRecepcion
 from core.plans import get_inbound_plan_config
 
 from modules.inbound_orbion.services.services_inbound import (
     InboundDomainError,
-    calcular_metricas_recepcion,
     calcular_metricas_negocio,
+    calcular_metricas_recepcion,
 )
 from modules.inbound_orbion.services.services_inbound_config import (
     check_inbound_ml_dataset_permission,
 )
 from modules.inbound_orbion.services.services_inbound_logging import (
-    log_inbound_event,
     log_inbound_error,
+    log_inbound_event,
 )
 
-from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
+from .inbound_common import get_negocio_or_404, inbound_roles_dep, templates
 
 router = APIRouter()
 
 
 # ============================
-#   ANALÍTICA / MÉTRICAS
+#   HELPERS
+# ============================
+
+def _parse_iso_date_param(value: Optional[str], param_name: str) -> Optional[datetime]:
+    """
+    Acepta:
+      - YYYY-MM-DD
+      - ISO con hora
+      - ISO con timezone
+
+    Retorna datetime timezone-aware en UTC (para filtros consistentes).
+    """
+    if not value:
+        return None
+
+    raw = value.strip()
+    try:
+        dt = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Parámetro '{param_name}' inválido (usar YYYY-MM-DD o ISO 8601).",
+        ) from exc
+
+    # Si viene naive -> asumimos UTC (consistencia backend)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+
+    return dt
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _serializar_recepcion(r: InboundRecepcion, metrics: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": r.id,
+        "codigo": r.codigo,
+        "proveedor": getattr(r, "proveedor", None) or "Sin proveedor",
+        "estado": r.estado,
+        "creado_en": r.creado_en.isoformat() if r.creado_en else None,
+        "tiempo_espera_min": metrics.get("tiempo_espera_min"),
+        "tiempo_descarga_min": metrics.get("tiempo_descarga_min"),
+        "tiempo_total_min": metrics.get("tiempo_total_min"),
+        "incidencias": len(r.incidencias) if getattr(r, "incidencias", None) is not None else 0,
+        "creado_en_fmt": r.creado_en.strftime("%d-%m-%Y %H:%M") if r.creado_en else None,
+    }
+
+
+# ============================
+#   UI ANALYTICS
 # ============================
 
 @router.get("/analytics", response_class=HTMLResponse)
@@ -48,13 +112,13 @@ async def inbound_analytics(
     negocio_id = user["negocio_id"]
     negocio = get_negocio_or_404(db, negocio_id)
 
-    # Restricción por plan para analítica inbound
+    # Restricción por plan
     plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
-    if not plan_cfg.get("enable_inbound_analytics", False):
+    if not bool(plan_cfg.get("enable_inbound_analytics", False)):
         log_inbound_error(
             "analytics_plan_denied",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             plan=negocio.plan_tipo,
         )
         raise HTTPException(
@@ -65,7 +129,7 @@ async def inbound_analytics(
             ),
         )
 
-    ahora = datetime.utcnow()
+    ahora = _utcnow()
     hace_30 = ahora - timedelta(days=30)
 
     resumen = calcular_metricas_negocio(
@@ -86,37 +150,26 @@ async def inbound_analytics(
         .all()
     )
 
-    recepciones_data = []
-    estados_count = defaultdict(int)
-    proveedores_data = defaultdict(lambda: {"total": 0, "tiempos_totales": []})
+    recepciones_data: list[dict[str, Any]] = []
+    estados_count: dict[str, int] = defaultdict(int)
+    proveedores_data: dict[str, dict[str, Any]] = defaultdict(lambda: {"total": 0, "tiempos_totales": []})
 
     for r in recepciones:
         m = calcular_metricas_recepcion(r)
         estados_count[r.estado] += 1
 
-        prov = r.proveedor or "Sin proveedor"
+        prov = getattr(r, "proveedor", None) or "Sin proveedor"
         proveedores_data[prov]["total"] += 1
-        if m["tiempo_total_min"] is not None:
+        if m.get("tiempo_total_min") is not None:
             proveedores_data[prov]["tiempos_totales"].append(m["tiempo_total_min"])
 
-        recepciones_data.append(
-            {
-                "id": r.id,
-                "codigo": r.codigo,
-                "proveedor": r.proveedor,
-                "estado": r.estado,
-                "creado_en": r.creado_en,
-                "tiempo_espera_min": m["tiempo_espera_min"],
-                "tiempo_descarga_min": m["tiempo_descarga_min"],
-                "tiempo_total_min": m["tiempo_total_min"],
-                "incidencias": len(r.incidencias),
-            }
-        )
+        recepciones_data.append(_serializar_recepcion(r, m))
 
-    proveedores_resumen = []
+    # Proveedores: promedio tiempo total
+    proveedores_resumen: list[dict[str, Any]] = []
     for prov, info in proveedores_data.items():
         tiempos = info["tiempos_totales"]
-        avg_total = sum(tiempos) / len(tiempos) if tiempos else None
+        avg_total = (sum(tiempos) / len(tiempos)) if tiempos else None
         proveedores_resumen.append(
             {
                 "proveedor": prov,
@@ -125,9 +178,9 @@ async def inbound_analytics(
             }
         )
 
+    # Ordenar: primero los que tienen promedio (desc) y al final los None
     proveedores_resumen.sort(
-        key=lambda x: (x["promedio_tiempo_total_min"] is None, x["promedio_tiempo_total_min"] or 0),
-        reverse=True,
+        key=lambda x: (x["promedio_tiempo_total_min"] is None, -(x["promedio_tiempo_total_min"] or 0.0)),
     )
 
     config = (
@@ -139,9 +192,8 @@ async def inbound_analytics(
     log_inbound_event(
         "analytics_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         total_recepciones=len(recepciones),
-        resumen=resumen,
     )
 
     return templates.TemplateResponse(
@@ -152,7 +204,7 @@ async def inbound_analytics(
             "modulo_nombre": "Orbion Inbound",
             "resumen": resumen,
             "recepciones": recepciones_data,
-            "estados_count": estados_count,
+            "estados_count": dict(estados_count),
             "proveedores_resumen": proveedores_resumen,
             "desde": hace_30,
             "hasta": ahora,
@@ -160,6 +212,10 @@ async def inbound_analytics(
         },
     )
 
+
+# ============================
+#   API METRICS
+# ============================
 
 @router.get("/metrics/resumen", response_class=JSONResponse)
 async def inbound_metrics_resumen(
@@ -174,31 +230,29 @@ async def inbound_metrics_resumen(
     dt_desde = None
     dt_hasta = None
 
-    if desde:
-        try:
-            dt_desde = datetime.fromisoformat(desde)
-        except ValueError as e:
-            log_inbound_error(
-                "metrics_resumen_desde_invalido",
-                negocio_id=negocio_id,
-                user_email=user["email"],
-                raw_value=desde,
-                error=str(e),
-            )
-            raise HTTPException(status_code=400, detail="Parámetro 'desde' inválido (usar YYYY-MM-DD).")
+    try:
+        dt_desde = _parse_iso_date_param(desde, "desde")
+        dt_hasta = _parse_iso_date_param(hasta, "hasta")
+    except HTTPException as exc:
+        log_inbound_error(
+            "metrics_resumen_param_invalido",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            desde=desde,
+            hasta=hasta,
+            error=str(exc.detail),
+        )
+        raise
 
-    if hasta:
-        try:
-            dt_hasta = datetime.fromisoformat(hasta)
-        except ValueError as e:
-            log_inbound_error(
-                "metrics_resumen_hasta_invalido",
-                negocio_id=negocio_id,
-                user_email=user["email"],
-                raw_value=hasta,
-                error=str(e),
-            )
-            raise HTTPException(status_code=400, detail="Parámetro 'hasta' inválido (usar YYYY-MM-DD).")
+    if dt_desde and dt_hasta and dt_desde > dt_hasta:
+        log_inbound_error(
+            "metrics_resumen_rango_invalido",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            desde=desde,
+            hasta=hasta,
+        )
+        raise HTTPException(status_code=400, detail="Rango inválido: 'desde' no puede ser mayor que 'hasta'.")
 
     metrics = calcular_metricas_negocio(
         db=db,
@@ -210,10 +264,9 @@ async def inbound_metrics_resumen(
     log_inbound_event(
         "metrics_resumen_api",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         desde=desde,
         hasta=hasta,
-        metrics=metrics,
     )
 
     return {
@@ -242,43 +295,31 @@ async def inbound_metrics_dataset(
         log_inbound_error(
             "metrics_dataset_plan_denied",
             negocio_id=negocio_id,
-            user_email=user["email"],
-            error=e.message,
+            user_email=user.get("email"),
+            error=getattr(e, "message", str(e)),
         )
-        raise HTTPException(status_code=403, detail=e.message)
+        raise HTTPException(status_code=403, detail=getattr(e, "message", str(e)))
 
     dt_desde = None
     dt_hasta = None
+    try:
+        dt_desde = _parse_iso_date_param(desde, "desde")
+        dt_hasta = _parse_iso_date_param(hasta, "hasta")
+    except HTTPException as exc:
+        log_inbound_error(
+            "metrics_dataset_param_invalido",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            desde=desde,
+            hasta=hasta,
+            error=str(exc.detail),
+        )
+        raise
 
-    if desde:
-        try:
-            dt_desde = datetime.fromisoformat(desde)
-        except ValueError as e:
-            log_inbound_error(
-                "metrics_dataset_desde_invalido",
-                negocio_id=negocio_id,
-                user_email=user["email"],
-                raw_value=desde,
-                error=str(e),
-            )
-            raise HTTPException(status_code=400, detail="Parámetro 'desde' inválido (usar YYYY-MM-DD).")
+    if dt_desde and dt_hasta and dt_desde > dt_hasta:
+        raise HTTPException(status_code=400, detail="Rango inválido: 'desde' no puede ser mayor que 'hasta'.")
 
-    if hasta:
-        try:
-            dt_hasta = datetime.fromisoformat(hasta)
-        except ValueError as e:
-            log_inbound_error(
-                "metrics_dataset_hasta_invalido",
-                negocio_id=negocio_id,
-                user_email=user["email"],
-                raw_value=hasta,
-                error=str(e),
-            )
-            raise HTTPException(status_code=400, detail="Parámetro 'hasta' inválido (usar YYYY-MM-DD).")
-
-    q = db.query(InboundRecepcion).filter(
-        InboundRecepcion.negocio_id == negocio_id,
-    )
+    q = db.query(InboundRecepcion).filter(InboundRecepcion.negocio_id == negocio_id)
 
     if dt_desde:
         q = q.filter(InboundRecepcion.creado_en >= dt_desde)
@@ -287,31 +328,32 @@ async def inbound_metrics_dataset(
 
     recepciones = q.all()
 
-    data = []
+    data: list[dict[str, Any]] = []
     for r in recepciones:
         m = calcular_metricas_recepcion(r)
-        record = {
-            "inbound_id": r.id,
-            "codigo": r.codigo,
-            "proveedor": r.proveedor,
-            "tipo_carga": r.tipo_carga,
-            "estado": r.estado,
-            "creado_en": r.creado_en.isoformat() if r.creado_en else None,
-            "fecha_arribo": r.fecha_arribo.isoformat() if r.fecha_arribo else None,
-            "fecha_inicio_descarga": r.fecha_inicio_descarga.isoformat() if r.fecha_inicio_descarga else None,
-            "fecha_fin_descarga": r.fecha_fin_descarga.isoformat() if r.fecha_fin_descarga else None,
-            "cantidad_lineas": len(r.lineas),
-            "cantidad_incidencias": len(r.incidencias),
-            "tiempo_espera_min": m["tiempo_espera_min"],
-            "tiempo_descarga_min": m["tiempo_descarga_min"],
-            "tiempo_total_min": m["tiempo_total_min"],
-        }
-        data.append(record)
+        data.append(
+            {
+                "inbound_id": r.id,
+                "codigo": r.codigo,
+                "proveedor": getattr(r, "proveedor", None),
+                "tipo_carga": getattr(r, "tipo_carga", None),
+                "estado": r.estado,
+                "creado_en": r.creado_en.isoformat() if r.creado_en else None,
+                "fecha_arribo": r.fecha_arribo.isoformat() if r.fecha_arribo else None,
+                "fecha_inicio_descarga": r.fecha_inicio_descarga.isoformat() if r.fecha_inicio_descarga else None,
+                "fecha_fin_descarga": r.fecha_fin_descarga.isoformat() if r.fecha_fin_descarga else None,
+                "cantidad_lineas": len(getattr(r, "lineas", []) or []),
+                "cantidad_incidencias": len(getattr(r, "incidencias", []) or []),
+                "tiempo_espera_min": m.get("tiempo_espera_min"),
+                "tiempo_descarga_min": m.get("tiempo_descarga_min"),
+                "tiempo_total_min": m.get("tiempo_total_min"),
+            }
+        )
 
     log_inbound_event(
         "metrics_dataset_api",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         desde=desde,
         hasta=hasta,
         registros=len(data),
@@ -324,13 +366,17 @@ async def inbound_metrics_dataset(
     }
 
 
-@router.get("/{recepcion_id}/metrics", response_class=JSONResponse)
+@router.get("/recepciones/{recepcion_id}/metrics", response_class=JSONResponse)
 async def inbound_metrics_recepcion(
     recepcion_id: int,
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
 ):
+    """
+    Métricas detalladas para UNA recepción específica.
+    Ruta final: /inbound/recepciones/{recepcion_id}/metrics
+    """
     negocio_id = user["negocio_id"]
 
     recepcion = (
@@ -347,7 +393,7 @@ async def inbound_metrics_recepcion(
             "metrics_recepcion_not_found",
             negocio_id=negocio_id,
             recepcion_id=recepcion_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
         )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
@@ -357,14 +403,13 @@ async def inbound_metrics_recepcion(
         "metrics_recepcion_api",
         negocio_id=negocio_id,
         recepcion_id=recepcion_id,
-        user_email=user["email"],
-        metrics=metrics,
+        user_email=user.get("email"),
     )
 
     return {
         "inbound_id": recepcion.id,
         "codigo": recepcion.codigo,
-        "proveedor": recepcion.proveedor,
+        "proveedor": getattr(recepcion, "proveedor", None),
         "estado": recepcion.estado,
         "creado_en": recepcion.creado_en.isoformat() if recepcion.creado_en else None,
         "fecha_arribo": recepcion.fecha_arribo.isoformat() if recepcion.fecha_arribo else None,

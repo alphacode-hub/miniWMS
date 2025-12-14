@@ -1,4 +1,4 @@
-﻿{# modules/inbound_orbion/templates/inbound_lista.html #}
+﻿<!-- modules/inbound_orbion/templates/inbound_lista.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}ORBION · Inbound{% endblock %}
@@ -72,7 +72,28 @@
             </div>
 
             <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
-                {% if user.rol == 'admin' %}
+                <a href="/inbound/proveedores"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Proveedores
+                </a>
+
+                <a href="/inbound/citas"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Citas / agenda
+                </a>
+
+                <a href="/inbound/nuevo"
+                   class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                          text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                          active:scale-[0.97] transition-transform transition-colors">
+                    Nueva recepción
+                </a>
+
+                {% if user and user["rol"] == "admin" %}
                 <a href="/inbound/config"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
                           text-[11px] font-medium text-slate-200 bg-slate-900
@@ -89,13 +110,6 @@
                     Ver analítica
                 </a>
                 {% endif %}
-
-                <a href="/inbound/nuevo"
-                   class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                          text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
-                          active:scale-[0.97] transition-transform transition-colors">
-                    Nueva recepción
-                </a>
             </div>
         </div>
     </section>
@@ -117,44 +131,72 @@
               class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
 
             <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">
-                    Estado
-                </label>
+                <label class="text-[11px] font-semibold text-slate-200">Estado</label>
                 <select name="estado"
                         class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                text-xs sm:text-sm text-slate-100
                                focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <option value="">Todos</option>
-                    <option value="PRE_REGISTRADO">Pre-registrado</option>
-                    <option value="EN_ESPERA">En espera</option>
-                    <option value="EN_DESCARGA">En descarga</option>
-                    <option value="EN_CONTROL_CALIDAD">En control de calidad</option>
-                    <option value="CERRADO">Cerrado</option>
+                    <option value=""
+                            {% if filtros is defined and (filtros.estado or '' )=='' %}selected{% endif %}>
+                        Todos
+                    </option>
+                    <option value="PRE_REGISTRADO"
+                            {% if filtros is defined and filtros.estado=='PRE_REGISTRADO' %}selected{% endif %}>
+                        Pre-registrado
+                    </option>
+                    <option value="EN_ESPERA"
+                            {% if filtros is defined and filtros.estado=='EN_ESPERA' %}selected{% endif %}>
+                        En espera
+                    </option>
+                    <option value="EN_DESCARGA"
+                            {% if filtros is defined and filtros.estado=='EN_DESCARGA' %}selected{% endif %}>
+                        En descarga
+                    </option>
+                    <option value="EN_CONTROL_CALIDAD"
+                            {% if filtros is defined and filtros.estado=='EN_CONTROL_CALIDAD' %}selected{% endif %}>
+                        En control de calidad
+                    </option>
+                    <option value="CERRADO"
+                            {% if filtros is defined and filtros.estado=='CERRADO' %}selected{% endif %}>
+                        Cerrado
+                    </option>
                 </select>
             </div>
 
             <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">
-                    Desde
-                </label>
+                <label class="text-[11px] font-semibold text-slate-200">Desde</label>
                 <input type="date"
                        name="desde"
-                       value="{{ filtros.desde if filtros is defined else '' }}"
+                       value="{{ filtros.desde if filtros is defined and filtros.desde is not none else '' }}"
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                               text-xs sm:text-sm text-slate-100
                               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
             </div>
 
             <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">
-                    Hasta
-                </label>
+                <label class="text-[11px] font-semibold text-slate-200">Hasta</label>
                 <input type="date"
                        name="hasta"
-                       value="{{ filtros.hasta if filtros is defined else '' }}"
+                       value="{{ filtros.hasta if filtros is defined and filtros.hasta is not none else '' }}"
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                               text-xs sm:text-sm text-slate-100
                               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+            </div>
+
+            <div class="sm:col-span-3 flex flex-wrap gap-2 pt-1">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                               active:scale-[0.97] transition-transform transition-colors">
+                    Aplicar filtros
+                </button>
+
+                <a href="/inbound"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Limpiar
+                </a>
             </div>
         </form>
     </section>
@@ -186,11 +228,11 @@
         {% if recepciones %}
         <div class="space-y-3">
             {% for r in recepciones %}
-            <a href="/inbound/{{ r.id }}"
-               class="block rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
-                      hover:border-cyan-400/60 hover:bg-slate-900/80
-                      transition-colors">
-                <div class="flex items-center justify-between gap-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
+                        hover:border-cyan-400/60 hover:bg-slate-900/80 transition-colors cursor-pointer"
+                 onclick="window.location.href='/inbound/recepciones/{{ r.id }}'">
+
+                <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 space-y-0.5">
                         <p class="text-xs sm:text-sm font-semibold text-slate-100 truncate">
                             {{ r.codigo }} · {{ r.proveedor }}
@@ -198,10 +240,36 @@
                         <p class="text-[11px] text-slate-400 truncate">
                             {{ r.referencia_externa or "Sin referencia externa" }}
                         </p>
+
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <a href="/inbound/recepciones/{{ r.id }}/pallets"
+                               onclick="event.stopPropagation();"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Pallets
+                            </a>
+                            <a href="/inbound/recepciones/{{ r.id }}/checklist"
+                               onclick="event.stopPropagation();"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Checklist
+                            </a>
+                            <a href="/inbound/recepciones/{{ r.id }}/documentos"
+                               onclick="event.stopPropagation();"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Docs
+                            </a>
+                            <a href="/inbound/recepciones/{{ r.id }}/fotos"
+                               onclick="event.stopPropagation();"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Fotos
+                            </a>
+                        </div>
                     </div>
 
                     <div class="flex flex-col items-end gap-1 shrink-0">
-                        {# Badge de estado #}
                         <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
                             {% if r.estado == 'CERRADO' %}
                                 bg-emerald-500/10 text-emerald-200 border-emerald-500/40
@@ -214,7 +282,7 @@
                             {% else %}
                                 bg-slate-700/40 text-slate-100 border-slate-600
                             {% endif %}">
-                            {{ r.estado.replace('_', ' ') }}
+                            {{ (r.estado or '').replace('_', ' ') }}
                         </span>
 
                         <p class="text-[10px] text-slate-400 whitespace-nowrap">
@@ -229,18 +297,19 @@
 
                 {% if r.contenedor or r.patente_camion %}
                 <p class="mt-1.5 text-[11px] text-slate-400">
-                    {% if r.contenedor %}Contenedor: <span class="text-slate-200">{{ r.contenedor }}</span>{% endif %}
+                    {% if r.contenedor %}
+                    Contenedor: <span class="text-slate-200">{{ r.contenedor }}</span>
+                    {% endif %}
                     {% if r.contenedor and r.patente_camion %} · {% endif %}
-                    {% if r.patente_camion %}Patente: <span class="text-slate-200">{{ r.patente_camion|upper }}</span>{% endif %}
+                    {% if r.patente_camion %}
+                    Patente: <span class="text-slate-200">{{ r.patente_camion|upper }}</span>
+                    {% endif %}
                 </p>
                 {% endif %}
-            </a>
+            </div>
             {% endfor %}
         </div>
 
-        {# =========================
-        PAGINACIÓN
-        ========================== #}
         {% if total_pages and total_pages > 1 %}
         <nav class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 mt-2">
             <div class="flex items-center gap-2">
@@ -251,7 +320,6 @@
             </div>
 
             <div class="flex items-center gap-2">
-                {# Botón Anterior #}
                 {% if page > 1 %}
                 <a href="/inbound?page={{ page - 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
@@ -266,7 +334,6 @@
                 </span>
                 {% endif %}
 
-                {# Botón Siguiente #}
                 {% if page < total_pages %}
                 <a href="/inbound?page={{ page + 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5

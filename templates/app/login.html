@@ -6,11 +6,11 @@
     <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
 
         {# =========================
-        LADO IZQUIERDO: MENSAJE
+        LADO IZQUIERDO: MENSAJE (desktop)
         ========================= #}
         <div class="hidden lg:flex flex-col gap-4 text-slate-100">
             <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-cyan-300">
-                Orbion · Inteligencia operacional en movimiento
+                ORBION · Inteligencia operacional en movimiento
             </p>
             <h1 class="text-2xl xl:text-3xl font-semibold leading-tight">
                 Conéctate al núcleo ORBION<br class="hidden xl:block">
@@ -41,15 +41,10 @@
         LADO DERECHO: CARD LOGIN
         ========================= #}
         <div class="w-full max-w-md mx-auto">
-            <div class="
-                relative overflow-hidden
-                rounded-2xl bg-slate-950/70
-                border border-slate-800
-                shadow-[0_18px_60px_rgba(0,0,0,0.75)]
-                backdrop-blur-xl
-                px-5 py-6 sm:px-7 sm:py-8
-                space-y-5
-            ">
+
+            <div class="relative overflow-hidden rounded-2xl bg-slate-950/70 border border-slate-800
+                        shadow-[0_18px_60px_rgba(0,0,0,0.75)] backdrop-blur-xl
+                        px-5 py-6 sm:px-7 sm:py-8 space-y-5">
 
                 {# Glow superior #}
                 <div class="pointer-events-none absolute -top-32 -right-24 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl"></div>
@@ -69,18 +64,18 @@
 
                 {# Mensaje de error #}
                 {% if error %}
-                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2">
+                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2" role="alert" aria-live="polite">
                     <p class="text-[11px] font-semibold text-rose-200">
                         Error al iniciar sesión
                     </p>
-                    <p class="text-[11px] text-rose-300 mt-0.5">
+                    <p class="text-[11px] text-rose-300 mt-0.5" id="login-error">
                         {{ error }}
                     </p>
                 </div>
                 {% endif %}
 
                 {# Formulario login #}
-                <form method="post" action="/app/login" class="relative space-y-4">
+                <form method="post" action="/app/login" class="relative space-y-4" novalidate>
 
                     {# Correo #}
                     <div class="space-y-1">
@@ -91,60 +86,60 @@
                                name="email"
                                type="email"
                                required
+                               autofocus
                                autocomplete="email"
-                               class="
-                                   w-full block rounded-xl
-                                   border border-slate-700
-                                   bg-slate-950/70
-                                   px-3 py-2 text-sm text-slate-100
-                                   placeholder:text-slate-500
-                                   focus:outline-none
-                                   focus:ring-0
-                                   focus:border-[#00E4FF]
-                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                   transition
-                               "
+                               inputmode="email"
+                               value="{{ email or '' }}"
+                               aria-invalid="{{ 'true' if error else 'false' }}"
+                               aria-describedby="{{ 'login-error' if error else '' }}"
+                               class="w-full block rounded-xl border border-slate-700 bg-slate-950/70
+                                      px-3 py-2 text-sm text-slate-100
+                                      placeholder:text-slate-500
+                                      focus:outline-none focus:ring-0
+                                      focus:border-[#00E4FF]
+                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                      transition"
                                placeholder="usuario@tunegocio.cl" />
                     </div>
 
                     {# Password #}
                     <div class="space-y-1">
-                        <label for="password" class="block text-[11px] font-medium text-slate-200">
-                            Contraseña
-                        </label>
+                        <div class="flex items-center justify-between gap-2">
+                            <label for="password" class="block text-[11px] font-medium text-slate-200">
+                                Contraseña
+                            </label>
+                            <span id="caps-hint" class="hidden text-[10px] text-amber-300">
+                                Caps Lock activado
+                            </span>
+                        </div>
+
                         <input id="password"
                                name="password"
                                type="password"
                                required
                                autocomplete="current-password"
-                               class="
-                                   w-full block rounded-xl
-                                   border border-slate-700
-                                   bg-slate-950/70
-                                   px-3 py-2 text-sm text-slate-100
-                                   placeholder:text-slate-500
-                                   focus:outline-none
-                                   focus:ring-0
-                                   focus:border-[#00E4FF]
-                                   focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                   transition
-                               "
+                               aria-invalid="{{ 'true' if error else 'false' }}"
+                               aria-describedby="{{ 'login-error' if error else '' }}"
+                               class="w-full block rounded-xl border border-slate-700 bg-slate-950/70
+                                      px-3 py-2 text-sm text-slate-100
+                                      placeholder:text-slate-500
+                                      focus:outline-none focus:ring-0
+                                      focus:border-[#00E4FF]
+                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                                      transition"
                                placeholder="••••••••" />
                     </div>
 
                     {# CTA principal #}
                     <button type="submit"
-                            class="
-                                w-full inline-flex items-center justify-center gap-2
-                                rounded-xl px-3 py-2.5 text-sm font-semibold
-                                bg-[#00E4FF]
-                                text-slate-950
-                                shadow-[0_10px_40px_rgba(0,228,255,0.45)]
-                                hover:bg-cyan-300
-                                hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
-                                active:scale-[0.98]
-                                transition
-                            ">
+                            class="w-full inline-flex items-center justify-center gap-2
+                                   rounded-xl px-3 py-2.5 text-sm font-semibold
+                                   bg-[#00E4FF] text-slate-950
+                                   shadow-[0_10px_40px_rgba(0,228,255,0.45)]
+                                   hover:bg-cyan-300
+                                   hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
+                                   active:scale-[0.98]
+                                   transition">
                         Entrar a ORBION
                     </button>
                 </form>
@@ -180,4 +175,19 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const pwd = document.getElementById("password");
+  const hint = document.getElementById("caps-hint");
+  if (!pwd || !hint) return;
+
+  pwd.addEventListener("keyup", function (e) {
+    const caps = e.getModifierState && e.getModifierState("CapsLock");
+    hint.classList.toggle("hidden", !caps);
+  });
+})();
+</script>
 {% endblock %}

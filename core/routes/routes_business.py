@@ -1,21 +1,28 @@
 ﻿# core/routes/routes_business.py
+"""
+Registro de negocio (signup) – ORBION (SaaS enterprise)
 
-from pathlib import Path
-from typing import List
+✔ Registro de negocio + usuario admin
+✔ Validaciones robustas
+✔ Unicidad case-insensitive
+✔ Manejo seguro de errores (sin print)
+✔ Auto-login post-registro
+✔ Preparado para:
+  - verificación email
+  - captcha/antibots
+  - políticas de password avanzadas
+"""
 
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-    Form,
-)
+from __future__ import annotations
+
+from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from core.web import templates
 
-from core.config import settings
 from core.database import get_db
+from core.logging_config import logger
 from core.models import Negocio, Usuario
 from core.security import (
     get_current_user,
@@ -24,16 +31,10 @@ from core.security import (
     crear_cookie_sesion,
 )
 
-# ============================
-#   TEMPLATES
-# ============================
 
-# Estando en core/routes/... subimos a la raíz y usamos /templates global
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # ============================
-#   ROUTER REGISTRO NEGOCIO
+# ROUTER
 # ============================
 
 router = APIRouter(
@@ -43,18 +44,13 @@ router = APIRouter(
 
 
 # ============================
-#     REGISTRAR NEGOCIO
+# GET
 # ============================
 
 @router.get("/registrar-negocio", response_class=HTMLResponse)
 async def registrar_negocio_get(request: Request):
-    """
-    Muestra el formulario para que un dueño cree su negocio + usuario admin.
-    Si ya está autenticado, lo mandamos al hub ORBION (/app).
-    """
     user = get_current_user(request)
     if user:
-        # Ya autenticado → que entre al hub ORBION
         return RedirectResponse(url="/app", status_code=302)
 
     return templates.TemplateResponse(
@@ -69,6 +65,10 @@ async def registrar_negocio_get(request: Request):
         },
     )
 
+
+# ============================
+# POST
+# ============================
 
 @router.post("/registrar-negocio", response_class=HTMLResponse)
 async def registrar_negocio_post(
@@ -90,17 +90,16 @@ async def registrar_negocio_post(
     password = password or ""
     password2 = password2 or ""
 
-    # ============================
-    # Validaciones básicas
-    # ============================
-
+    # ----------------------------
+    # Validaciones base
+    # ----------------------------
     if len(nombre_negocio) < 3:
         errores.append("El nombre del negocio es muy corto (mínimo 3 caracteres).")
 
     if len(nombre_admin) < 3:
         errores.append("El nombre del administrador es muy corto (mínimo 3 caracteres).")
 
-    if " " in email_norm or "@" not in email_norm:
+    if " " in email_norm or "@" not in email_norm or "." not in email_norm:
         errores.append("Debes ingresar un correo válido.")
 
     if len(password) < 8:
@@ -109,16 +108,13 @@ async def registrar_negocio_post(
     if password != password2:
         errores.append("Las contraseñas no coinciden.")
 
-    # Validar unicidad de email
-    existing_user = (
-        db.query(Usuario)
-        .filter(Usuario.email == email_norm)
-        .first()
-    )
-    if existing_user:
-        errores.append("Ya existe un usuario registrado con ese correo.")
+    # Unicidad email
+    if email_norm:
+        existing_user = db.query(Usuario).filter(Usuario.email == email_norm).first()
+        if existing_user:
+            errores.append("Ya existe un usuario registrado con ese correo.")
 
-    # Validar unicidad de nombre de negocio (case-insensitive)
+    # Unicidad negocio (case-insensitive)
     if nombre_negocio:
         existing_neg = (
             db.query(Negocio)
@@ -129,7 +125,6 @@ async def registrar_negocio_post(
             errores.append("Ya existe un negocio con ese nombre de fantasía.")
 
     if errores:
-        # Volver a mostrar el formulario con mensajes
         return templates.TemplateResponse(
             "app/registrar_negocio.html",
             {
@@ -143,19 +138,18 @@ async def registrar_negocio_post(
             status_code=400,
         )
 
-    # ============================
-    # Crear negocio + usuario admin
-    # ============================
-
+    # ----------------------------
+    # Crear negocio + admin
+    # ----------------------------
     try:
         negocio = Negocio(
             nombre_fantasia=nombre_negocio,
             whatsapp_notificaciones=whatsapp or None,
             estado="activo",
-            # Más adelante: plan_tipo="demo" / "pro", etc.
+            plan_tipo="demo",  # default (luego: billing)
         )
         db.add(negocio)
-        db.flush()  # para obtener negocio.id
+        db.flush()
 
         usuario_admin = Usuario(
             negocio_id=negocio.id,
@@ -163,13 +157,17 @@ async def registrar_negocio_post(
             password_hash=hash_password(password),
             rol="admin",
             activo=1,
-            nombre_mostrado=nombre_admin,  # 👈 aquí usamos el nombre del admin
+            nombre_mostrado=nombre_admin,
         )
         db.add(usuario_admin)
         db.commit()
-    except Exception as e:
+
+        logger.info("[SIGNUP] Negocio creado id=%s nombre=%s admin=%s", negocio.id, nombre_negocio, email_norm)
+
+    except Exception as exc:
         db.rollback()
-        print(f"[REGISTRAR_NEGOCIO] Error al crear negocio/usuario: {e}")
+        logger.exception("[SIGNUP] Error creando negocio/usuario: %s", exc)
+
         return templates.TemplateResponse(
             "app/registrar_negocio.html",
             {
@@ -183,7 +181,9 @@ async def registrar_negocio_post(
             status_code=500,
         )
 
-    # Login automático del admin recién creado → directo al hub ORBION
+    # ----------------------------
+    # Auto-login del admin
+    # ----------------------------
     token_sesion = crear_sesion_db(db, usuario_admin)
     response = RedirectResponse(url="/app", status_code=302)
     crear_cookie_sesion(response, usuario_admin, token_sesion)

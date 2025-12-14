@@ -1,6 +1,7 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_lineas.py
 
 from datetime import datetime
+from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -35,7 +36,7 @@ router = APIRouter()
 #   LÍNEAS
 # ============================
 
-@router.post("/{recepcion_id}/lineas", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/lineas", response_class=HTMLResponse)
 async def inbound_agregar_linea(
     recepcion_id: int,
     request: Request,
@@ -47,9 +48,11 @@ async def inbound_agregar_linea(
     cantidad_esperada: float = Form(0),
     cantidad_recibida: float = Form(0),
     unidad: str = Form(""),
-    temperatura_objetivo: float = Form(None),
-    temperatura_recibida: float = Form(None),
+    temperatura_objetivo: Optional[float] = Form(None),
+    temperatura_recibida: Optional[float] = Form(None),
     observaciones: str = Form(""),
+    bultos: Optional[int] = Form(None),
+    kilos: Optional[float] = Form(None),
 
     # Producto rápido
     nuevo_producto_nombre: str = Form(""),
@@ -94,7 +97,7 @@ async def inbound_agregar_linea(
         producto_obj = Producto(
             negocio_id=negocio_id,
             nombre=nuevo_nombre,
-            unidad=nuevo_unidad or "unidad",
+            unidad = (nuevo_unidad or "").strip() or "unidad",
             activo=1,
             origen="inbound",
         )
@@ -158,6 +161,8 @@ async def inbound_agregar_linea(
             temperatura_objetivo=temperatura_objetivo,
             temperatura_recibida=temperatura_recibida,
             observaciones=observaciones or None,
+            peso_kg=kilos,     # ✅ UI kilos -> modelo peso_kg
+            bultos=bultos,
         )
     except InboundDomainError as e:
         log_inbound_error(
@@ -189,15 +194,15 @@ async def inbound_agregar_linea(
         producto_id=producto_obj.id,
     )
 
-    db.commit()
+    
 
     return RedirectResponse(
-        url=f"/inbound/{recepcion_id}",
+        url=f"/inbound/recepciones/{recepcion_id}",
         status_code=302,
     )
 
 
-@router.get("/{recepcion_id}/lineas/nueva", response_class=HTMLResponse)
+@router.get("/recepciones/{recepcion_id}/lineas/nueva", response_class=HTMLResponse)
 async def inbound_nueva_linea_form(
     recepcion_id: int,
     request: Request,
@@ -253,7 +258,7 @@ async def inbound_nueva_linea_form(
     )
 
 
-@router.post("/{recepcion_id}/producto-rapido", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/producto-rapido", response_class=HTMLResponse)
 async def inbound_producto_rapido(
     recepcion_id: int,
     db: Session = Depends(get_db),
@@ -316,12 +321,12 @@ async def inbound_producto_rapido(
     )
 
     return RedirectResponse(
-        url=f"/inbound/{recepcion_id}",
+        url=f"/inbound/recepciones/{recepcion_id}",
         status_code=302,
     )
 
 
-@router.post("/{recepcion_id}/lineas/{linea_id}/eliminar", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/lineas/{linea_id}/eliminar", response_class=HTMLResponse)
 async def inbound_eliminar_linea(
     recepcion_id: int,
     linea_id: int,
@@ -367,6 +372,6 @@ async def inbound_eliminar_linea(
     )
 
     return RedirectResponse(
-        url=f"/inbound/{recepcion_id}",
+        url=f"/inbound/recepciones/{recepcion_id}",
         status_code=302,
     )

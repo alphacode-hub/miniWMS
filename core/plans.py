@@ -1,10 +1,50 @@
 ﻿# core/plans.py
+"""
+Definición de planes SaaS – ORBION (enterprise-ready)
 
-# ============================
-#   PLANES CORE MINIWMS
-# ============================
+✔ Planes tipados y normalizados
+✔ Separación Core WMS / Inbound
+✔ Defaults seguros
+✔ Preparado para:
+  - validaciones centralizadas
+  - UI de planes
+  - billing / upgrades futuros
+"""
 
-PLANES_CORE_WMS = {
+from __future__ import annotations
+
+from typing import TypedDict, Literal
+
+
+# =========================================================
+# TIPOS (contrato enterprise)
+# =========================================================
+
+PlanTipo = Literal["demo", "free", "basic", "pro"]
+
+
+class CoreWMSPlan(TypedDict):
+    max_usuarios: int
+    max_productos: int
+    max_zonas: int
+    max_ubicaciones: int
+    max_slots: int
+    alertas_habilitadas: bool
+    exportaciones_habilitadas: bool
+
+
+class InboundPlan(TypedDict):
+    max_recepciones_mes: int
+    max_incidencias_mes: int
+    enable_inbound_analytics: bool
+    enable_inbound_ml_dataset: bool
+
+
+# =========================================================
+# PLANES CORE WMS
+# =========================================================
+
+PLANES_CORE_WMS: dict[PlanTipo, CoreWMSPlan] = {
     "demo": {
         "max_usuarios": 1,
         "max_productos": 50,
@@ -43,11 +83,12 @@ PLANES_CORE_WMS = {
     },
 }
 
-# ============================
-#   PLANES MÓDULO INBOUND
-# ============================
 
-PLANES_INBOUND = {
+# =========================================================
+# PLANES INBOUND
+# =========================================================
+
+PLANES_INBOUND: dict[PlanTipo, InboundPlan] = {
     "demo": {
         "max_recepciones_mes": 50,
         "max_incidencias_mes": 200,
@@ -75,11 +116,41 @@ PLANES_INBOUND = {
 }
 
 
-def get_core_plan_config(plan_tipo: str) -> dict:
+# =========================================================
+# HELPERS (API ESTABLE)
+# =========================================================
+
+def normalize_plan(plan_tipo: str | None) -> PlanTipo:
+    """
+    Normaliza el tipo de plan.
+    """
     plan = (plan_tipo or "demo").lower()
-    return PLANES_CORE_WMS.get(plan, PLANES_CORE_WMS["demo"])
+    return plan if plan in PLANES_CORE_WMS else "demo"
 
 
-def get_inbound_plan_config(plan_tipo: str) -> dict:
-    plan = (plan_tipo or "demo").lower()
-    return PLANES_INBOUND.get(plan, PLANES_INBOUND["demo"])
+def get_core_plan_config(plan_tipo: str | None) -> CoreWMSPlan:
+    """
+    Retorna la configuración Core WMS del plan.
+    """
+    plan = normalize_plan(plan_tipo)
+    return PLANES_CORE_WMS[plan]
+
+
+def get_inbound_plan_config(plan_tipo: str | None) -> InboundPlan:
+    """
+    Retorna la configuración del módulo Inbound según plan.
+    """
+    plan = normalize_plan(plan_tipo)
+    return PLANES_INBOUND[plan]
+
+
+# =========================================================
+# FUTURO (documentado, no ejecutable)
+# =========================================================
+# - billing_status
+# - límites dinámicos por contrato
+# - addons por módulo
+# - override manual por negocio
+#
+# Todo este archivo está diseñado para NO romperse
+# cuando Orbion crezca a SaaS multi-módulo real.

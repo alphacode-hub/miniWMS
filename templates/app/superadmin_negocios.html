@@ -1,4 +1,4 @@
-﻿{# core/templates/app/superadmin_negocios.html #}
+﻿<!-- templates/app/superadmin_negocios.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}Negocios · Consola Superadmin · ORBION{% endblock %}
@@ -99,7 +99,7 @@
                     <div class="flex flex-col items-end gap-1">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
                                      bg-indigo-500/10 text-indigo-200 border border-indigo-500/40">
-                            {{ n.plan|upper }}
+                            {{ (n.plan or "demo")|upper }}
                         </span>
                         {% if n.estado == "activo" %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
@@ -109,7 +109,7 @@
                         {% else %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
                                      bg-rose-500/10 text-rose-200 border border-rose-500/40">
-                            {{ n.estado|capitalize }}
+                            {{ (n.estado or "desconocido")|capitalize }}
                         </span>
                         {% endif %}
                     </div>
@@ -183,7 +183,7 @@
                         <td class="px-4 py-2 align-middle">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
                                          bg-indigo-500/10 text-indigo-200 border border-indigo-500/40">
-                                {{ n.plan|upper }}
+                                {{ (n.plan or "demo")|upper }}
                             </span>
                         </td>
                         <td class="px-4 py-2 align-middle">
@@ -195,7 +195,7 @@
                             {% else %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
                                          bg-rose-500/10 text-rose-200 border border-rose-500/40">
-                                {{ n.estado|capitalize }}
+                                {{ (n.estado or "desconocido")|capitalize }}
                             </span>
                             {% endif %}
                         </td>

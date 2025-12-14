@@ -1,40 +1,41 @@
 ﻿# core/routes/routes_superadmin.py
-from datetime import datetime, timedelta
-from pathlib import Path
-import math
+"""
+Superadmin Console – ORBION (SaaS enterprise)
 
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-    Form,
-    HTTPException,
-)
+✔ Dashboard global (solo superadmin global)
+✔ Gestión de negocios (lista + detalle)
+✔ Update plan/estado
+✔ Alertas globales
+✔ Impersonación ("ver como negocio") + salir modo negocio
+✔ Auditoría por negocio con filtros + paginación (enterprise)
+✔ Logs consistentes y validaciones de plan
+"""
+
+from __future__ import annotations
+
+import math
+from datetime import datetime, timedelta
+
+
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 
 from core.database import get_db
+from core.logging_config import logger
 from core.models import Negocio, Producto, Movimiento, Alerta, Usuario, Auditoria
 from core.security import (
     require_superadmin_dep,
     _get_session_payload_from_request,
     _set_session_cookie_from_payload,
 )
-from core.plans import PLANES_CORE_WMS
+from core.plans import PLANES_CORE_WMS, normalize_plan
+from core.web import templates
 
 
 # ============================
-#   TEMPLATES
-# ============================
-
-# core/routes -> core -> proyecto -> templates
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-
-# ============================
-#   ROUTER SUPERADMIN
+# ROUTER
 # ============================
 
 router = APIRouter(
@@ -44,7 +45,7 @@ router = APIRouter(
 
 
 # ============================
-# SUPERADMIN
+# DASHBOARD
 # ============================
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -53,17 +54,16 @@ async def superadmin_dashboard(
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    # Si el superadmin está en modo negocio, lo mandamos al dashboard del negocio
+    # Si el superadmin está impersonando, lo mandamos al negocio
     if user.get("impersonando_negocio_id"):
         return RedirectResponse(url="/dashboard", status_code=302)
 
-    # Totales de negocios
     total_negocios = db.query(Negocio).count()
     negocios_activos = db.query(Negocio).filter(Negocio.estado == "activo").count()
     negocios_suspendidos = db.query(Negocio).filter(Negocio.estado == "suspendido").count()
-
-    # Alertas pendientes (todas)
     alertas_pendientes = db.query(Alerta).filter(Alerta.estado == "pendiente").count()
+
+    logger.info("[SUPERADMIN] dashboard total_negocios=%s", total_negocios)
 
     return templates.TemplateResponse(
         "app/superadmin_dashboard.html",
@@ -78,20 +78,25 @@ async def superadmin_dashboard(
     )
 
 
+# ============================
+# NEGOCIOS LISTA
+# ============================
+
 @router.get("/negocios", response_class=HTMLResponse)
 async def superadmin_negocios(
     request: Request,
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    negocios = db.query(Negocio).all()
+    negocios = db.query(Negocio).order_by(Negocio.id.desc()).all()
     data: list[dict] = []
+
+    hace_30 = datetime.utcnow() - timedelta(days=30)
 
     for n in negocios:
         usuarios = db.query(Usuario).filter(Usuario.negocio_id == n.id).count()
         productos = db.query(Producto).filter(Producto.negocio_id == n.id).count()
 
-        hace_30 = datetime.utcnow() - timedelta(days=30)
         movimientos = (
             db.query(Movimiento)
             .filter(
@@ -124,6 +129,10 @@ async def superadmin_negocios(
     )
 
 
+# ============================
+# NEGOCIO DETALLE
+# ============================
+
 @router.get("/negocios/{negocio_id}", response_class=HTMLResponse)
 async def superadmin_negocio_detalle(
     request: Request,
@@ -149,7 +158,7 @@ async def superadmin_negocio_detalle(
             "request": request,
             "user": user,
             "negocio": negocio,
-            "planes": PLANES_CORE_WMS.keys(),
+            "planes": list(PLANES_CORE_WMS.keys()),
             "eventos_auditoria": eventos,
         },
     )
@@ -168,15 +177,31 @@ async def superadmin_negocio_update(
     if not negocio:
         raise HTTPException(status_code=404, detail="Negocio no encontrado")
 
-    negocio.plan_tipo = plan_tipo
-    negocio.estado = estado
+    plan_tipo_norm = normalize_plan(plan_tipo)
+    if plan_tipo_norm not in PLANES_CORE_WMS:
+        raise HTTPException(status_code=400, detail="Plan inválido.")
+
+    estado_norm = (estado or "").strip().lower()
+    if estado_norm not in {"activo", "suspendido"}:
+        raise HTTPException(status_code=400, detail="Estado inválido.")
+
+    negocio.plan_tipo = plan_tipo_norm
+    negocio.estado = estado_norm
     db.commit()
 
-    return RedirectResponse(
-        url=f"/superadmin/negocios/{negocio_id}",
-        status_code=302,
+    logger.info(
+        "[SUPERADMIN] update negocio_id=%s plan=%s estado=%s",
+        negocio_id,
+        plan_tipo_norm,
+        estado_norm,
     )
 
+    return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=302)
+
+
+# ============================
+# ALERTAS GLOBALES
+# ============================
 
 @router.get("/alertas", response_class=HTMLResponse)
 async def superadmin_alertas(
@@ -202,6 +227,10 @@ async def superadmin_alertas(
     )
 
 
+# ============================
+# IMPERSONACIÓN
+# ============================
+
 @router.get("/negocios/{negocio_id}/ver-como")
 async def superadmin_ver_como_negocio(
     negocio_id: int,
@@ -209,25 +238,21 @@ async def superadmin_ver_como_negocio(
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    negocio = (
-        db.query(Negocio)
-        .filter(Negocio.id == negocio_id)
-        .first()
-    )
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
     if not negocio:
         raise HTTPException(status_code=404, detail="Negocio no encontrado.")
 
     payload = _get_session_payload_from_request(request)
     if not payload:
-        # Sesión inválida → login nuevo de la app
         return RedirectResponse("/app/login", status_code=302)
 
-    # Guardamos datos de modo negocio
     payload["acting_negocio_id"] = negocio.id
     payload["acting_negocio_nombre"] = negocio.nombre_fantasia
 
     resp = RedirectResponse(url="/dashboard", status_code=302)
     _set_session_cookie_from_payload(resp, payload)
+
+    logger.info("[SUPERADMIN] impersonate negocio_id=%s", negocio.id)
     return resp
 
 
@@ -245,8 +270,14 @@ async def superadmin_salir_modo_negocio(
 
     resp = RedirectResponse(url="/superadmin/dashboard", status_code=302)
     _set_session_cookie_from_payload(resp, payload)
+
+    logger.info("[SUPERADMIN] exit_impersonation")
     return resp
 
+
+# ============================
+# AUDITORÍA (PAGINADA + FILTROS)
+# ============================
 
 @router.get("/negocios/{negocio_id}/auditoria", response_class=HTMLResponse)
 async def superadmin_auditoria_negocio(
@@ -255,45 +286,30 @@ async def superadmin_auditoria_negocio(
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    """
-    Auditoría de un negocio específico vista por el superadmin.
-    Con filtros + paginación.
-    """
-
-    negocio = (
-        db.query(Negocio)
-        .filter(Negocio.id == negocio_id)
-        .first()
-    )
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
     if not negocio:
         raise HTTPException(status_code=404, detail="Negocio no encontrado")
 
-    # ============================
-    # Filtros desde query params
-    # ============================
     params = request.query_params
 
     texto = (params.get("q") or "").strip()
     fecha_desde_str = (params.get("desde") or "").strip()
     fecha_hasta_str = (params.get("hasta") or "").strip()
-    nivel_str = (params.get("nivel") or "").strip()  # 'critico', 'warning', 'info', 'normal', ''
+    nivel_str = (params.get("nivel") or "").strip()
     page_str = (params.get("page") or "").strip()
 
-    # Página actual (1-based)
     try:
         page = int(page_str) if page_str else 1
     except ValueError:
         page = 1
-
     if page < 1:
         page = 1
 
-    PAGE_SIZE = 5  # tamaño de página (puedes ajustar a gusto)
+    PAGE_SIZE = 10
 
     fecha_desde = None
     fecha_hasta = None
 
-    # Parseo de fechas en formato YYYY-MM-DD
     if fecha_desde_str:
         try:
             fecha_desde = datetime.strptime(fecha_desde_str, "%Y-%m-%d")
@@ -302,51 +318,34 @@ async def superadmin_auditoria_negocio(
 
     if fecha_hasta_str:
         try:
-            fecha_hasta = datetime.strptime(fecha_hasta_str, "%Y-%m-%d")
-            fecha_hasta = fecha_hasta.replace(hour=23, minute=59, second=59)
+            fecha_hasta = datetime.strptime(fecha_hasta_str, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59
+            )
         except ValueError:
             fecha_hasta = None
 
-    # ============================
-    # Query base (sin nivel aún)
-    # ============================
-    base_query = (
-        db.query(Auditoria)
-        .filter(Auditoria.negocio_id == negocio_id)
-    )
+    base_query = db.query(Auditoria).filter(Auditoria.negocio_id == negocio_id)
 
     if fecha_desde:
         base_query = base_query.filter(Auditoria.fecha >= fecha_desde)
     if fecha_hasta:
         base_query = base_query.filter(Auditoria.fecha <= fecha_hasta)
 
-    # Búsqueda por texto libre (usuario, acción, detalle)
     if texto:
         like_expr = f"%{texto}%"
         base_query = base_query.filter(
-            Auditoria.usuario.ilike(like_expr)
-            | Auditoria.accion.ilike(like_expr)
-            | Auditoria.detalle.ilike(like_expr)
+            or_(
+                Auditoria.usuario.ilike(like_expr),
+                Auditoria.accion.ilike(like_expr),
+                Auditoria.detalle.ilike(like_expr),
+            )
         )
 
-    # ============================
-    # Total de registros filtrados
-    # ============================
     total_filtrado = base_query.count()
-
-    # Cálculo de total de páginas
-    if total_filtrado == 0:
-        total_pages = 1
-    else:
-        total_pages = math.ceil(total_filtrado / PAGE_SIZE)
-
-    # Ajuste por si la página pedida es mayor al máximo
+    total_pages = max(1, math.ceil(total_filtrado / PAGE_SIZE))
     if page > total_pages:
         page = total_pages
 
-    # ============================
-    # Traemos SOLO la página actual
-    # ============================
     registros_db = (
         base_query
         .order_by(Auditoria.fecha.desc(), Auditoria.id.desc())
@@ -355,26 +354,15 @@ async def superadmin_auditoria_negocio(
         .all()
     )
 
-    # ============================
-    # Enriquecemos con nivel y filtramos por nivel en memoria
-    # ============================
     registros: list[Auditoria] = []
     for r in registros_db:
         nivel = clasificar_evento_auditoria(r.accion, r.detalle)
         setattr(r, "nivel", nivel)
         registros.append(r)
 
-    # Filtro por nivel, si viene en la URL
     if nivel_str in {"critico", "warning", "info", "normal"}:
         registros = [r for r in registros if getattr(r, "nivel", "normal") == nivel_str]
 
-    # Ojo: al filtrar por nivel en memoria, el total_filtrado no se recalcula.
-    # Si quisieras que el total respete también el nivel, tendrías que incorporar
-    # ese criterio en la query base, pero para efectos visuales generales está bien.
-
-    # ============================
-    # Objeto de paginación
-    # ============================
     paginacion = {
         "page": page,
         "page_size": PAGE_SIZE,
@@ -404,9 +392,8 @@ async def superadmin_auditoria_negocio(
     )
 
 
-
 # ============================
-#   HELPERS AUDITORÍA
+# HELPERS
 # ============================
 
 def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:

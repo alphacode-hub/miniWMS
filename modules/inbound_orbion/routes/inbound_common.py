@@ -1,36 +1,42 @@
 ﻿# modules/inbound_orbion/routes/inbound_common.py
+"""
+Utilidades compartidas del módulo Inbound (ORBION).
+
+✔ Resolver templates (global + inbound) sin hardcodes frágiles
+✔ Dependency de roles inbound (RBAC)
+✔ Helper seguro para obtener negocio
+"""
+
+from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable, Tuple
 
 from fastapi import HTTPException
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from core.models import Negocio
 from core.security import require_roles_dep
+from core.web import templates
+from core.web import add_template_dir  # ✅
 
 # ============================
-#   TEMPLATES COMPARTIDOS
+#   TEMPLATES (registrar dir inbound)
 # ============================
 
-HERE = Path(__file__).resolve()
+_THIS_FILE = Path(__file__).resolve()
+# <root>/modules/inbound_orbion/routes/inbound_common.py
+_PROJECT_ROOT = _THIS_FILE.parents[3]
+_INBOUND_TEMPLATES_DIR = _THIS_FILE.parents[1] / "templates"  # modules/inbound_orbion/templates
 
-PROJECT_ROOT = HERE.parents[3]   # .../miniWMS
-INBOUND_TEMPLATES = HERE.parents[1] / "templates"  # modules/inbound_orbion/templates
-GLOBAL_TEMPLATES = PROJECT_ROOT / "templates"      # templates/
-
-templates = Jinja2Templates(
-    directory=[
-        str(GLOBAL_TEMPLATES),       # base/base_app.html y otros html globales
-        str(INBOUND_TEMPLATES),      # inbound_lista.html, inbound_detalle.html, etc.
-    ]
-)
+# ✅ Se registra una sola vez en el loader global
+add_template_dir(_INBOUND_TEMPLATES_DIR)
 
 # ============================
-#   ROLES PERMITIDOS INBOUND
+#   ROLES PERMITIDOS (INBOUND)
 # ============================
 
-INBOUND_ROLES = (
+INBOUND_ROLES: Tuple[str, ...] = (
     "admin",
     "operador",
     "operador_inbound",
@@ -39,16 +45,18 @@ INBOUND_ROLES = (
     "transportista",
 )
 
-def inbound_roles_dep():
+
+def inbound_roles_dep() -> Callable:
     """
-    Devuelve el dependency para validar roles inbound.
-    Uso: user = Depends(inbound_roles_dep())
+    Dependency para validar roles inbound.
+    Uso:
+        user = Depends(inbound_roles_dep())
     """
     return require_roles_dep(*INBOUND_ROLES)
 
 
 # ============================
-#   HELPERS DE NEGOCIO
+#   HELPERS
 # ============================
 
 def get_negocio_or_404(db: Session, negocio_id: int) -> Negocio:

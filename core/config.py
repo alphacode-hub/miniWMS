@@ -1,88 +1,93 @@
-﻿# config.py
+﻿# core/config.py
+"""
+Configuración central de ORBION.
+
+✔ Compatible con SaaS enterprise
+✔ Multi-entorno (development / staging / production)
+✔ Pydantic Settings v2
+✔ Ajustes automáticos y seguros por entorno
+"""
+
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """
-    Configuración central de la app.
-    Lee variables desde .env y aplica ajustes según APP_ENV.
-    """
-
-    # Pydantic Settings v2: configuración del archivo .env
+    # ============================
+    #   Pydantic settings
+    # ============================
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        case_sensitive=True,
     )
 
-    # -----------------------------
-    # ENTORNO
-    # -----------------------------
+    # ============================
+    #   ENTORNO
+    # ============================
     APP_ENV: Literal["development", "staging", "production"] = "development"
+    APP_DEBUG: bool = True  # Se fuerza automáticamente según entorno
 
-    # Flag base (se ajusta automáticamente según APP_ENV)
-    APP_DEBUG: bool = True  # en production lo forzamos a False
-
-    # -----------------------------
-    # BASE DE DATOS
-    # -----------------------------
-    # En desarrollo, por defecto SQLite local.
-    # En staging/producción, se recomienda sobreescribir por ENV:
-    #   DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/mini_wms
+    # ============================
+    #   BASE DE DATOS
+    # ============================
     DATABASE_URL: str = "sqlite:///./miniWMS.db"
 
-    # -----------------------------
-    # SEGURIDAD / SESIONES
-    # -----------------------------
-    APP_SECRET_KEY: str = "VeuoeH6L"  # ⚠️ en producción CAMBIAR en el .env
+    # ============================
+    #   SEGURIDAD / SESIONES
+    # ============================
+    APP_SECRET_KEY: str
 
-    SUPERADMIN_EMAIL: str = "root@superadmin.cl"
-    SUPERADMIN_PASSWORD: str = "12345678"  # ⚠️ idem, solo para dev/demo
+    SUPERADMIN_EMAIL: str = "super@admin.cl"
+    SUPERADMIN_PASSWORD: str = "changeme"
     SUPERADMIN_BUSINESS_NAME: str = "Global"
 
     SESSION_TOKEN_BYTES: int = 32
-    SESSION_EXPIRATION_MINUTES: int = 1440  # 24h
+    SESSION_EXPIRATION_MINUTES: int = 480  # 8 horas
 
     SESSION_COOKIE_NAME: str = "session"
     SESSION_MAX_AGE_SECONDS: int = 60 * 60 * 4  # 4 horas
-    SESSION_COOKIE_SAMESITE: str = "lax"
-    # En dev False, en production lo forzamos a True automáticamente
-    SESSION_COOKIE_SECURE: bool = False
+    SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+    SESSION_COOKIE_SECURE: bool = False  # Forzado en production
 
-    # -----------------------------
-    # WHATSAPP / NOTIFICACIONES
-    # -----------------------------
+    # ============================
+    #   WHATSAPP / NOTIFICACIONES
+    # ============================
     WHATSAPP_API_URL: str | None = None
     WHATSAPP_INSTANCE_ID: str | None = None
     WHATSAPP_TOKEN: str | None = None
 
-    # -----------------------------
-    # REGLAS DE ALERTAS
-    # -----------------------------
+    # ============================
+    #   ALERTAS / REGLAS DE NEGOCIO
+    # ============================
     STOCK_ALERT_MIN_THRESHOLD: int = 5
     EXPIRATION_ALERT_DAYS: int = 30
 
-    # -----------------------------
-    # AJUSTES AUTOMÁTICOS POR ENTORNO
-    # -----------------------------
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    # ============================
+    #   POST INIT (ENTERPRISE)
+    # ============================
+    def model_post_init(self, __context) -> None:
+        """
+        Ajustes automáticos por entorno.
+        """
         env = (self.APP_ENV or "development").lower()
 
-        # En production:
-        # - Debug SIEMPRE desactivado
-        # - Cookies marcadas como "secure" (solo envía por HTTPS)
         if env == "production":
+            # Seguridad estricta en producción
             object.__setattr__(self, "APP_DEBUG", False)
             object.__setattr__(self, "SESSION_COOKIE_SECURE", True)
 
-        # En staging:
-        # - Debug también desactivado, pero cookies secure lo decides por ENV
         elif env == "staging":
+            # Staging sin debug, cookies según ENV
             object.__setattr__(self, "APP_DEBUG", False)
 
+        else:
+            # Development
+            object.__setattr__(self, "APP_DEBUG", True)
 
-# Instancia global que usarás en el resto del proyecto
+
+# ============================
+#   INSTANCIA GLOBAL
+# ============================
 settings = Settings()

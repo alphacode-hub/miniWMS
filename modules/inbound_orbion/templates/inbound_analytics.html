@@ -1,54 +1,73 @@
-﻿{# modules/inbound_orbion/templates/inbound_analytics.html #}
+﻿<!-- modules/inbound_orbion/templates/inbound_analytics.html -->
 {% extends "base/base_app.html" %}
 
-{% block title %}ORBION · Analítica inbound{% endblock %}
+{% block title %}ORBION · Analítica Inbound{% endblock %}
 
 {# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
 {% block page_header %}
 <div class="hidden sm:flex items-center justify-between gap-4">
     <div class="space-y-1 min-w-0">
         <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Módulo inbound · Analítica avanzada
+            Inbound · Analítica
         </p>
         <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
             Panel ejecutivo de eficiencia inbound
         </h1>
         <p class="text-xs text-slate-400 leading-snug max-w-xl">
-            Métricas de tiempos, proveedores e incidencias para optimizar tu operación de recepciones.
+            Métricas de tiempos, proveedores, estados e incidencias para optimizar tu operación.
         </p>
+
         <p class="text-[11px] text-slate-500 mt-1">
             Período analizado:
-            {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
-            –
-            {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
+            {% if desde %}<span class="text-slate-200 font-semibold">{{ desde.strftime('%d-%m-%Y') }}</span>{% else %}<span class="text-slate-500">—</span>{% endif %}
+            <span class="text-slate-600">→</span>
+            {% if hasta %}<span class="text-slate-200 font-semibold">{{ hasta.strftime('%d-%m-%Y') }}</span>{% else %}<span class="text-slate-500">—</span>{% endif %}
         </p>
     </div>
 
     <div class="flex flex-wrap items-center justify-end gap-2">
         <a href="/inbound/metrics/dataset"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
             Dataset JSON ML/IA
         </a>
         <a href="/inbound"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
+           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
             ← Recepciones inbound
         </a>
     </div>
 </div>
 {% endblock %}
 
-
 {% block content %}
 <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
-    {# HEADER MOBILE (BAJO TOPBAR) #}
+
+    {# =========================
+    ALERTAS / MENSAJES (baseline)
+    ========================= #}
+    {% set err = request.query_params.get("error") if request is defined else None %}
+    {% set ok = request.query_params.get("success") if request is defined else None %}
+
+    {% if err %}
+    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-rose-100 font-semibold">No se pudo cargar analítica</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ err }}</p>
+    </div>
+    {% endif %}
+
+    {% if ok %}
+    <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-emerald-100 font-semibold">OK</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+    </div>
+    {% endif %}
+
+    {# HEADER MOBILE #}
     <div class="sm:hidden space-y-3">
         <div class="space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Módulo inbound · Analítica avanzada
+                Inbound · Analítica
             </p>
             <h1 class="text-base font-semibold text-slate-100 tracking-tight">
                 Panel ejecutivo inbound
@@ -58,27 +77,87 @@
             </p>
             <p class="text-[11px] text-slate-500">
                 Período:
-                {% if desde %}{{ desde.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
-                –
-                {% if hasta %}{{ hasta.strftime('%d-%m-%Y') }}{% else %}-{% endif %}
+                {% if desde %}<span class="text-slate-200 font-semibold">{{ desde.strftime('%d-%m-%Y') }}</span>{% else %}—{% endif %}
+                <span class="text-slate-600">→</span>
+                {% if hasta %}<span class="text-slate-200 font-semibold">{{ hasta.strftime('%d-%m-%Y') }}</span>{% else %}—{% endif %}
             </p>
         </div>
 
         <div class="flex flex-wrap gap-2">
             <a href="/inbound"
                class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
-                ← Recepciones inbound
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Recepciones
             </a>
             <a href="/inbound/metrics/dataset"
                class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                 Dataset ML/IA
             </a>
         </div>
     </div>
+
+    {# =========================
+    CONTEXTO SLA (enterprise)
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Contexto SLA
+                </p>
+                <p class="text-[11px] text-slate-400 max-w-2xl">
+                    Estos objetivos se usan para colorear KPI y detectar desviaciones. Si no hay SLA configurado, usamos umbrales heurísticos.
+                </p>
+
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                                 text-[10px] font-semibold text-slate-200 bg-slate-950/20">
+                        Espera:
+                        {% if config and config.sla_espera_obj_min is not none %}
+                        <span class="ml-1 text-slate-100">{{ config.sla_espera_obj_min|round(1) }} min</span>
+                        {% else %}
+                        <span class="ml-1 text-slate-500">—</span>
+                        {% endif %}
+                    </span>
+
+                    <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                                 text-[10px] font-semibold text-slate-200 bg-slate-950/20">
+                        Descarga:
+                        {% if config and config.sla_descarga_obj_min is not none %}
+                        <span class="ml-1 text-slate-100">{{ config.sla_descarga_obj_min|round(1) }} min</span>
+                        {% else %}
+                        <span class="ml-1 text-slate-500">—</span>
+                        {% endif %}
+                    </span>
+
+                    <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                                 text-[10px] font-semibold text-slate-200 bg-slate-950/20">
+                        Total:
+                        {% if config and config.sla_total_obj_min is not none %}
+                        <span class="ml-1 text-slate-100">{{ config.sla_total_obj_min|round(1) }} min</span>
+                        {% else %}
+                        <span class="ml-1 text-slate-500">—</span>
+                        {% endif %}
+                    </span>
+
+                    <a href="/inbound/config"
+                       class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                              text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                        Ajustar configuración
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
+                <a href="/inbound/metrics/dataset"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Dataset ML/IA
+                </a>
+            </div>
+        </div>
+    </section>
 
     {# =========================
     FILTROS DINÁMICOS
@@ -91,20 +170,16 @@
             <button id="btnResetFiltros"
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                           text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                           transition-colors">
-                Limpiar filtros
+                           text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Limpiar
             </button>
         </header>
 
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80">
-            <!-- Estado -->
             <div class="space-y-1">
-                <label for="filtroEstado" class="text-[11px] font-semibold text-slate-200">
-                    Estado
-                </label>
+                <label for="filtroEstado" class="text-[11px] font-semibold text-slate-200">Estado</label>
                 <select id="filtroEstado"
-                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-2
                                text-xs text-slate-100 focus:outline-none focus:ring-2
                                focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="TODOS">Todos</option>
@@ -114,53 +189,54 @@
                 </select>
             </div>
 
-            <!-- Proveedor -->
             <div class="space-y-1">
-                <label for="filtroProveedor" class="text-[11px] font-semibold text-slate-200">
-                    Proveedor
-                </label>
+                <label for="filtroProveedor" class="text-[11px] font-semibold text-slate-200">Proveedor</label>
                 <select id="filtroProveedor"
-                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-2
                                text-xs text-slate-100 focus:outline-none focus:ring-2
                                focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="TODOS">Todos</option>
+
+                    {% if proveedores_resumen %}
                     {% set proveedores_set = [] %}
                     {% for p in proveedores_resumen %}
-                    {% if p.proveedor not in proveedores_set %}
+                    {% if p.proveedor and p.proveedor not in proveedores_set %}
                     {% set _ = proveedores_set.append(p.proveedor) %}
                     <option value="{{ p.proveedor }}">{{ p.proveedor }}</option>
                     {% endif %}
                     {% endfor %}
+                    {% else %}
+                    {% set proveedores_set2 = [] %}
+                    {% for r in recepciones %}
+                    {% set prov = r.proveedor or 'Sin proveedor' %}
+                    {% if prov not in proveedores_set2 %}
+                    {% set _ = proveedores_set2.append(prov) %}
+                    <option value="{{ prov }}">{{ prov }}</option>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
                 </select>
             </div>
 
-            <!-- Fecha desde -->
             <div class="space-y-1">
-                <label for="filtroDesde" class="text-[11px] font-semibold text-slate-200">
-                    Desde (creación)
-                </label>
-                <input id="filtroDesde"
-                       type="date"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                <label for="filtroDesde" class="text-[11px] font-semibold text-slate-200">Desde (creación)</label>
+                <input id="filtroDesde" type="date"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-2
                               text-xs text-slate-100 focus:outline-none focus:ring-2
                               focus:ring-cyan-500 focus:border-cyan-500 appearance-none" />
             </div>
 
-            <!-- Fecha hasta -->
             <div class="space-y-1">
-                <label for="filtroHasta" class="text-[11px] font-semibold text-slate-200">
-                    Hasta (creación)
-                </label>
-                <input id="filtroHasta"
-                       type="date"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5
+                <label for="filtroHasta" class="text-[11px] font-semibold text-slate-200">Hasta (creación)</label>
+                <input id="filtroHasta" type="date"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-2 py-2
                               text-xs text-slate-100 focus:outline-none focus:ring-2
                               focus:ring-cyan-500 focus:border-cyan-500 appearance-none" />
             </div>
         </div>
 
         <p class="text-[10px] text-slate-400">
-            Los gráficos y la tabla se actualizan en tiempo real según los filtros seleccionados.
+            Los gráficos y la tabla se recalculan en el navegador según tus filtros.
         </p>
     </section>
 
@@ -169,9 +245,7 @@
     ========================== #}
     <section class="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiTotalRecepciones">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                Total recepciones (filtro)
-            </p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">Total recepciones (filtro)</p>
             <p class="mt-1 text-2xl font-semibold text-slate-100" id="kpiTotalRecepcionesValor">
                 {{ resumen.total_recepciones }}
             </p>
@@ -184,19 +258,13 @@
         </div>
 
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromEspera">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                Prom. espera
-            </p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">Prom. espera</p>
             <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromEsperaValor">
                 {% if resumen.promedio_tiempo_espera_min is not none %}
                 {{ resumen.promedio_tiempo_espera_min|round(1) }} min
-                {% else %}
-                -
-                {% endif %}
+                {% else %}-{% endif %}
             </p>
-            <p class="text-[10px] text-slate-500">
-                Arribo → inicio descarga
-            </p>
+            <p class="text-[10px] text-slate-500">Arribo → inicio descarga</p>
             <p class="mt-1 text-[10px] text-slate-400">
                 SLA:
                 {% if config and config.sla_espera_obj_min %}
@@ -208,19 +276,13 @@
         </div>
 
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromDescarga">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                Prom. descarga
-            </p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">Prom. descarga</p>
             <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromDescargaValor">
                 {% if resumen.promedio_tiempo_descarga_min is not none %}
                 {{ resumen.promedio_tiempo_descarga_min|round(1) }} min
-                {% else %}
-                -
-                {% endif %}
+                {% else %}-{% endif %}
             </p>
-            <p class="text-[10px] text-slate-500">
-                Inicio → fin descarga
-            </p>
+            <p class="text-[10px] text-slate-500">Inicio → fin descarga</p>
             <p class="mt-1 text-[10px] text-slate-400">
                 SLA:
                 {% if config and config.sla_descarga_obj_min %}
@@ -232,19 +294,13 @@
         </div>
 
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3" id="kpiPromTotal">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wide">
-                Prom. tiempo total
-            </p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-wide">Prom. tiempo total</p>
             <p class="mt-1 text-xl font-semibold text-slate-100" id="kpiPromTotalValor">
                 {% if resumen.promedio_tiempo_total_min is not none %}
                 {{ resumen.promedio_tiempo_total_min|round(1) }} min
-                {% else %}
-                -
-                {% endif %}
+                {% else %}-{% endif %}
             </p>
-            <p class="text-[10px] text-slate-500">
-                Arribo → fin descarga
-            </p>
+            <p class="text-[10px] text-slate-500">Arribo → fin descarga</p>
             <p class="mt-1 text-[10px] text-slate-400">
                 SLA:
                 {% if config and config.sla_total_obj_min %}
@@ -258,18 +314,16 @@
     </section>
 
     {# =========================
-    ZONA DE GRÁFICOS
+    GRÁFICOS
     ========================== #}
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- Gráfico estados -->
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                Distribución de recepciones por estado
+                Distribución por estado
             </p>
             <div id="chartEstados" class="h-64"></div>
         </div>
 
-        <!-- Gráfico proveedores -->
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Proveedores · tiempo promedio total
@@ -277,18 +331,14 @@
             <div id="chartProveedores" class="h-64"></div>
         </div>
 
-        <!-- Gráfico serie temporal -->
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 lg:col-span-2">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                Tiempo total por recepción (serie temporal)
+                Serie temporal · tiempo total por recepción
             </p>
             <div id="chartRecepciones" class="h-64"></div>
         </div>
     </section>
 
-    {# =========================
-    SPARKLINE GLOBAL
-    ========================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
             Tendencia rápida · tiempo total (sparkline)
@@ -297,12 +347,27 @@
     </section>
 
     {# =========================
-    TABLA DE RECEPCIONES
+    TABLA
     ========================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
-        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
-            Recepciones (vista filtrada)
-        </p>
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                Recepciones (vista filtrada)
+            </p>
+
+            <div class="flex items-center gap-2">
+                <span class="hidden sm:inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                             text-[10px] font-semibold text-slate-200 bg-slate-950/20">
+                    Tip: usa filtros para comparar proveedores
+                </span>
+
+                <a href="/inbound"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                          text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Volver
+                </a>
+            </div>
+        </div>
 
         <div class="overflow-x-auto">
             <table class="min-w-full border-separate border-spacing-y-1 text-xs text-slate-100">
@@ -312,9 +377,9 @@
                         <th class="px-2 py-1">Proveedor</th>
                         <th class="px-2 py-1">Estado</th>
                         <th class="px-2 py-1">Fecha</th>
-                        <th class="px-2 py-1 text-right">Espera (min)</th>
-                        <th class="px-2 py-1 text-right">Descarga (min)</th>
-                        <th class="px-2 py-1 text-right">Total (min)</th>
+                        <th class="px-2 py-1 text-right">Espera</th>
+                        <th class="px-2 py-1 text-right">Descarga</th>
+                        <th class="px-2 py-1 text-right">Total</th>
                         <th class="px-2 py-1 text-right">Inc.</th>
                         <th class="px-2 py-1"></th>
                     </tr>
@@ -322,10 +387,8 @@
                 <tbody id="tablaRecepcionesBody">
                     {% for r in recepciones %}
                     <tr class="bg-slate-900/70 hover:bg-slate-900">
-                        <td class="px-2 py-1 whitespace-nowrap">
-                            {{ r.codigo }}
-                        </td>
-                        <td class="px-2 py-1 max-w-[140px]">
+                        <td class="px-2 py-1 whitespace-nowrap">{{ r.codigo }}</td>
+                        <td class="px-2 py-1 max-w-[180px]">
                             <span class="block truncate text-[11px] text-slate-200">
                                 {{ r.proveedor or 'Sin proveedor' }}
                             </span>
@@ -347,41 +410,22 @@
                             </span>
                         </td>
                         <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-400">
-                            {% if r.creado_en %}
-                            {{ r.creado_en.strftime('%d-%m-%Y %H:%M') }}
-                            {% else %}
-                            -
-                            {% endif %}
+                            {% if r.creado_en %}{{ r.creado_en_fmt or '-' }}{% else %}-{% endif %}
                         </td>
                         <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                            {% if r.tiempo_espera_min is not none %}
-                            {{ r.tiempo_espera_min|round(1) }}
-                            {% else %}
-                            -
-                            {% endif %}
+                            {% if r.tiempo_espera_min is not none %}{{ r.tiempo_espera_min|round(1) }}{% else %}-{% endif %}
                         </td>
                         <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                            {% if r.tiempo_descarga_min is not none %}
-                            {{ r.tiempo_descarga_min|round(1) }}
-                            {% else %}
-                            -
-                            {% endif %}
+                            {% if r.tiempo_descarga_min is not none %}{{ r.tiempo_descarga_min|round(1) }}{% else %}-{% endif %}
                         </td>
                         <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                            {% if r.tiempo_total_min is not none %}
-                            {{ r.tiempo_total_min|round(1) }}
-                            {% else %}
-                            -
-                            {% endif %}
+                            {% if r.tiempo_total_min is not none %}{{ r.tiempo_total_min|round(1) }}{% else %}-{% endif %}
                         </td>
-                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                            {{ r.incidencias }}
-                        </td>
+                        <td class="px-2 py-1 text-right text-[11px] text-slate-100">{{ r.incidencias }}</td>
                         <td class="px-2 py-1 text-right">
-                            <a href="/inbound/{{ r.id }}"
+                            <a href="/inbound/recepciones/{{ r.id }}"
                                class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1
-                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                                      transition-colors">
+                                      text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                                 Ver
                             </a>
                         </td>
@@ -394,40 +438,19 @@
 
 </div>
 
-{# ============================
-   SCRIPTS: ECHARTS + LÓGICA
-   ============================ #}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // ============================
-    // 1) Dataset crudo desde backend
-    // ============================
-    const recepcionesRaw = [
-        {% for r in recepciones %}
-        {
-            id: {{ r.id }},
-            codigo: "{{ r.codigo }}",
-            proveedor: "{{ (r.proveedor or 'Sin proveedor')|replace('"','\\"') }}",
-            estado: "{{ r.estado }}",
-            creado_en: "{{ r.creado_en.isoformat() if r.creado_en else '' }}",
-            tiempo_espera_min: {{ 'null' if r.tiempo_espera_min is none else r.tiempo_espera_min|round(2) }},
-            tiempo_descarga_min: {{ 'null' if r.tiempo_descarga_min is none else r.tiempo_descarga_min|round(2) }},
-            tiempo_total_min: {{ 'null' if r.tiempo_total_min is none else r.tiempo_total_min|round(2) }},
-            incidencias: {{ r.incidencias }},
-        },
-        {% endfor %}
-    ];
-    const recepcionesBase = [...recepcionesRaw];
 
-    // SLA desde backend
+    // Dataset seguro (Jinja -> JSON)
+    const recepcionesRaw = {{ recepciones|tojson }};
+    const recepcionesBase = Array.isArray(recepcionesRaw) ? [...recepcionesRaw] : [];
+
     const SLA_ESPERA   = {% if config and config.sla_espera_obj_min is not none %}{{ config.sla_espera_obj_min }}{% else %}null{% endif %};
     const SLA_DESCARGA = {% if config and config.sla_descarga_obj_min is not none %}{{ config.sla_descarga_obj_min }}{% else %}null{% endif %};
     const SLA_TOTAL    = {% if config and config.sla_total_obj_min is not none %}{{ config.sla_total_obj_min }}{% else %}null{% endif %};
 
-    // ============================
-    // 2) Helpers
-    // ============================
+    // Helpers
     function parseDate(dateStr) {
         if (!dateStr) return null;
         const d = new Date(dateStr);
@@ -442,6 +465,11 @@ document.addEventListener("DOMContentLoaded", function () {
         return `${dd}-${mm}`;
     }
 
+    function clampNum(v) {
+        const n = Number(v);
+        return isNaN(n) ? null : n;
+    }
+
     function filterData() {
         const estadoSel = document.getElementById("filtroEstado").value;
         const provSel   = document.getElementById("filtroProveedor").value;
@@ -452,8 +480,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const hastaDate = hastaVal ? new Date(hastaVal + "T23:59:59") : null;
 
         return recepcionesBase.filter(r => {
-            if (estadoSel !== "TODOS" && r.estado !== estadoSel) return false;
-            if (provSel   !== "TODOS" && r.proveedor !== provSel) return false;
+            const estado = r.estado || "";
+            const proveedor = r.proveedor || "Sin proveedor";
+
+            if (estadoSel !== "TODOS" && estado !== estadoSel) return false;
+            if (provSel   !== "TODOS" && proveedor !== provSel) return false;
 
             if (desdeDate || hastaDate) {
                 const d = parseDate(r.creado_en);
@@ -471,16 +502,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (v <= SLA_TOTAL)        return "#22c55e";
             if (v <= SLA_TOTAL * 1.5)  return "#eab308";
             return "#ef4444";
-        } else {
-            if (v <= 30) return "#22c55e";
-            if (v <= 60) return "#eab308";
-            return "#ef4444";
         }
+        if (v <= 30) return "#22c55e";
+        if (v <= 60) return "#eab308";
+        return "#ef4444";
     }
 
-    // ============================
-    // 3) KPIs + tabla
-    // ============================
     function actualizarKpis(data) {
         const total = data.length;
         let sumEspera = 0, nEspera = 0;
@@ -488,9 +515,12 @@ document.addEventListener("DOMContentLoaded", function () {
         let sumTotal  = 0, nTotal  = 0;
 
         data.forEach(r => {
-            if (r.tiempo_espera_min   !== null) { sumEspera += r.tiempo_espera_min;   nEspera++; }
-            if (r.tiempo_descarga_min !== null) { sumDesc   += r.tiempo_descarga_min; nDesc++;   }
-            if (r.tiempo_total_min    !== null) { sumTotal  += r.tiempo_total_min;    nTotal++;  }
+            const e = clampNum(r.tiempo_espera_min);
+            const d = clampNum(r.tiempo_descarga_min);
+            const t = clampNum(r.tiempo_total_min);
+            if (e !== null) { sumEspera += e; nEspera++; }
+            if (d !== null) { sumDesc   += d; nDesc++; }
+            if (t !== null) { sumTotal  += t; nTotal++; }
         });
 
         const promEspera   = nEspera ? sumEspera / nEspera : null;
@@ -557,39 +587,41 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             let chipClasses = "bg-slate-700/40 text-slate-100 border-slate-600";
-            if (r.estado === "CERRADO")               chipClasses = "bg-emerald-500/10 text-emerald-200 border-emerald-500/40";
-            else if (r.estado === "EN_DESCARGA")      chipClasses = "bg-indigo-500/10 text-indigo-200 border-indigo-500/40";
+            if (r.estado === "CERRADO") chipClasses = "bg-emerald-500/10 text-emerald-200 border-emerald-500/40";
+            else if (r.estado === "EN_DESCARGA") chipClasses = "bg-indigo-500/10 text-indigo-200 border-indigo-500/40";
             else if (r.estado === "EN_CONTROL_CALIDAD") chipClasses = "bg-amber-500/10 text-amber-200 border-amber-500/40";
-            else if (r.estado === "EN_ESPERA")        chipClasses = "bg-sky-500/10 text-sky-200 border-sky-500/40";
+            else if (r.estado === "EN_ESPERA") chipClasses = "bg-sky-500/10 text-sky-200 border-sky-500/40";
 
             const tr = document.createElement("tr");
             tr.className = "bg-slate-900/70 hover:bg-slate-900";
+
+            const proveedor = r.proveedor || "Sin proveedor";
+
             tr.innerHTML = `
-                <td class="px-2 py-1 whitespace-nowrap">${r.codigo}</td>
-                <td class="px-2 py-1 max-w-[140px]">
-                    <span class="block truncate text-[11px] text-slate-200">${r.proveedor}</span>
+                <td class="px-2 py-1 whitespace-nowrap">${r.codigo || "-"}</td>
+                <td class="px-2 py-1 max-w-[180px]">
+                    <span class="block truncate text-[11px] text-slate-200">${proveedor}</span>
                 </td>
                 <td class="px-2 py-1">
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${chipClasses}">
-                        ${r.estado.replaceAll("_", " ")}
+                        ${(r.estado || "").replaceAll("_"," ")}
                     </span>
                 </td>
                 <td class="px-2 py-1 whitespace-nowrap text-[11px] text-slate-400">${fechaStr}</td>
                 <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                    ${r.tiempo_espera_min   !== null ? r.tiempo_espera_min.toFixed(1)   : "-"}
+                    ${clampNum(r.tiempo_espera_min)   !== null ? Number(r.tiempo_espera_min).toFixed(1)   : "-"}
                 </td>
                 <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                    ${r.tiempo_descarga_min !== null ? r.tiempo_descarga_min.toFixed(1) : "-"}
+                    ${clampNum(r.tiempo_descarga_min) !== null ? Number(r.tiempo_descarga_min).toFixed(1) : "-"}
                 </td>
                 <td class="px-2 py-1 text-right text-[11px] text-slate-100">
-                    ${r.tiempo_total_min    !== null ? r.tiempo_total_min.toFixed(1)    : "-"}
+                    ${clampNum(r.tiempo_total_min)    !== null ? Number(r.tiempo_total_min).toFixed(1)    : "-"}
                 </td>
-                <td class="px-2 py-1 text-right text-[11px] text-slate-100">${r.incidencias}</td>
+                <td class="px-2 py-1 text-right text-[11px] text-slate-100">${r.incidencias ?? 0}</td>
                 <td class="px-2 py-1 text-right">
-                    <a href="/inbound/${r.id}"
+                    <a href="/inbound/recepciones/${r.id}"
                        class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1
-                              text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                              transition-colors">
+                              text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                         Ver
                     </a>
                 </td>
@@ -598,41 +630,30 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ============================
-    // 4) Gráficos ECharts
-    // ============================
-    const chartEstadosEl     = document.getElementById("chartEstados");
-    const chartProveedoresEl = document.getElementById("chartProveedores");
-    const chartRecepcionesEl = document.getElementById("chartRecepciones");
-    const chartSparklineEl   = document.getElementById("sparklineGlobal");
-
-    const chartEstados     = echarts.init(chartEstadosEl, null, {renderer: "canvas"});
-    const chartProveedores = echarts.init(chartProveedoresEl, null, {renderer: "canvas"});
-    const chartRecepciones = echarts.init(chartRecepcionesEl, null, {renderer: "canvas"});
-    const chartSparkline   = echarts.init(chartSparklineEl, null, {renderer: "canvas"});
+    // ECharts init
+    const chartEstados     = echarts.init(document.getElementById("chartEstados"), null, {renderer: "canvas"});
+    const chartProveedores = echarts.init(document.getElementById("chartProveedores"), null, {renderer: "canvas"});
+    const chartRecepciones = echarts.init(document.getElementById("chartRecepciones"), null, {renderer: "canvas"});
+    const chartSparkline   = echarts.init(document.getElementById("sparklineGlobal"), null, {renderer: "canvas"});
 
     function renderChartEstados(data) {
         const estadosCount = {};
-        data.forEach(r => {
-            estadosCount[r.estado] = (estadosCount[r.estado] || 0) + 1;
-        });
+        data.forEach(r => { estadosCount[r.estado] = (estadosCount[r.estado] || 0) + 1; });
 
         const estados = Object.keys(estadosCount);
         const valores = estados.map(e => estadosCount[e]);
 
-        const option = {
+        chartEstados.setOption({
             backgroundColor: "transparent",
             animationDuration: 700,
             tooltip: {
                 trigger: "item",
-                formatter: params => {
-                    return `${params.name.replaceAll("_", " ")}<br/>Recepciones: <b>${params.value}</b>`;
-                }
+                formatter: p => `${(p.name||"").replaceAll("_"," ")}<br/>Recepciones: <b>${p.value}</b>`
             },
             grid: {left: 40, right: 10, top: 20, bottom: 40},
             xAxis: {
                 type: "category",
-                data: estados.map(e => e.replaceAll("_", " ")),
+                data: estados.map(e => (e||"").replaceAll("_"," ")),
                 axisLabel: { fontSize: 10, color: "#e5e7eb" },
                 axisTick: { show: false },
                 axisLine: { lineStyle: { color: "#475569" } }
@@ -647,19 +668,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 data: estados.map((e, idx) => ({
                     value: valores[idx],
                     itemStyle: {
-                        borderRadius: [6, 6, 0, 0],
-                        color: (function (estado) {
-                            if (estado === "CERRADO")            return "#22c55e";
-                            if (estado === "EN_DESCARGA")        return "#6366f1";
-                            if (estado === "EN_CONTROL_CALIDAD") return "#f59e0b";
-                            if (estado === "EN_ESPERA")          return "#0ea5e9";
-                            return "#94a3b8";
-                        })(e)
+                        borderRadius: [6,6,0,0],
+                        color: (e === "CERRADO") ? "#22c55e"
+                             : (e === "EN_DESCARGA") ? "#6366f1"
+                             : (e === "EN_CONTROL_CALIDAD") ? "#f59e0b"
+                             : (e === "EN_ESPERA") ? "#0ea5e9"
+                             : "#94a3b8"
                     }
                 }))
             }]
-        };
-        chartEstados.setOption(option);
+        });
     }
 
     function renderChartProveedores(data) {
@@ -667,34 +685,26 @@ document.addEventListener("DOMContentLoaded", function () {
         data.forEach(r => {
             const key = r.proveedor || "Sin proveedor";
             if (!provMap[key]) provMap[key] = { sum: 0, n: 0 };
-            if (r.tiempo_total_min !== null) {
-                provMap[key].sum += r.tiempo_total_min;
-                provMap[key].n++;
-            }
+            const t = clampNum(r.tiempo_total_min);
+            if (t !== null) { provMap[key].sum += t; provMap[key].n++; }
         });
 
-        let provData = Object.keys(provMap).map(p => {
-            const info = provMap[p];
-            return {
-                proveedor: p,
-                avg: info.n ? info.sum / info.n : null
-            };
-        });
-
-        provData = provData.sort((a, b) => (b.avg || 0) - (a.avg || 0));
+        const provData = Object.keys(provMap).map(p => ({
+            proveedor: p,
+            avg: provMap[p].n ? (provMap[p].sum / provMap[p].n) : null
+        })).sort((a,b) => (b.avg || 0) - (a.avg || 0));
 
         const labels = provData.map(d => d.proveedor);
         const valores = provData.map(d => d.avg || 0);
 
-        const option = {
+        chartProveedores.setOption({
             backgroundColor: "transparent",
             animationDuration: 700,
             tooltip: {
                 trigger: "item",
                 formatter: params => {
                     const v = provData[params.dataIndex].avg;
-                    const txt = v ? v.toFixed(1) + " min" : "-";
-                    return `<b>${labels[params.dataIndex]}</b><br/>Tiempo promedio total: <b>${txt}</b>`;
+                    return `<b>${labels[params.dataIndex]}</b><br/>Tiempo promedio total: <b>${v ? v.toFixed(1) + " min" : "-"}</b>`;
                 }
             },
             grid: {left: 120, right: 10, top: 20, bottom: 30},
@@ -714,34 +724,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 type: "bar",
                 data: valores.map(v => ({
                     value: v,
-                    itemStyle: {
-                        borderRadius: 6,
-                        color: colorPorTiempoTotal(v)
-                    }
+                    itemStyle: { borderRadius: 6, color: colorPorTiempoTotal(v) }
                 }))
             }]
-        };
-        chartProveedores.setOption(option);
+        });
     }
 
     function renderChartRecepciones(data) {
-        const sorted = [...data].sort((a, b) => {
-            const da = parseDate(a.creado_en) || 0;
-            const db = parseDate(b.creado_en) || 0;
-            return da - db;
-        }).filter(r => r.tiempo_total_min !== null);
+        const sorted = [...data]
+            .sort((a,b) => (parseDate(a.creado_en) || 0) - (parseDate(b.creado_en) || 0))
+            .filter(r => clampNum(r.tiempo_total_min) !== null);
 
         const xData = sorted.map(r => formatDateLabel(r.creado_en));
-        const yData = sorted.map(r => r.tiempo_total_min);
+        const yData = sorted.map(r => Number(r.tiempo_total_min));
 
-        const option = {
+        chartRecepciones.setOption({
             backgroundColor: "transparent",
             animationDuration: 700,
             tooltip: {
                 trigger: "axis",
                 formatter: params => {
                     const p = params[0];
-                    return `Fecha: <b>${p.axisValue}</b><br/>Tiempo total: <b>${p.data.toFixed(1)} min</b>`;
+                    return `Fecha: <b>${p.axisValue}</b><br/>Tiempo total: <b>${Number(p.data).toFixed(1)} min</b>`;
                 },
                 axisPointer: { type: "cross" }
             },
@@ -764,56 +768,38 @@ document.addEventListener("DOMContentLoaded", function () {
                 smooth: true,
                 data: yData,
                 symbolSize: 6,
-                itemStyle: {
-                    color: "#6366f1"
-                },
-                lineStyle: {
-                    width: 2
-                },
+                itemStyle: { color: "#00E4FF" },
+                lineStyle: { width: 2, color: "#00E4FF" },
                 areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: "rgba(99,102,241,0.35)"},
-                        {offset: 1, color: "rgba(99,102,241,0.0)"}
+                    color: new echarts.graphic.LinearGradient(0,0,0,1,[
+                        {offset:0, color:"rgba(0,228,255,0.25)"},
+                        {offset:1, color:"rgba(0,228,255,0.0)"}
                     ])
                 },
-                markLine: SLA_TOTAL ? {
+                markLine: (SLA_TOTAL !== null) ? {
                     symbol: "none",
                     data: [{
                         yAxis: SLA_TOTAL,
-                        lineStyle: {
-                            color: "#fb923c",
-                            type: "dashed"
-                        },
-                        label: {
-                            formatter: `SLA (${SLA_TOTAL.toFixed ? SLA_TOTAL.toFixed(1) : SLA_TOTAL} min)`,
-                            color: "#fed7aa",
-                            fontSize: 10
-                        }
+                        lineStyle: { color: "#fb923c", type: "dashed" },
+                        label: { formatter: `SLA (${Number(SLA_TOTAL).toFixed(1)} min)`, color: "#fed7aa", fontSize: 10 }
                     }]
                 } : undefined
             }]
-        };
-        chartRecepciones.setOption(option);
+        });
     }
 
     function renderSparkline(data) {
-        const sorted = [...data].sort((a, b) => {
-            const da = parseDate(a.creado_en) || 0;
-            const db = parseDate(b.creado_en) || 0;
-            return da - db;
-        }).filter(r => r.tiempo_total_min !== null);
+        const sorted = [...data]
+            .sort((a,b) => (parseDate(a.creado_en) || 0) - (parseDate(b.creado_en) || 0))
+            .filter(r => clampNum(r.tiempo_total_min) !== null);
 
-        const yData = sorted.map(r => r.tiempo_total_min);
+        const yData = sorted.map(r => Number(r.tiempo_total_min));
 
-        const option = {
+        chartSparkline.setOption({
             backgroundColor: "transparent",
             animationDuration: 700,
             grid: {left: 30, right: 10, top: 5, bottom: 20},
-            xAxis: {
-                type: "category",
-                data: sorted.map((_, idx) => idx),
-                show: false
-            },
+            xAxis: { type: "category", data: sorted.map((_,i)=>i), show: false },
             yAxis: {
                 type: "value",
                 axisLabel: { fontSize: 8, color: "#e5e7eb" },
@@ -824,7 +810,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 formatter: params => {
                     const p = params[0];
                     const r = sorted[p.dataIndex];
-                    return `Fecha: <b>${formatDateLabel(r.creado_en)}</b><br/>Tiempo total: <b>${p.data.toFixed(1)} min</b>`;
+                    return `Fecha: <b>${formatDateLabel(r.creado_en)}</b><br/>Tiempo total: <b>${Number(p.data).toFixed(1)} min</b>`;
                 }
             },
             series: [{
@@ -832,19 +818,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 smooth: true,
                 data: yData,
                 symbol: "none",
-                lineStyle: {
-                    width: 1.8,
-                    color: "#22c55e"
-                },
+                lineStyle: { width: 1.8, color: "#22c55e" },
                 areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        {offset: 0, color: "rgba(34,197,94,0.35)"},
-                        {offset: 1, color: "rgba(34,197,94,0.0)"}
+                    color: new echarts.graphic.LinearGradient(0,0,0,1,[
+                        {offset:0, color:"rgba(34,197,94,0.25)"},
+                        {offset:1, color:"rgba(34,197,94,0.0)"}
                     ])
                 }
             }]
-        };
-        chartSparkline.setOption(option);
+        });
     }
 
     function actualizarGraficos(data) {
@@ -854,9 +836,6 @@ document.addEventListener("DOMContentLoaded", function () {
         renderSparkline(data);
     }
 
-    // ============================
-    // 5) Orquestador
-    // ============================
     function aplicarFiltrosYRender() {
         const dataFiltrada = filterData();
         actualizarKpis(dataFiltrada);
@@ -864,24 +843,21 @@ document.addEventListener("DOMContentLoaded", function () {
         actualizarGraficos(dataFiltrada);
     }
 
-    // Inicial
     aplicarFiltrosYRender();
 
-    // Eventos filtros
     document.getElementById("filtroEstado").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroProveedor").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroDesde").addEventListener("change", aplicarFiltrosYRender);
     document.getElementById("filtroHasta").addEventListener("change", aplicarFiltrosYRender);
 
     document.getElementById("btnResetFiltros").addEventListener("click", () => {
-        document.getElementById("filtroEstado").value  = "TODOS";
+        document.getElementById("filtroEstado").value = "TODOS";
         document.getElementById("filtroProveedor").value = "TODOS";
-        document.getElementById("filtroDesde").value  = "";
-        document.getElementById("filtroHasta").value  = "";
+        document.getElementById("filtroDesde").value = "";
+        document.getElementById("filtroHasta").value = "";
         aplicarFiltrosYRender();
     });
 
-    // Responsivo
     window.addEventListener("resize", () => {
         chartEstados.resize();
         chartProveedores.resize();
@@ -890,5 +866,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
-
 {% endblock %}

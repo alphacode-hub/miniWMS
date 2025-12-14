@@ -1,30 +1,71 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_checklist.py
+"""
+Rutas Checklist – Inbound ORBION
 
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+✔ Config checklist (items) por negocio
+✔ Responder checklist por recepción
+✔ Multi-tenant estricto (negocio_id)
+✔ Logging estructurado inbound.*
+✔ Reutiliza servicios de dominio (split)
+
+Notas enterprise:
+- Toda mutación pasa por servicios (evita lógica duplicada en rutas).
+- Validamos/normalizamos inputs.
+- Commit controlado, fallos logueados y traducidos a HTTP.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import (
-    InboundChecklistItem,
-    InboundChecklistRespuesta,
-)
-from modules.inbound_orbion.services.services_inbound_logging import (
-    log_inbound_event,
-    log_inbound_error,
-)
-from modules.inbound_orbion.services.services_inbound_core import (
+from core.models import InboundChecklistItem, InboundChecklistRespuesta
+
+from modules.inbound_orbion.services.services_inbound import (
     InboundDomainError,
     obtener_recepcion_segura,
 )
+from modules.inbound_orbion.services.services_inbound_checklist import (
+    actualizar_checklist_item_inbound,
+    crear_checklist_item_inbound,
+    listar_checklist_items_inbound,
+    registrar_respuestas_checklist_inbound,
+)
+from modules.inbound_orbion.services.services_inbound_logging import (
+    log_inbound_error,
+    log_inbound_event,
+)
 
-from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
+from .inbound_common import get_negocio_or_404, inbound_roles_dep, templates
 
 router = APIRouter()
 
 
 # ============================
-#   CONFIGURACIÓN CHECKLIST
+#   HELPERS
+# ============================
+
+def _to_int(value: Any, default: int = 1) -> int:
+    try:
+        v = int(value)
+        return v if v > 0 else default
+    except Exception:
+        return default
+
+
+def _to_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    s = str(value).strip().lower()
+    return s in ("true", "on", "1", "si", "sí", "yes")
+
+
+# ============================
+#   CONFIG CHECKLIST (ITEMS)
 # ============================
 
 @router.get("/checklist/config", response_class=HTMLResponse)
@@ -36,19 +77,12 @@ async def inbound_checklist_config(
     negocio_id = user["negocio_id"]
     get_negocio_or_404(db, negocio_id)
 
-    items = (
-        db.query(InboundChecklistItem)
-        .filter(
-            InboundChecklistItem.negocio_id == negocio_id,
-        )
-        .order_by(InboundChecklistItem.orden.asc())
-        .all()
-    )
+    items = listar_checklist_items_inbound(db=db, negocio_id=negocio_id, solo_activos=False)
 
     log_inbound_event(
         "checklist_config_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         total_items=len(items),
     )
 
@@ -68,32 +102,36 @@ async def inbound_checklist_config_nuevo(
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
     texto: str = Form(...),
-    orden: int = Form(1),
+    orden: int | None = Form(None),
 ):
     negocio_id = user["negocio_id"]
     get_negocio_or_404(db, negocio_id)
 
-    item = InboundChecklistItem(
-        negocio_id=negocio_id,
-        texto=texto.strip(),
-        orden=orden,
-        activo=True,
-    )
-
-    db.add(item)
-    db.commit()
+    try:
+        item = crear_checklist_item_inbound(
+            db=db,
+            negocio_id=negocio_id,
+            texto=texto,
+            orden=_to_int(orden, default=1) if orden is not None else None,
+            activo=True,
+        )
+    except InboundDomainError as e:
+        log_inbound_error(
+            "checklist_item_create_failed",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            error=getattr(e, "message", str(e)),
+        )
+        raise HTTPException(status_code=400, detail=getattr(e, "message", str(e)))
 
     log_inbound_event(
         "checklist_item_creado",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         item_id=item.id,
     )
 
-    return RedirectResponse(
-        url="/inbound/checklist/config",
-        status_code=302,
-    )
+    return RedirectResponse(url="/inbound/checklist/config", status_code=302)
 
 
 @router.post("/checklist/config/{item_id}/toggle", response_class=HTMLResponse)
@@ -114,30 +152,41 @@ async def inbound_checklist_config_toggle(
         .first()
     )
     if not item:
-        raise HTTPException(status_code=404, detail="Item de checklist no encontrado")
+        raise HTTPException(status_code=404, detail="Ítem de checklist no encontrado")
 
-    item.activo = not item.activo
-    db.commit()
+    try:
+        updated = actualizar_checklist_item_inbound(
+            db=db,
+            negocio_id=negocio_id,
+            item_id=item_id,
+            activo=not bool(item.activo),
+        )
+    except InboundDomainError as e:
+        log_inbound_error(
+            "checklist_item_toggle_failed",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            item_id=item_id,
+            error=getattr(e, "message", str(e)),
+        )
+        raise HTTPException(status_code=400, detail=getattr(e, "message", str(e)))
 
     log_inbound_event(
         "checklist_item_toggle",
         negocio_id=negocio_id,
-        user_email=user["email"],
-        item_id=item.id,
-        activo=item.activo,
+        user_email=user.get("email"),
+        item_id=updated.id,
+        activo=bool(updated.activo),
     )
 
-    return RedirectResponse(
-        url="/inbound/checklist/config",
-        status_code=302,
-    )
+    return RedirectResponse(url="/inbound/checklist/config", status_code=302)
 
 
 # ============================
-#   RESPUESTA CHECKLIST
+#   RESPONDER CHECKLIST
 # ============================
 
-@router.get("/{recepcion_id}/checklist", response_class=HTMLResponse)
+@router.get("/recepciones/{recepcion_id}/checklist", response_class=HTMLResponse)
 async def inbound_checklist_responder_view(
     recepcion_id: int,
     request: Request,
@@ -146,32 +195,19 @@ async def inbound_checklist_responder_view(
 ):
     negocio_id = user["negocio_id"]
 
-    # Usamos helper de dominio para validar recepción + negocio
     try:
-        recepcion = obtener_recepcion_segura(
-            db=db,
-            recepcion_id=recepcion_id,
-            negocio_id=negocio_id,
-        )
+        recepcion = obtener_recepcion_segura(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
     except InboundDomainError as e:
         log_inbound_error(
             "checklist_recepcion_not_found",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             recepcion_id=recepcion_id,
-            error=e.message,
+            error=getattr(e, "message", str(e)),
         )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
-    items = (
-        db.query(InboundChecklistItem)
-        .filter(
-            InboundChecklistItem.negocio_id == negocio_id,
-            InboundChecklistItem.activo == True,
-        )
-        .order_by(InboundChecklistItem.orden.asc())
-        .all()
-    )
+    items = listar_checklist_items_inbound(db=db, negocio_id=negocio_id, solo_activos=True)
 
     respuestas = (
         db.query(InboundChecklistRespuesta)
@@ -186,7 +222,7 @@ async def inbound_checklist_responder_view(
     log_inbound_event(
         "checklist_responder_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         recepcion_id=recepcion_id,
         total_items=len(items),
         total_respuestas=len(respuestas),
@@ -205,7 +241,7 @@ async def inbound_checklist_responder_view(
     )
 
 
-@router.post("/{recepcion_id}/checklist/guardar", response_class=HTMLResponse)
+@router.post("/recepciones/{recepcion_id}/checklist/guardar", response_class=HTMLResponse)
 async def inbound_checklist_guardar(
     recepcion_id: int,
     request: Request,
@@ -214,82 +250,65 @@ async def inbound_checklist_guardar(
 ):
     negocio_id = user["negocio_id"]
 
-    # Validar recepción
+    # Validar recepción (tenant)
     try:
-        recepcion = obtener_recepcion_segura(
-            db=db,
-            recepcion_id=recepcion_id,
-            negocio_id=negocio_id,
-        )
+        _ = obtener_recepcion_segura(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
     except InboundDomainError as e:
         log_inbound_error(
             "checklist_guardar_recepcion_not_found",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             recepcion_id=recepcion_id,
-            error=e.message,
+            error=getattr(e, "message", str(e)),
         )
         raise HTTPException(status_code=404, detail="Recepción no encontrada")
 
     form = await request.form()
 
-    items = (
-        db.query(InboundChecklistItem)
-        .filter(
-            InboundChecklistItem.negocio_id == negocio_id,
-            InboundChecklistItem.activo == True,
-        )
-        .all()
-    )
-    items_dict = {i.id: i for i in items}
+    # Lista de items activos para decidir qué llaves leer
+    items = listar_checklist_items_inbound(db=db, negocio_id=negocio_id, solo_activos=True)
+    items_ids = [i.id for i in items]
 
-    existing = (
-        db.query(InboundChecklistRespuesta)
-        .filter(
-            InboundChecklistRespuesta.negocio_id == negocio_id,
-            InboundChecklistRespuesta.recepcion_id == recepcion_id,
-        )
-        .all()
-    )
-    existing_dict = {r.item_id: r for r in existing}
-
-    for item_id, item in items_dict.items():
+    payload_respuestas: list[dict[str, Any]] = []
+    for item_id in items_ids:
         key_bool = f"item_{item_id}_valor"
         key_com = f"item_{item_id}_comentario"
 
-        raw_bool = form.get(key_bool)
-        comentario = form.get(key_com, "")
+        valor_bool = _to_bool(form.get(key_bool))
+        comentario = (form.get(key_com) or "").strip() or None
 
-        valor_bool = None
-        if raw_bool is not None:
-            valor_bool = raw_bool.lower() in ("true", "on", "1", "si", "sí")
+        payload_respuestas.append(
+            {
+                "item_id": item_id,
+                "valor_bool": valor_bool,
+                "comentario": comentario,
+            }
+        )
 
-        if item_id in existing_dict:
-            r = existing_dict[item_id]
-            r.valor_bool = valor_bool
-            r.comentario = comentario.strip() or None
-        else:
-            r = InboundChecklistRespuesta(
-                negocio_id=negocio_id,
-                recepcion_id=recepcion_id,
-                item_id=item_id,
-                valor_bool=valor_bool,
-                comentario=comentario.strip() or None,
-                respondido_por_id=user["id"],
-            )
-            db.add(r)
-
-    db.commit()
+    try:
+        registrar_respuestas_checklist_inbound(
+            db=db,
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            respuestas=payload_respuestas,
+            respondido_por_id=user.get("id"),
+        )
+    except InboundDomainError as e:
+        log_inbound_error(
+            "checklist_guardar_failed",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            error=getattr(e, "message", str(e)),
+        )
+        raise HTTPException(status_code=400, detail=getattr(e, "message", str(e)))
 
     log_inbound_event(
         "checklist_respuestas_guardadas",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         recepcion_id=recepcion_id,
-        total_items=len(items_dict),
+        total_items=len(items_ids),
     )
 
-    return RedirectResponse(
-        url=f"/inbound/{recepcion_id}",
-        status_code=302,
-    )
+    return RedirectResponse(url=f"/inbound/recepciones/{recepcion_id}", status_code=302)

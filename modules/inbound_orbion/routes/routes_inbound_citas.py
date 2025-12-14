@@ -1,30 +1,54 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_citas.py
+"""
+Rutas Citas – Inbound ORBION
+
+✔ Lista, creación, cambio de estado y vinculación con recepciones
+✔ Multi-tenant estricto
+✔ Validación y normalización en capa de rutas
+✔ Dominio encapsulado en services_inbound_citas
+✔ Logging estructurado enterprise
+"""
+
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import InboundCita, InboundRecepcion
 
-from modules.inbound_orbion.services.services_inbound_logging import (
-    log_inbound_event,
-    log_inbound_error,
-)
-from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
+from modules.inbound_orbion.services.services_inbound import InboundDomainError
 from modules.inbound_orbion.services.services_inbound_citas import (
     crear_cita_inbound,
     actualizar_cita_inbound,
     marcar_llegada_cita,
     vincular_cita_a_recepcion,
 )
+from modules.inbound_orbion.services.services_inbound_logging import (
+    log_inbound_event,
+    log_inbound_error,
+)
 
-from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
+from .inbound_common import inbound_roles_dep, get_negocio_or_404, templates
 
 router = APIRouter()
+
+
+# ============================
+#   HELPERS
+# ============================
+
+def _parse_datetime_iso(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        raise InboundDomainError(
+            "Fecha y hora inválida. Usa formato ISO (ej: 2025-12-12T14:30)."
+        )
 
 
 # ============================
@@ -42,7 +66,6 @@ async def inbound_citas_lista(
     get_negocio_or_404(db, negocio_id)
 
     q = db.query(InboundCita).filter(InboundCita.negocio_id == negocio_id)
-
     if estado:
         q = q.filter(InboundCita.estado == estado)
 
@@ -51,9 +74,9 @@ async def inbound_citas_lista(
     log_inbound_event(
         "citas_lista_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         total_citas=len(citas),
-        estado=estado,
+        estado_filtro=estado,
     )
 
     return templates.TemplateResponse(
@@ -123,36 +146,20 @@ async def inbound_citas_nueva_submit(
     negocio_id = user["negocio_id"]
     get_negocio_or_404(db, negocio_id)
 
-    # Parse fecha/hora
     try:
-        dt_cita = datetime.fromisoformat(fecha_hora_cita)
-    except ValueError as e:
-        log_inbound_error(
-            "cita_fecha_invalida",
-            negocio_id=negocio_id,
-            user_email=user["email"],
-            raw_value=fecha_hora_cita,
-            error=str(e),
-        )
-        raise HTTPException(
-            status_code=400,
-            detail="Fecha y hora de cita inválida (usar formato ISO).",
-        )
+        dt_cita = _parse_datetime_iso(fecha_hora_cita)
 
-    try:
-        # 1) Crear cita con service
         cita = crear_cita_inbound(
             db=db,
             negocio_id=negocio_id,
-            proveedor=proveedor,
-            transportista=transportista,
-            patente_camion=patente_camion,
-            nombre_conductor=nombre_conductor,
+            proveedor=proveedor or None,
+            transportista=transportista or None,
+            patente_camion=patente_camion or None,
+            nombre_conductor=nombre_conductor or None,
             fecha_hora_cita=dt_cita,
-            observaciones=observaciones,
+            observaciones=observaciones or None,
         )
 
-        # 2) Opcional: vincular a recepción si viene recepcion_id
         recepcion_vinculada_id = None
         if recepcion_id:
             cita = vincular_cita_a_recepcion(
@@ -165,31 +172,26 @@ async def inbound_citas_nueva_submit(
 
     except InboundDomainError as e:
         log_inbound_error(
-            "cita_creada_domain_error",
+            "cita_crear_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
-            recepcion_id=recepcion_id,
-            error=e.message,
+            user_email=user.get("email"),
+            error=getattr(e, "message", str(e)),
         )
-        raise HTTPException(status_code=400, detail=e.message)
+        raise HTTPException(status_code=400, detail=getattr(e, "message", str(e)))
 
-    # Logging de éxito
     log_inbound_event(
         "cita_creada",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         cita_id=cita.id,
         recepcion_id=recepcion_vinculada_id,
     )
 
-    return RedirectResponse(
-        url="/inbound/citas",
-        status_code=302,
-    )
+    return RedirectResponse(url="/inbound/citas", status_code=302)
 
 
 # ============================
-#   CAMBIO DE ESTADO CITA
+#   CAMBIO DE ESTADO
 # ============================
 
 @router.post("/citas/{cita_id}/estado", response_class=HTMLResponse)
@@ -202,7 +204,6 @@ async def inbound_citas_cambiar_estado(
     negocio_id = user["negocio_id"]
 
     try:
-        # Si pasa a ARRIBADO, usamos service específico (setea llegada real)
         if nuevo_estado == "ARRIBADO":
             cita = marcar_llegada_cita(
                 db=db,
@@ -219,25 +220,21 @@ async def inbound_citas_cambiar_estado(
 
     except InboundDomainError as e:
         log_inbound_error(
-            "cita_cambio_estado_domain_error",
+            "cita_cambio_estado_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             cita_id=cita_id,
-            nuevo_estado=nuevo_estado,
-            error=e.message,
+            estado=nuevo_estado,
+            error=getattr(e, "message", str(e)),
         )
-        raise HTTPException(status_code=400, detail=e.message)
+        raise HTTPException(status_code=400, detail=getattr(e, "message", str(e)))
 
     log_inbound_event(
-        "cita_cambio_estado",
+        "cita_estado_actualizado",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         cita_id=cita.id,
-        estado_anterior=None,   # si quieres puedes leerlo antes con un SELECT
         estado_nuevo=cita.estado,
     )
 
-    return RedirectResponse(
-        url="/inbound/citas",
-        status_code=302,
-    )
+    return RedirectResponse(url="/inbound/citas", status_code=302)

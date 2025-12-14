@@ -1,16 +1,29 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_config.py
+"""
+Rutas Config – Inbound ORBION
 
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-)
+✔ Vista + guardado de configuración inbound por negocio
+✔ Multi-tenant estricto
+✔ Normalización robusta de form (bool/int/float/str)
+✔ Logging estructurado
+✔ Preparado para restricción a rol admin
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import InboundConfig
 from core.plans import get_inbound_plan_config
+
+from modules.inbound_orbion.services.services_inbound_config import (
+    get_or_create_inbound_config,
+)
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
 )
@@ -19,6 +32,68 @@ from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
 
 router = APIRouter()
 
+
+# ============================
+#   PARSE FORM (enterprise)
+# ============================
+
+_TRUE_SET = {"true", "on", "yes", "si", "sí", "1"}
+_FALSE_SET = {"false", "off", "no", "0"}
+
+
+def _parse_form_value(raw: Any):
+    """
+    Convierte un input de form en:
+      - None si vacío
+      - bool si parece checkbox/switch
+      - int si calza perfecto
+      - float (tolera coma) si calza
+      - str fallback
+    """
+    if raw is None:
+        return None
+
+    s = str(raw).strip()
+    if s == "":
+        return None
+
+    lower = s.lower()
+    if lower in _TRUE_SET:
+        return True
+    if lower in _FALSE_SET:
+        return False
+
+    # int (solo si es entero puro)
+    try:
+        if "." not in s and "," not in s:
+            return int(s)
+    except ValueError:
+        pass
+
+    # float (tolera coma decimal)
+    try:
+        s2 = s.replace(",", ".")
+        return float(s2)
+    except ValueError:
+        return s
+
+
+def _require_admin_if_needed(user: dict) -> None:
+    """
+    Si decides restringir config solo a admin, activa esta validación.
+    """
+    # 🔒 Activar cuando quieras:
+    # if user.get("rol") != "admin":
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="Solo el admin del negocio puede administrar la configuración inbound.",
+    #     )
+    return
+
+
+# ============================
+#   VIEW
+# ============================
 
 @router.get("/config", response_class=HTMLResponse)
 async def inbound_config_view(
@@ -29,24 +104,17 @@ async def inbound_config_view(
     negocio_id = user["negocio_id"]
     negocio = get_negocio_or_404(db, negocio_id)
 
-    config = (
-        db.query(InboundConfig)
-        .filter(InboundConfig.negocio_id == negocio_id)
-        .first()
-    )
+    _require_admin_if_needed(user)
 
-    if not config:
-        config = InboundConfig(negocio_id=negocio_id)
-        db.add(config)
-        db.commit()
-        db.refresh(config)
+    # ✅ centralizamos creación/lectura en service enterprise
+    config = get_or_create_inbound_config(db, negocio_id)
 
     plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
 
     log_inbound_event(
         "config_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         plan=negocio.plan_tipo,
     )
 
@@ -63,6 +131,10 @@ async def inbound_config_view(
     )
 
 
+# ============================
+#   SAVE
+# ============================
+
 @router.post("/config", response_class=HTMLResponse)
 async def inbound_config_save(
     request: Request,
@@ -70,51 +142,21 @@ async def inbound_config_save(
     user=Depends(inbound_roles_dep()),
 ):
     negocio_id = user["negocio_id"]
+    get_negocio_or_404(db, negocio_id)
 
-    config = (
-        db.query(InboundConfig)
-        .filter(InboundConfig.negocio_id == negocio_id)
-        .first()
-    )
+    _require_admin_if_needed(user)
 
-    if not config:
-        config = InboundConfig(negocio_id=negocio_id)
-        db.add(config)
-        db.flush()
+    # ✅ centralizamos creación/lectura en service enterprise
+    config = get_or_create_inbound_config(db, negocio_id)
 
     form = await request.form()
 
-    def parse_value(raw):
-        if raw is None:
-            return None
-        raw = str(raw).strip()
-        if raw == "":
-            return None
-
-        lower = raw.lower()
-        if lower in ("true", "on", "yes", "si", "1"):
-            return True
-        if lower in ("false", "off", "no", "0"):
-            return False
-
-        if raw.isdigit():
-            try:
-                return int(raw)
-            except ValueError:
-                pass
-
-        try:
-            return float(raw)
-        except ValueError:
-            pass
-
-        return raw
-
+    # Solo se asignan campos existentes del modelo
+    # y se mantiene el parsing robusto.
     for key, raw_value in form.items():
         if not hasattr(config, key):
             continue
-        value = parse_value(raw_value)
-        setattr(config, key, value)
+        setattr(config, key, _parse_form_value(raw_value))
 
     db.commit()
     db.refresh(config)
@@ -122,10 +164,7 @@ async def inbound_config_save(
     log_inbound_event(
         "config_saved",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
     )
 
-    return RedirectResponse(
-        url="/inbound/config",
-        status_code=302,
-    )
+    return RedirectResponse(url="/inbound/config", status_code=302)

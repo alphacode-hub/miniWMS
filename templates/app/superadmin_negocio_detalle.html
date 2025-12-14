@@ -1,4 +1,4 @@
-﻿{# core/templates/app/superadmin_negocio_detalle.html #}
+﻿<!-- templates/app/superadmin_negocio_detalle.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}Negocio {{ negocio.nombre_fantasia }} · Consola Superadmin · ORBION{% endblock %}
@@ -32,7 +32,7 @@
 {% block content %}
 <div class="space-y-6 sm:space-y-8">
 
-    {# HEADER MOBILE (CON BACK, MÁS GENÉRICO) #}
+    {# HEADER MOBILE #}
     <div class="sm:hidden space-y-2">
         <div class="flex items-center justify-between gap-2">
             <div class="space-y-1">
@@ -79,7 +79,7 @@
 
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-500/40
                              bg-indigo-500/10 text-[11px] font-medium text-indigo-200">
-                    Plan: {{ negocio.plan_tipo|upper }}
+                    Plan: {{ (negocio.plan_tipo or "demo")|upper }}
                 </span>
 
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
@@ -88,12 +88,12 @@
                              {% else %}
                                 border border-rose-500/40 bg-rose-500/10 text-rose-200
                              {% endif %}">
-                    Estado: {{ negocio.estado|capitalize }}
+                    Estado: {{ (negocio.estado or "desconocido")|capitalize }}
                 </span>
             </div>
         </header>
 
-        {# ACCIONES RÁPIDAS (SOLO CTAs RELEVANTES) #}
+        {# ACCIONES RÁPIDAS #}
         <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <a href="/superadmin/negocios/{{ negocio.id }}/ver-como"
                class="inline-flex justify-center items-center px-4 py-2 rounded-full text-[11px] sm:text-xs font-semibold
@@ -124,7 +124,7 @@
                         class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100
                                focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
                     {% for p in planes %}
-                    <option value="{{ p }}" {% if negocio.plan_tipo == p %}selected{% endif %}>
+                    <option value="{{ p }}" {% if negocio.plan_tipo==p %}selected{% endif %}>
                         {{ p|upper }}
                     </option>
                     {% endfor %}
@@ -143,10 +143,10 @@
                         name="estado"
                         class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100
                                focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
-                    <option value="activo" {% if negocio.estado == "activo" %}selected{% endif %}>
+                    <option value="activo" {% if negocio.estado=="activo" %}selected{% endif %}>
                         Activo
                     </option>
-                    <option value="suspendido" {% if negocio.estado == "suspendido" %}selected{% endif %}>
+                    <option value="suspendido" {% if negocio.estado=="suspendido" %}selected{% endif %}>
                         Suspendido
                     </option>
                 </select>
@@ -155,7 +155,7 @@
                 </p>
             </div>
 
-            <!-- Botones guardar/cancelar -->
+            <!-- Botones -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-800">
                 <a href="/superadmin/negocios"
                    class="inline-flex justify-center items-center px-4 py-2 rounded-full text-[11px] sm:text-xs font-medium
@@ -177,9 +177,9 @@
         {% if eventos_auditoria and eventos_auditoria|length > 0 %}
         <section class="border-t border-slate-800 pt-4 space-y-3">
             <div class="flex items-center justify-between gap-2">
-                <h2 class="text-xs font-semibold text-slate-100">
+                <h3 class="text-xs font-semibold text-slate-100">
                     Últimos eventos de auditoría de este negocio
-                </h2>
+                </h3>
                 <a href="/superadmin/negocios/{{ negocio.id }}/auditoria"
                    class="text-[11px] font-medium text-cyan-300 hover:text-cyan-200">
                     Ver todo →
@@ -198,7 +198,6 @@
                     <tbody class="divide-y divide-slate-800">
                         {% for ev in eventos_auditoria %}
                         <tr class="hover:bg-slate-900/80">
-                            <!-- Fecha -->
                             <td class="px-3 py-1.5 text-slate-400 whitespace-nowrap">
                                 {% if ev.fecha %}
                                 {{ ev.fecha.strftime("%d-%m-%Y %H:%M") }}
@@ -206,13 +205,9 @@
                                 —
                                 {% endif %}
                             </td>
-
-                            <!-- Usuario -->
                             <td class="px-3 py-1.5 text-slate-200 whitespace-nowrap">
                                 {{ ev.usuario or "—" }}
                             </td>
-
-                            <!-- Acción -->
                             <td class="px-3 py-1.5 text-slate-200">
                                 {{ ev.accion or "—" }}
                             </td>

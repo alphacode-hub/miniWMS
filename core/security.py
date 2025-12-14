@@ -1,9 +1,27 @@
 ﻿# core/security.py
-from datetime import datetime, timedelta
-import json
-import bcrypt
-import secrets
+"""
+Seguridad / Sesiones – ORBION (SaaS enterprise)
 
+✔ Hash/verify password con bcrypt (límite 72 bytes)
+✔ Sesiones persistidas en BD (revocables)
+✔ Cookie firmada (itsdangerous TimestampSigner)
+✔ Control de inactividad (idle timeout) + max_age cookie
+✔ Impersonación (superadmin -> modo negocio) vía payload firmado
+✔ Dependencias FastAPI: require_user_dep / require_roles_dep / require_superadmin_dep
+
+NOTA:
+- El token real se valida SIEMPRE contra BD (cookie solo lleva datos mínimos firmados).
+- En enterprise, la cookie NO contiene el rol definitivo (se calcula desde BD).
+"""
+
+from __future__ import annotations
+
+import json
+import secrets
+from datetime import datetime
+from typing import Any
+
+import bcrypt
 from fastapi import Request, HTTPException, status
 from fastapi.responses import RedirectResponse
 from itsdangerous import TimestampSigner, BadSignature
@@ -13,59 +31,62 @@ from core.config import settings
 from core.database import SessionLocal
 from core.models import Usuario, SesionUsuario
 
+# bcrypt solo usa los primeros 72 bytes
 BCRYPT_MAX_LENGTH = 72
+
+# signer de cookie (firma + timestamp)
 signer = TimestampSigner(settings.APP_SECRET_KEY)
 
-# Tiempo máximo de inactividad de la sesión (en segundos)
-SESSION_INACTIVITY_SECONDS = settings.SESSION_EXPIRATION_MINUTES * 60
+# tiempo máximo de inactividad (idle timeout)
+SESSION_INACTIVITY_SECONDS = int(settings.SESSION_EXPIRATION_MINUTES) * 60
+
+
+# ============================
+# PASSWORDS
+# ============================
+
+def _to_bytes(value: str | bytes) -> bytes:
+    return value.encode("utf-8") if isinstance(value, str) else value
 
 
 def hash_password(password: str) -> str:
-    if isinstance(password, str):
-        password_bytes = password.encode("utf-8")
-    else:
-        password_bytes = password
-
-    password_bytes = password_bytes[:BCRYPT_MAX_LENGTH]
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
+    password_bytes = _to_bytes(password)[:BCRYPT_MAX_LENGTH]
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
     return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    if isinstance(plain_password, str):
-        plain_bytes = plain_password.encode("utf-8")
-    else:
-        plain_bytes = plain_password
-
-    plain_bytes = plain_bytes[:BCRYPT_MAX_LENGTH]
-
-    if isinstance(hashed_password, str):
-        hashed_bytes = hashed_password.encode("utf-8")
-    else:
-        hashed_bytes = hashed_password
-
     try:
+        plain_bytes = _to_bytes(plain_password)[:BCRYPT_MAX_LENGTH]
+        hashed_bytes = _to_bytes(hashed_password)
         return bcrypt.checkpw(plain_bytes, hashed_bytes)
-    except ValueError:
+    except Exception:
         return False
 
 
+# ============================
+# SESSION DB
+# ============================
+
 def crear_sesion_db(db: Session, usuario: Usuario) -> str:
-    # Invalidar sesiones activas previas de este usuario
+    """
+    Crea una nueva sesión y revoca cualquier sesión activa anterior del usuario.
+    Retorna token_sesion (secreto) almacenado en BD.
+    """
     db.query(SesionUsuario).filter(
         SesionUsuario.usuario_id == usuario.id,
-        SesionUsuario.activo == 1
+        SesionUsuario.activo == 1,
     ).update({SesionUsuario.activo: 0})
 
-    token_sesion = secrets.token_urlsafe(settings.SESSION_TOKEN_BYTES)
+    token_sesion = secrets.token_urlsafe(int(settings.SESSION_TOKEN_BYTES))
 
     ahora = datetime.utcnow()
     nueva_sesion = SesionUsuario(
         usuario_id=usuario.id,
         token_sesion=token_sesion,
         activo=1,
-        last_seen_at=ahora,  # aseguramos que no quede en NULL
+        created_at=ahora,
+        last_seen_at=ahora,
     )
     db.add(nueva_sesion)
     db.commit()
@@ -73,43 +94,105 @@ def crear_sesion_db(db: Session, usuario: Usuario) -> str:
     return token_sesion
 
 
-def crear_cookie_sesion(response: RedirectResponse, usuario: Usuario, token_sesion: str):
+def invalidar_sesion_db(db: Session, user_id: int, token_sesion: str) -> None:
     """
-    Crea la cookie firmada de sesión.
+    Revoca una sesión específica.
+    """
+    db.query(SesionUsuario).filter(
+        SesionUsuario.usuario_id == user_id,
+        SesionUsuario.token_sesion == token_sesion,
+        SesionUsuario.activo == 1,
+    ).update({SesionUsuario.activo: 0})
+    db.commit()
 
-    Nota: dejamos solo los datos mínimos para no exponer de más en la cookie.
-    El resto se obtiene siempre desde la BD.
+
+# ============================
+# COOKIE PAYLOAD
+# ============================
+
+def _default_payload(usuario: Usuario, token_sesion: str) -> dict[str, Any]:
     """
-    payload = {
+    Payload mínimo de cookie (firmado).
+    """
+    return {
         "user_id": usuario.id,
         "token_sesion": token_sesion,
+        # Timestamp de auditoría (no es el que valida expiración; eso lo hace TimestampSigner)
         "ts": datetime.utcnow().isoformat(),
+        # Impersonación (opcionales)
+        "acting_negocio_id": None,
+        "acting_negocio_nombre": None,
     }
+
+
+def crear_cookie_sesion(response: RedirectResponse, usuario: Usuario, token_sesion: str) -> None:
+    payload = _default_payload(usuario, token_sesion)
     _set_session_cookie_from_payload(response, payload)
 
 
-def get_current_user(request: Request):
+def _decode_cookie_payload(cookie_value: str) -> dict | None:
+    """
+    Verifica firma + max_age y retorna payload dict.
+    """
+    try:
+        raw = signer.unsign(cookie_value, max_age=SESSION_INACTIVITY_SECONDS)
+        data = raw.decode("utf-8", errors="strict")
+        return json.loads(data)
+    except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    except Exception:
+        return None
+
+
+def _encode_cookie_payload(payload: dict) -> str:
+    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return signer.sign(data).decode("utf-8")
+
+
+def _set_session_cookie_from_payload(response: RedirectResponse, payload: dict) -> None:
+    signed = _encode_cookie_payload(payload)
+
+    # Max age de cookie (puede ser distinto al idle timeout interno)
+    max_age = int(settings.SESSION_MAX_AGE_SECONDS) if settings.SESSION_MAX_AGE_SECONDS else SESSION_INACTIVITY_SECONDS
+
+    response.set_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        value=signed,
+        httponly=True,
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        max_age=max_age,
+        secure=settings.SESSION_COOKIE_SECURE,
+        path="/",
+    )
+
+
+def _get_session_payload_from_request(request: Request) -> dict | None:
     cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not cookie:
         return None
+    return _decode_cookie_payload(cookie)
 
-    # 1) Verificamos firma Y vencimiento (max_age)
-    try:
-        raw = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS)
-        # ⚠️ Aquí es donde antes explotaba: ahora toleramos bytes raros
-        data = raw.decode("utf-8", errors="ignore")
-        payload = json.loads(data)
-    except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
-        # Cookie inválida / corrupta / vieja → tratamos como no autenticado
-        return None
-    except Exception:
-        # Cualquier otra cosa rara → también None
+
+# ============================
+# CURRENT USER (AUTH)
+# ============================
+
+def get_current_user(request: Request) -> dict | None:
+    """
+    Retorna un dict de usuario efectivo para el request, o None.
+
+    Reglas enterprise:
+    - Cookie válida => payload (user_id + token)
+    - Token debe existir en BD como sesión activa
+    - last_seen_at controla idle timeout (además del TimestampSigner max_age)
+    - Superadmin puede impersonar un negocio (rol efectivo = admin)
+    """
+    payload = _get_session_payload_from_request(request)
+    if not payload:
         return None
 
     user_id = payload.get("user_id")
     token_sesion = payload.get("token_sesion")
-
-    # 👇 datos de modo negocio
     acting_negocio_id = payload.get("acting_negocio_id")
     acting_negocio_nombre = payload.get("acting_negocio_nombre")
 
@@ -118,7 +201,6 @@ def get_current_user(request: Request):
 
     db: Session = SessionLocal()
     try:
-        # 2) Buscamos la sesión en BD
         sesion = (
             db.query(SesionUsuario)
             .filter(
@@ -131,8 +213,9 @@ def get_current_user(request: Request):
         if not sesion:
             return None
 
-        # 3) Validamos inactividad por last_seen_at
         ahora = datetime.utcnow()
+
+        # Idle timeout por last_seen_at (revoca)
         if sesion.last_seen_at:
             delta = ahora - sesion.last_seen_at
             if delta.total_seconds() > SESSION_INACTIVITY_SECONDS:
@@ -140,93 +223,74 @@ def get_current_user(request: Request):
                 db.commit()
                 return None
 
-        # 4) Usuario activo
-        usuario = db.query(Usuario).filter(
-            Usuario.id == user_id,
-            Usuario.activo == 1,
-        ).first()
+        usuario = (
+            db.query(Usuario)
+            .filter(Usuario.id == user_id, Usuario.activo == 1)
+            .first()
+        )
         if not usuario:
             return None
 
-        # 5) Actualizamos last_seen_at
+        # touch
         sesion.last_seen_at = ahora
         db.commit()
 
-        # rol real y rol efectivo
         rol_real = usuario.rol
         rol_efectivo = rol_real
 
-        # Negocio base (por defecto)
         negocio_id = usuario.negocio_id
         negocio_nombre = (
             usuario.negocio.nombre_fantasia
-            if usuario.negocio
+            if getattr(usuario, "negocio", None)
             else settings.SUPERADMIN_BUSINESS_NAME
         )
 
-        # Si es superadmin y tiene "modo negocio" activo,
-        # usamos ese negocio y lo tratamos como admin.
+        # Impersonación (superadmin -> admin en contexto negocio)
         if rol_real == "superadmin" and acting_negocio_id:
             negocio_id = acting_negocio_id
             if acting_negocio_nombre:
                 negocio_nombre = acting_negocio_nombre
-            rol_efectivo = "admin"  # se comporta como admin en rutas de negocio
+            rol_efectivo = "admin"
 
         return {
             "id": usuario.id,
             "email": usuario.email,
             "negocio": negocio_nombre,
             "negocio_id": negocio_id,
-            "rol": rol_efectivo,          # lo que ve el resto del sistema
-            "rol_real": rol_real,         # lo que es realmente en BD
+            "rol": rol_efectivo,
+            "rol_real": rol_real,
             "impersonando_negocio_id": acting_negocio_id,
         }
+
     finally:
         db.close()
 
+
+# ============================
+# ROLE HELPERS
+# ============================
 
 def is_superadmin(user: dict) -> bool:
     return (user.get("rol_real") or user.get("rol")) == "superadmin"
 
 
 def is_superadmin_global(user: dict) -> bool:
-    """
-    True solo cuando el superadmin está en modo GLOBAL
-    (no impersonando un negocio).
-    """
     return is_superadmin(user) and not user.get("impersonando_negocio_id")
 
 
 def is_admin(user: dict) -> bool:
-    """
-    True si el usuario es admin de negocio.
-    """
     return user.get("rol") == "admin"
 
 
 def is_operator(user: dict) -> bool:
-    """
-    True si el usuario es operador.
-    """
     return user.get("rol") == "operador"
 
 
-def require_superadmin(user: dict | None):
-    if not user:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo superadmin puede acceder a esta sección",
-        )
+# ============================
+# DEPENDENCIES (FASTAPI)
+# ============================
 
-    rol_real = user.get("rol_real") or user.get("rol")
-    if rol_real != "superadmin":
-        raise HTTPException(
-            status_code=403,
-            detail="Solo superadmin puede acceder a esta sección",
-        )
-
-
-def require_user_dep(request: Request):
+def require_user_dep(request: Request) -> dict:
     user = get_current_user(request)
     if not user:
         raise HTTPException(
@@ -237,7 +301,7 @@ def require_user_dep(request: Request):
 
 
 def require_roles_dep(*allowed_roles: str):
-    def dependency(request: Request):
+    def dependency(request: Request) -> dict:
         user = get_current_user(request)
         if not user:
             raise HTTPException(
@@ -256,7 +320,7 @@ def require_roles_dep(*allowed_roles: str):
     return dependency
 
 
-def require_superadmin_dep(request: Request):
+def require_superadmin_dep(request: Request) -> dict:
     user = get_current_user(request)
     if not user:
         raise HTTPException(
@@ -264,8 +328,7 @@ def require_superadmin_dep(request: Request):
             detail="No autenticado.",
         )
 
-    rol_real = user.get("rol_real") or user.get("rol")
-    if rol_real != "superadmin":
+    if (user.get("rol_real") or user.get("rol")) != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo superadmin puede acceder a esta sección.",
@@ -274,43 +337,38 @@ def require_superadmin_dep(request: Request):
     return user
 
 
-def _get_session_payload_from_request(request: Request) -> dict | None:
+# ============================
+# IMPERSONACIÓN (MODO NEGOCIO)
+# ============================
+
+def activar_modo_negocio(response: RedirectResponse, request: Request, negocio_id: int, negocio_nombre: str) -> bool:
     """
-    Devuelve el payload crudo de la cookie de sesión (o None si no es válido).
-    Se usa para activar / desactivar 'modo negocio'.
+    Activa impersonación en cookie firmada.
+    Retorna True si se aplicó, False si no había sesión válida.
     """
-    cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    if not cookie:
-        return None
+    payload = _get_session_payload_from_request(request)
+    if not payload:
+        return False
 
-    try:
-        raw = signer.unsign(cookie, max_age=SESSION_INACTIVITY_SECONDS)
-        data = raw.decode("utf-8", errors="ignore")
-        payload = json.loads(data)
-        return payload
-    except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    except Exception:
-        return None
+    payload["acting_negocio_id"] = negocio_id
+    payload["acting_negocio_nombre"] = negocio_nombre
+    payload["ts"] = datetime.utcnow().isoformat()
+
+    _set_session_cookie_from_payload(response, payload)
+    return True
 
 
-def _set_session_cookie_from_payload(response: RedirectResponse, payload: dict):
+def desactivar_modo_negocio(response: RedirectResponse, request: Request) -> bool:
     """
-    Firma y guarda la cookie de sesión a partir de un payload ya armado.
-    Usado tanto en login como en el modo negocio.
+    Desactiva impersonación.
     """
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    signed = signer.sign(data).decode("utf-8")
+    payload = _get_session_payload_from_request(request)
+    if not payload:
+        return False
 
-    max_age = settings.SESSION_MAX_AGE_SECONDS or SESSION_INACTIVITY_SECONDS
+    payload["acting_negocio_id"] = None
+    payload["acting_negocio_nombre"] = None
+    payload["ts"] = datetime.utcnow().isoformat()
 
-    response.set_cookie(
-        key=settings.SESSION_COOKIE_NAME,
-        value=signed,
-        httponly=True,
-        samesite=settings.SESSION_COOKIE_SAMESITE,
-        max_age=max_age,
-        secure=settings.SESSION_COOKIE_SECURE,
-        path="/",
-    )
-
+    _set_session_cookie_from_payload(response, payload)
+    return True

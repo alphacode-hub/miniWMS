@@ -1,4 +1,13 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound.py
+"""
+Router agregador del módulo Inbound – ORBION.
+
+✔ Punto único de montaje: /inbound
+✔ Cada subrouter mantiene su propio scope funcional
+✔ Preparado para versionado futuro (v1 / v2)
+"""
+
+from __future__ import annotations
 
 from fastapi import APIRouter
 
@@ -7,8 +16,6 @@ from .routes_inbound_config import router as config_router
 from .routes_inbound_analytics import router as analytics_router
 from .routes_inbound_lineas import router as lineas_router
 from .routes_inbound_incidencias import router as incidencias_router
-
-# Estos los irás creando, pero el agregador ya está listo:
 from .routes_inbound_checklist import router as checklist_router
 from .routes_inbound_citas import router as citas_router
 from .routes_inbound_documentos import router as documentos_router
@@ -16,12 +23,24 @@ from .routes_inbound_fotos import router as fotos_router
 from .routes_inbound_pallets import router as pallets_router
 from .routes_inbound_proveedores import router as proveedores_router
 
+
+# ============================
+#   ROUTER BASE INBOUND
+# ============================
+
 router = APIRouter(
     prefix="/inbound",
     tags=["inbound"],
 )
 
-# Todos los subrouters trabajan SIN prefix base, se montan bajo /inbound
+# ============================
+#   SUBROUTERS
+# ============================
+# Todos los subrouters:
+#   ✔ NO definen prefix base
+#   ✔ Se montan bajo /inbound
+#   ✔ Mantienen responsabilidad única
+
 router.include_router(core_router)
 router.include_router(config_router)
 router.include_router(analytics_router)
