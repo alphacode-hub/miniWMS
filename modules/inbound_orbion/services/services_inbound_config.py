@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final
+import json
 
 from sqlalchemy.orm import Session
 
@@ -47,12 +48,12 @@ def _default_inbound_config_dict() -> dict[str, Any]:
     Valores por defecto para un negocio nuevo en Inbound.
     """
     return {
-        "sla_espera_obj_min": float(DEFAULTS.sla_espera_obj_min),
-        "sla_descarga_obj_min": float(DEFAULTS.sla_descarga_obj_min),
-        "sla_total_obj_min": float(DEFAULTS.sla_total_obj_min),
-        "max_incidencias_criticas_por_recepcion": int(DEFAULTS.max_incidencias_criticas_por_recepcion),
-        "habilitar_alertas_sla": bool(DEFAULTS.habilitar_alertas_sla),
-        "habilitar_alertas_incidencias": bool(DEFAULTS.habilitar_alertas_incidencias),
+        "sla_espera_obj_min": 30.0,
+        "sla_descarga_obj_min": 60.0,
+        "sla_total_obj_min": 120.0,
+        "max_incidencias_criticas_por_recepcion": 2,
+        "habilitar_alertas_sla": True,
+        "habilitar_alertas_incidencias": True,
     }
 
 
@@ -79,9 +80,6 @@ def _coerce_int(v: Any) -> int | None:
 # ============================
 
 def get_or_create_inbound_config(db: Session, negocio_id: int) -> InboundConfig:
-    """
-    Devuelve la configuración inbound del negocio; si no existe, la crea con defaults.
-    """
     config = (
         db.query(InboundConfig)
         .filter(InboundConfig.negocio_id == negocio_id)
@@ -90,10 +88,15 @@ def get_or_create_inbound_config(db: Session, negocio_id: int) -> InboundConfig:
     if config:
         return config
 
+    reglas = _default_inbound_config_dict()  # defaults sugeridos
+
     config = InboundConfig(
         negocio_id=negocio_id,
-        **_default_inbound_config_dict(),
+        reglas_json=json.dumps(reglas),
+        created_at=utcnow(),
+        updated_at=utcnow(),
     )
+
     db.add(config)
     db.commit()
     db.refresh(config)
@@ -213,16 +216,17 @@ def evaluar_sla_y_generar_alertas(
     Retorna: cantidad de alertas creadas.
     """
     config = get_or_create_inbound_config(db, negocio.id)
+    cfg = inbound_config_dict(config)
     metrics = calcular_metricas_recepcion(recepcion)
 
     created = 0
     mensajes: list[str] = []
 
     # --- SLA tiempos ---
-    if bool(getattr(config, "habilitar_alertas_sla", False)):
-        sla_espera = _coerce_float(getattr(config, "sla_espera_obj_min", None))
-        sla_descarga = _coerce_float(getattr(config, "sla_descarga_obj_min", None))
-        sla_total = _coerce_float(getattr(config, "sla_total_obj_min", None))
+    if bool(inbound_cfg_get(cfg, "habilitar_alertas_sla", False)):
+        sla_espera = _coerce_float(inbound_cfg_get(cfg, "sla_espera_obj_min"))
+        sla_descarga = _coerce_float(inbound_cfg_get(cfg, "sla_descarga_obj_min"))
+        sla_total = _coerce_float(inbound_cfg_get(cfg, "sla_total_obj_min"))
 
         if sla_espera and metrics.get("tiempo_espera_min") is not None:
             if float(metrics["tiempo_espera_min"]) > sla_espera:
@@ -246,8 +250,9 @@ def evaluar_sla_y_generar_alertas(
                 )
 
     # --- Incidencias críticas ---
-    if bool(getattr(config, "habilitar_alertas_incidencias", False)):
-        max_crit = _coerce_int(getattr(config, "max_incidencias_criticas_por_recepcion", None))
+    if bool(inbound_cfg_get(cfg, "habilitar_alertas_incidencias", False)):
+        max_crit = _coerce_int(inbound_cfg_get(cfg, "max_incidencias_criticas_por_recepcion"))
+
         if max_crit and hasattr(recepcion, "incidencias") and recepcion.incidencias:
             criticas = [i for i in recepcion.incidencias if (getattr(i, "criticidad", "") or "").lower() == "alta"]
             if len(criticas) > max_crit:
@@ -280,3 +285,14 @@ def evaluar_sla_y_generar_alertas(
         )
 
     return created
+
+def inbound_config_dict(config: InboundConfig) -> dict[str, Any]:
+    if not config.reglas_json:
+        return {}
+    try:
+        return json.loads(config.reglas_json)
+    except Exception:
+        return {}
+
+def inbound_cfg_get(cfg: dict[str, Any], key: str, default=None):
+    return cfg.get(key, default)

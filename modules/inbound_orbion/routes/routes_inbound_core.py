@@ -186,7 +186,7 @@ async def inbound_lista(
     offset = (page - 1) * per_page
 
     recepciones = (
-        q.order_by(InboundRecepcion.creado_en.desc())
+        q.order_by(InboundRecepcion.created_at.desc(), InboundRecepcion.id.desc())
         .offset(offset)
         .limit(per_page)
         .all()

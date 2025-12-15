@@ -125,3 +125,8 @@ if __name__ == "__main__":
         port=8000,
         reload=settings.APP_DEBUG,
     )
+
+
+for r in app.routes:
+    if "inbound" in getattr(r, "path", ""):
+        print(r.path)

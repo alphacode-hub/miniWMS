@@ -168,7 +168,7 @@
                         </label>
                         <input type="number" step="0.1" min="0"
                                name="sla_espera_obj_min"
-                               value="{{ config.sla_espera_obj_min if config.sla_espera_obj_min is not none else '' }}"
+                               value="{{ config_data.get('sla_espera_obj_min', '') }}"
                                placeholder="Ej: 30"
                                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                       text-xs sm:text-sm text-slate-100 placeholder-slate-500
@@ -181,7 +181,7 @@
                         </label>
                         <input type="number" step="0.1" min="0"
                                name="sla_descarga_obj_min"
-                               value="{{ config.sla_descarga_obj_min if config.sla_descarga_obj_min is not none else '' }}"
+                               value="{{ config_data.get('sla_descarga_obj_min', '') }}"
                                placeholder="Ej: 120"
                                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                       text-xs sm:text-sm text-slate-100 placeholder-slate-500
@@ -194,7 +194,7 @@
                         </label>
                         <input type="number" step="0.1" min="0"
                                name="sla_total_obj_min"
-                               value="{{ config.sla_total_obj_min if config.sla_total_obj_min is not none else '' }}"
+                               value="{{ config_data.get('sla_total_obj_min', '') }}"
                                placeholder="Ej: 180"
                                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                       text-xs sm:text-sm text-slate-100 placeholder-slate-500
@@ -229,7 +229,7 @@
                         </label>
                         <input type="number" min="0"
                                name="max_incidencias_criticas_por_recepcion"
-                               value="{{ config.max_incidencias_criticas_por_recepcion if config.max_incidencias_criticas_por_recepcion is not none else '' }}"
+                               value="{{ config_data.get('max_incidencias_criticas_por_recepcion', '') }}"
                                placeholder="Ej: 1"
                                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                                       text-xs sm:text-sm text-slate-100 placeholder-slate-500
@@ -263,7 +263,7 @@
                     <label class="inline-flex items-start gap-2 text-xs text-slate-200">
                         <input type="checkbox"
                                name="require_lote" value="true"
-                               {% if config.require_lote %}checked{% endif %}
+                               {% if config_data.get('require_lote') %}checked{% endif %}
                                class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
                                       focus:ring-cyan-500 focus:ring-offset-0" />
                         <span>Exigir <span class="font-semibold">lote</span> en cada línea.</span>
@@ -273,7 +273,7 @@
                     <label class="inline-flex items-start gap-2 text-xs text-slate-200">
                         <input type="checkbox"
                                name="require_fecha_vencimiento" value="true"
-                               {% if config.require_fecha_vencimiento %}checked{% endif %}
+                               {% if config_data.get('require_fecha_vencimiento') %}checked{% endif %}
                                class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
                                       focus:ring-cyan-500 focus:ring-offset-0" />
                         <span>Exigir <span class="font-semibold">fecha de vencimiento</span> en cada línea.</span>
@@ -283,7 +283,7 @@
                     <label class="inline-flex items-start gap-2 text-xs text-slate-200">
                         <input type="checkbox"
                                name="require_temperatura" value="true"
-                               {% if config.require_temperatura %}checked{% endif %}
+                               {% if config_data.get('require_temperatura') %}checked{% endif %}
                                class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
                                       focus:ring-cyan-500 focus:ring-offset-0" />
                         <span>Exigir <span class="font-semibold">temperatura recibida</span> en cada línea.</span>
@@ -311,13 +311,12 @@
                 </header>
 
                 <div class="space-y-2">
-                    {# Hidden para que siempre envíe false si queda desmarcado #}
                     <input type="hidden" name="habilitar_alertas_sla" value="false">
                     <label class="inline-flex items-start gap-2 text-xs text-slate-200">
                         <input type="checkbox"
                                name="habilitar_alertas_sla"
                                value="true"
-                               {% if config.habilitar_alertas_sla %}checked{% endif %}
+                               {% if config_data.get('habilitar_alertas_sla') %}checked{% endif %}
                                class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
                                       focus:ring-cyan-500 focus:ring-offset-0" />
                         <span>
@@ -330,7 +329,7 @@
                         <input type="checkbox"
                                name="habilitar_alertas_incidencias"
                                value="true"
-                               {% if config.habilitar_alertas_incidencias %}checked{% endif %}
+                               {% if config_data.get('habilitar_alertas_incidencias') %}checked{% endif %}
                                class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
                                       focus:ring-cyan-500 focus:ring-offset-0" />
                         <span>
