@@ -1,4 +1,5 @@
-﻿from __future__ import annotations
+﻿# core/models/inbound/pallets.py #
+from __future__ import annotations
 
 from sqlalchemy import (
     Column,
@@ -6,7 +7,6 @@ from sqlalchemy import (
     String,
     ForeignKey,
     DateTime,
-    Date,
     Float,
     Text,
     UniqueConstraint,
@@ -16,7 +16,7 @@ from sqlalchemy.types import Enum as SAEnum
 
 from core.database import Base
 from core.models.time import utcnow
-from core.models.enums import RecepcionEstado, PalletEstado
+from core.models.enums import PalletEstado
 
 
 class InboundPallet(Base):
@@ -38,30 +38,27 @@ class InboundPallet(Base):
         index=True,
     )
 
+    # Operación
+    bultos = Column(Integer, nullable=True)
+    temperatura_promedio = Column(Float, nullable=True)
+    observaciones = Column(Text, nullable=True)
+
+    # Pesos
     peso_bruto_kg = Column(Float, nullable=True)
     peso_tara_kg = Column(Float, nullable=True)
     peso_neto_kg = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
     cerrado_at = Column(DateTime(timezone=True), nullable=True)
+    cerrado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
     recepcion = relationship("InboundRecepcion", back_populates="pallets")
     items = relationship("InboundPalletItem", back_populates="pallet", cascade="all, delete-orphan")
 
-    incidencias = relationship(
-    "InboundIncidencia",
-    back_populates="pallet",
-    cascade="all, delete-orphan",
-    )
-
-    fotos = relationship(
-    "InboundFoto",
-    back_populates="pallet",
-    cascade="all, delete-orphan",
-    )
-
-
-
+    incidencias = relationship("InboundIncidencia", back_populates="pallet", cascade="all, delete-orphan")
+    fotos = relationship("InboundFoto", back_populates="pallet", cascade="all, delete-orphan")
 
 
 class InboundPalletItem(Base):
@@ -76,7 +73,8 @@ class InboundPalletItem(Base):
     pallet_id = Column(Integer, ForeignKey("inbound_pallets.id"), index=True, nullable=False)
     linea_id = Column(Integer, ForeignKey("inbound_lineas.id"), index=True, nullable=False)
 
-    cantidad = Column(Float, nullable=False)
+    cantidad = Column(Float, nullable=True)
+    peso_kg = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 

@@ -15,7 +15,7 @@ from core.models import Negocio, Alerta
 from core.models.inbound import InboundConfig, InboundRecepcion
 
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
-from modules.inbound_orbion.services.services_inbound_analytics import calcular_metricas_recepcion
+#from modules.inbound_orbion.services.services_inbound_analytics import calcular_metricas_recepcions
 
 
 # ============================

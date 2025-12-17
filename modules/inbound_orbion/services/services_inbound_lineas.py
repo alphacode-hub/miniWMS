@@ -1,14 +1,14 @@
 ﻿# modules/inbound_orbion/services/services_inbound_lineas.py
-
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any, Final
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.models.inbound import InboundLinea
+from core.models.inbound.lineas import InboundLinea
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
     obtener_recepcion_editable,
@@ -16,23 +16,22 @@ from modules.inbound_orbion.services.services_inbound_core import (
     validar_producto_para_negocio,
 )
 
+from modules.inbound_orbion.services.inbound_linea_contract import (
+    InboundLineaModo,
+    normalizar_linea,
+    InboundLineaContractError,
+)
 
-# ============================
-#   TIME (UTC)
-# ============================
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-# ============================
-#   VALIDACIONES / NORMALIZADORES
-# ============================
 
 MAX_LEN_LOTE: Final[int] = 120
 MAX_LEN_UNIDAD: Final[int] = 40
 MAX_LEN_OBS: Final[int] = 1500
+MAX_LEN_BULTO_NAME: Final[int] = 60
 
+
+# =========================================================
+# Helpers robustos
+# =========================================================
 
 def _clean_str(v: Any, *, max_len: int | None = None) -> str | None:
     s = ("" if v is None else str(v)).strip()
@@ -46,19 +45,27 @@ def _clean_str(v: Any, *, max_len: int | None = None) -> str | None:
 def _to_float(v: Any) -> float | None:
     if v is None or v == "":
         return None
+    if isinstance(v, str):
+        v = v.strip().replace(",", ".")
+        if v == "":
+            return None
     try:
         return float(v)
-    except (TypeError, ValueError):
-        raise InboundDomainError("Valor numérico inválido.")
+    except (TypeError, ValueError) as exc:
+        raise InboundDomainError("Valor numérico inválido.") from exc
 
 
 def _to_int(v: Any) -> int | None:
     if v is None or v == "":
         return None
+    if isinstance(v, str):
+        v = v.strip()
+        if v == "":
+            return None
     try:
         return int(v)
-    except (TypeError, ValueError):
-        raise InboundDomainError("Valor entero inválido.")
+    except (TypeError, ValueError) as exc:
+        raise InboundDomainError("Valor entero inválido.") from exc
 
 
 def _to_date(v: Any) -> date | None:
@@ -70,7 +77,6 @@ def _to_date(v: Any) -> date | None:
         return v.date()
     if isinstance(v, str):
         s = v.strip()
-        # acepta YYYY-MM-DD
         try:
             return datetime.fromisoformat(s).date()
         except ValueError as exc:
@@ -89,17 +95,35 @@ def _require_positive(name: str, v: float | None, *, allow_zero: bool = False) -
             raise InboundDomainError(f"{name} debe ser mayor a 0.")
 
 
-def _ensure_linea_belongs(db: Session, negocio_id: int, linea: InboundLinea) -> None:
+def _ensure_linea_belongs(negocio_id: int, linea: InboundLinea) -> None:
+    if int(getattr(linea, "negocio_id", 0)) != int(negocio_id):
+        raise InboundDomainError("Línea inbound no pertenece a este negocio.")
+
+
+def _get_config_flags(db: Session, negocio_id: int) -> dict[str, bool]:
     """
-    Multi-tenant estricta:
-    - Si linea tiene negocio_id, validamos directo.
-    - Si no, validamos por pertenencia de la recepción.
+    Lee flags desde InboundConfig si existe.
+    Defaults seguros si no existe.
     """
-    if hasattr(InboundLinea, "negocio_id"):
-        if getattr(linea, "negocio_id", None) != negocio_id:
-            raise InboundDomainError("Línea inbound no pertenece a este negocio.")
-        return
-    _ = obtener_recepcion_segura(db, int(getattr(linea, "recepcion_id")), negocio_id)
+    try:
+        from core.models import InboundConfig as InboundConfigModel  # type: ignore
+    except Exception:
+        return {"require_lote": False, "require_fecha_vencimiento": False, "require_temperatura": False}
+
+    cfg = (
+        db.query(InboundConfigModel)
+        .filter(InboundConfigModel.negocio_id == negocio_id)
+        .first()
+    )
+
+    if not cfg:
+        return {"require_lote": False, "require_fecha_vencimiento": False, "require_temperatura": True}
+
+    return {
+        "require_lote": bool(getattr(cfg, "require_lote", False)),
+        "require_fecha_vencimiento": bool(getattr(cfg, "require_fecha_vencimiento", False)),
+        "require_temperatura": bool(getattr(cfg, "require_temperatura", False)),
+    }
 
 
 def _enforce_required_fields(
@@ -119,44 +143,47 @@ def _enforce_required_fields(
         raise InboundDomainError("La temperatura recibida es obligatoria para este negocio.")
 
 
-def _get_config_flags(db: Session, negocio_id: int) -> dict[str, bool]:
+# =========================================================
+# Queries
+# =========================================================
+
+def listar_lineas_recepcion(
+    db: Session,
+    *,
+    negocio_id: int,
+    recepcion_id: int,
+) -> list[InboundLinea]:
     """
-    Sin acoplarse a una 'InboundConfig' dataclass antigua:
-    - Preferimos leer flags desde el modelo InboundConfig (si existe en core.models).
-    - Si no existe o no hay registro, defaults seguros.
+    Lista líneas de una recepción (multi-tenant segura).
     """
-    try:
-        from core.models import InboundConfig as InboundConfigModel  # type: ignore
-    except Exception:
-        return {
-            "require_lote": False,
-            "require_fecha_vencimiento": False,
-            "require_temperatura": False,
-        }
+    recepcion = obtener_recepcion_segura(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
 
-    cfg = (
-        db.query(InboundConfigModel)
-        .filter(InboundConfigModel.negocio_id == negocio_id)
-        .first()
-    )
-    # Defaults razonables
-    if not cfg:
-        return {
-            "require_lote": False,
-            "require_fecha_vencimiento": False,
-            "require_temperatura": True,  # suele ser crítico en frío
-        }
+    stmt = select(InboundLinea).where(InboundLinea.recepcion_id == recepcion.id)
 
-    return {
-        "require_lote": bool(getattr(cfg, "require_lote", False)),
-        "require_fecha_vencimiento": bool(getattr(cfg, "require_fecha_vencimiento", False)),
-        "require_temperatura": bool(getattr(cfg, "require_temperatura", False)),
-    }
+    # refuerza multi-tenant si existe negocio_id
+    if hasattr(InboundLinea, "negocio_id"):
+        stmt = stmt.where(InboundLinea.negocio_id == negocio_id)
+
+    stmt = stmt.order_by(InboundLinea.id.desc())
+    return list(db.execute(stmt).scalars().all())
 
 
-# ============================
-#   LÍNEAS DE RECEPCIÓN
-# ============================
+def obtener_linea(
+    db: Session,
+    *,
+    negocio_id: int,
+    linea_id: int,
+) -> InboundLinea:
+    linea = db.get(InboundLinea, linea_id)
+    if not linea:
+        raise InboundDomainError("Línea inbound no encontrada.")
+    _ensure_linea_belongs(negocio_id, linea)
+    return linea
+
+
+# =========================================================
+# CRUD
+# =========================================================
 
 def crear_linea_inbound(
     db: Session,
@@ -174,36 +201,30 @@ def crear_linea_inbound(
     observaciones: str | None = None,
     peso_kg: float | str | None = None,
     bultos: int | str | None = None,
-) -> InboundLinea:
-    """
-    Crea una línea inbound.
 
-    Enterprise:
-    - Recepción editable (workflow).
-    - Producto pertenece al negocio y está activo.
-    - Validaciones numéricas y requeridos según config.
-    - Multi-tenant reforzado (negocio_id si existe).
-    """
+    # ✅ overrides de conversión (solo estimados UI)
+    peso_unitario_kg_override: float | str | None = None,
+    unidades_por_bulto_override: int | str | None = None,
+    peso_por_bulto_kg_override: float | str | None = None,
+    nombre_bulto_override: str | None = None,
+) -> InboundLinea:
     recepcion = obtener_recepcion_editable(db, recepcion_id, negocio_id)
     producto = validar_producto_para_negocio(db, int(producto_id), negocio_id)
 
     flags = _get_config_flags(db, negocio_id)
 
     lote_norm = _clean_str(lote, max_len=MAX_LEN_LOTE)
-    unidad_norm = _clean_str(unidad, max_len=MAX_LEN_UNIDAD) or getattr(producto, "unidad", None)
+    unidad_norm = _clean_str(unidad, max_len=MAX_LEN_UNIDAD) or getattr(producto, "unidad", None) or "unidad"
     obs_norm = _clean_str(observaciones, max_len=MAX_LEN_OBS)
-
     fv = _to_date(fecha_vencimiento)
-    cant_esp = _to_float(cantidad_esperada)
+
+    cant_doc = _to_float(cantidad_esperada)
     cant_rec = _to_float(cantidad_recibida)
+    kg_doc = _to_float(peso_kg)
     temp_obj = _to_float(temperatura_objetivo)
     temp_rec = _to_float(temperatura_recibida)
-    peso = _to_float(peso_kg)
     bult = _to_int(bultos)
 
-    _require_positive("Cantidad esperada", cant_esp, allow_zero=False)
-    _require_positive("Cantidad recibida", cant_rec, allow_zero=True)
-    _require_positive("Peso (kg)", peso, allow_zero=True)
     if bult is not None and bult < 0:
         raise InboundDomainError("Bultos no puede ser negativo.")
 
@@ -216,39 +237,81 @@ def crear_linea_inbound(
         temperatura_recibida=temp_rec,
     )
 
-    linea_kwargs: dict[str, Any] = {
-        "recepcion_id": recepcion.id,
-        "producto_id": producto.id,
-        "lote": lote_norm,
-        "fecha_vencimiento": fv,
+    # =========================================================
+    # ✅ CONTRATO: objetivo doc (modo oficial)
+    # =========================================================
+    tiene_cant = (cant_doc is not None and cant_doc > 0)
+    tiene_kg = (kg_doc is not None and kg_doc > 0)
 
-        # ✅ map enterprise -> tu BD
-        "cantidad_documento": cant_esp,     # antes: cantidad_esperada
-        "cantidad_recibida": cant_rec,
-        "unidad": unidad_norm,
+    if not (tiene_cant or tiene_kg):
+        raise InboundDomainError("Debes definir objetivo de documento: Cantidad (>0) o Kg (>0).")
 
-        "temperatura_objetivo": temp_obj,
-        "temperatura_recibida": temp_rec,
-        "observaciones": obs_norm,
+    modo = InboundLineaModo.CANTIDAD if tiene_cant else InboundLineaModo.PESO
 
-        "peso_kg": peso,
-        "bultos": bult,
-    }
+    cant_rec_norm = None if cant_rec is None else float(cant_rec)
 
+    if modo == InboundLineaModo.CANTIDAD:
+        if cant_doc is None or cant_doc <= 0:
+            raise InboundDomainError("Cantidad esperada debe ser > 0 para líneas por cantidad.")
+        if cant_rec_norm is not None and cant_rec_norm < 0:
+            raise InboundDomainError("Cantidad recibida no puede ser negativa.")
+    else:
+        if kg_doc is None or kg_doc <= 0:
+            raise InboundDomainError("Peso (kg) debe ser > 0 para líneas por peso.")
+        if cant_rec_norm is not None and cant_rec_norm < 0:
+            raise InboundDomainError("Cantidad recibida no puede ser negativa.")
+        cant_rec_norm = None  # enterprise: no aplica
 
-    if hasattr(InboundLinea, "negocio_id"):
-        linea_kwargs["negocio_id"] = negocio_id
-    if hasattr(InboundLinea, "creado_en"):
-        linea_kwargs["creado_en"] = utcnow()
+    # =========================================================
+    # ✅ Overrides (validaciones enterprise)
+    # =========================================================
+    pu_ov = _to_float(peso_unitario_kg_override)
+    ub_ov = _to_int(unidades_por_bulto_override)
+    pb_ov = _to_float(peso_por_bulto_kg_override)
+    nb_ov = _clean_str(nombre_bulto_override, max_len=MAX_LEN_BULTO_NAME)
 
-    linea = InboundLinea(**linea_kwargs)
+    if pu_ov is not None and pu_ov <= 0:
+        raise InboundDomainError("Override peso unitario (kg) debe ser > 0.")
+    if ub_ov is not None and ub_ov <= 0:
+        raise InboundDomainError("Override unidades por bulto debe ser > 0.")
+    if pb_ov is not None and pb_ov <= 0:
+        raise InboundDomainError("Override peso por bulto (kg) debe ser > 0.")
+
+    linea = InboundLinea(
+        negocio_id=negocio_id,
+        recepcion_id=recepcion.id,
+        producto_id=producto.id,
+        lote=lote_norm,
+        fecha_vencimiento=fv,
+        cantidad_documento=(float(cant_doc) if tiene_cant else None),
+        cantidad_recibida=(float(cant_rec_norm) if (modo == InboundLineaModo.CANTIDAD and cant_rec_norm is not None) else None),
+        unidad=unidad_norm,
+        temperatura_objetivo=temp_obj,
+        temperatura_recibida=temp_rec,
+        observaciones=obs_norm,
+        peso_kg=(float(kg_doc) if tiene_kg else None),
+        bultos=bult,
+
+        # overrides
+        peso_unitario_kg_override=pu_ov,
+        unidades_por_bulto_override=ub_ov,
+        peso_por_bulto_kg_override=pb_ov,
+        nombre_bulto_override=nb_ov,
+    )
+
+    if hasattr(linea, "peso_recibido_kg"):
+        setattr(linea, "peso_recibido_kg", None)
+
+    try:
+        _ = normalizar_linea(linea, allow_draft=False)
+    except InboundLineaContractError as exc:
+        raise InboundDomainError(f"Línea inválida según contrato: {str(exc)}") from exc
 
     db.add(linea)
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        # típico: unique constraints (por ejemplo, recepcion_id + producto_id + lote)
         raise InboundDomainError("No se pudo crear la línea (conflicto/duplicado).") from exc
 
     db.refresh(linea)
@@ -257,39 +320,34 @@ def crear_linea_inbound(
 
 def actualizar_linea_inbound(
     db: Session,
+    *,
     negocio_id: int,
     linea_id: int,
     **updates: Any,
 ) -> InboundLinea:
     """
-    Actualiza una línea inbound.
-
-    Enterprise:
-    - Validación multi-tenant.
-    - Recepción editable.
-    - Validación de producto si cambia producto_id.
-    - Normalización de campos + enforcement de requeridos según config.
+    Update enterprise-safe:
+    - Solo si la recepción está editable
+    - Revalida requeridos (config)
+    - Revalida contrato
     """
-    linea = db.get(InboundLinea, linea_id)
-    if not linea:
-        raise InboundDomainError("Línea inbound no encontrada.")
-
-    _ensure_linea_belongs(db, negocio_id, linea)
+    linea = obtener_linea(db, negocio_id=negocio_id, linea_id=linea_id)
 
     recepcion_id = int(getattr(linea, "recepcion_id"))
-    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    _ = obtener_recepcion_editable(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
 
     flags = _get_config_flags(db, negocio_id)
 
     # producto_id
     if "producto_id" in updates and updates["producto_id"] is not None:
         producto = validar_producto_para_negocio(db, int(updates["producto_id"]), negocio_id)
-        setattr(linea, "producto_id", producto.id)
+        linea.producto_id = producto.id
 
-    # normalizaciones por campo
+    # Compat: frontend → DB
+    if "cantidad_esperada" in updates:
+        updates["cantidad_documento"] = updates.pop("cantidad_esperada")
+
     for field, value in list(updates.items()):
-        if field == "producto_id":
-            continue
         if not hasattr(linea, field):
             continue
 
@@ -301,26 +359,24 @@ def actualizar_linea_inbound(
             value = _clean_str(value, max_len=MAX_LEN_OBS)
         elif field == "fecha_vencimiento":
             value = _to_date(value)
-        elif field in ("cantidad_esperada", "cantidad_recibida", "temperatura_objetivo", "temperatura_recibida", "peso_kg"):
+        elif field in (
+            "cantidad_documento",
+            "cantidad_recibida",
+            "temperatura_objetivo",
+            "temperatura_recibida",
+            "peso_kg",
+            "peso_unitario_kg_override",
+            "peso_por_bulto_kg_override",
+        ):
             value = _to_float(value)
-        elif field == "bultos":
+        elif field in ("bultos", "unidades_por_bulto_override"):
             value = _to_int(value)
+        elif field == "nombre_bulto_override":
+            value = _clean_str(value, max_len=MAX_LEN_BULTO_NAME)
 
         setattr(linea, field, value)
 
-    # Validaciones numéricas post-update
-    cant_esp = getattr(linea, "cantidad_esperada", None)
-    cant_rec = getattr(linea, "cantidad_recibida", None)
-    peso = getattr(linea, "peso_kg", None)
-    bult = getattr(linea, "bultos", None)
-
-    _require_positive("Cantidad esperada", cant_esp, allow_zero=False)
-    _require_positive("Cantidad recibida", cant_rec, allow_zero=True)
-    _require_positive("Peso (kg)", peso, allow_zero=True)
-    if bult is not None and bult < 0:
-        raise InboundDomainError("Bultos no puede ser negativo.")
-
-    # Requeridos según config
+    # requeridos por config
     _enforce_required_fields(
         require_lote=flags["require_lote"],
         require_fecha_vencimiento=flags["require_fecha_vencimiento"],
@@ -330,8 +386,27 @@ def actualizar_linea_inbound(
         temperatura_recibida=getattr(linea, "temperatura_recibida", None),
     )
 
-    if hasattr(InboundLinea, "actualizado_en"):
-        setattr(linea, "actualizado_en", utcnow())
+    # validaciones numéricas
+    if getattr(linea, "bultos", None) is not None and getattr(linea, "bultos") < 0:
+        raise InboundDomainError("Bultos no puede ser negativo.")
+
+    # Overrides: si vienen, deben ser > 0
+    pu_ov = getattr(linea, "peso_unitario_kg_override", None)
+    ub_ov = getattr(linea, "unidades_por_bulto_override", None)
+    pb_ov = getattr(linea, "peso_por_bulto_kg_override", None)
+
+    if pu_ov is not None and pu_ov <= 0:
+        raise InboundDomainError("Override peso unitario (kg) debe ser > 0.")
+    if ub_ov is not None and ub_ov <= 0:
+        raise InboundDomainError("Override unidades por bulto debe ser > 0.")
+    if pb_ov is not None and pb_ov <= 0:
+        raise InboundDomainError("Override peso por bulto (kg) debe ser > 0.")
+
+    # Revalida contrato final
+    try:
+        _ = normalizar_linea(linea, allow_draft=False)
+    except InboundLineaContractError as exc:
+        raise InboundDomainError(f"Línea inválida según contrato: {str(exc)}") from exc
 
     try:
         db.commit()
@@ -345,24 +420,19 @@ def actualizar_linea_inbound(
 
 def eliminar_linea_inbound(
     db: Session,
+    *,
     negocio_id: int,
     linea_id: int,
 ) -> None:
     """
-    Elimina una línea inbound.
-    Enterprise:
-    - Multi-tenant
-    - Recepción editable
-    - Manejo de integridad (si hay pallets/items asociados, falla con mensaje claro)
+    Delete enterprise-safe:
+    - Solo si la recepción está editable
+    - Bloquea si hay dependencias (IntegrityError)
     """
-    linea = db.get(InboundLinea, linea_id)
-    if not linea:
-        raise InboundDomainError("Línea inbound no encontrada.")
-
-    _ensure_linea_belongs(db, negocio_id, linea)
+    linea = obtener_linea(db, negocio_id=negocio_id, linea_id=linea_id)
 
     recepcion_id = int(getattr(linea, "recepcion_id"))
-    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    _ = obtener_recepcion_editable(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
 
     try:
         db.delete(linea)

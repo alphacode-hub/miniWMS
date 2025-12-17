@@ -144,7 +144,7 @@ async def inbound_config_view(
 
 
 # ============================
-#   SAVE
+#   SAVE (enterprise robust)
 # ============================
 
 @router.post("/config", response_class=HTMLResponse)
@@ -159,7 +159,6 @@ async def inbound_config_save(
     _require_admin_if_needed(user)
 
     config = get_or_create_inbound_config(db, negocio_id)
-
     form = await request.form()
 
     # 1) Cargar JSON actual
@@ -168,12 +167,35 @@ async def inbound_config_save(
     except Exception:
         data = {}
 
-    # 2) Aplicar valores del form al dict (NO atributos del modelo)
-    for key, raw_value in form.items():
-        # opcional: ignora campos internos del form
-        if key in {"csrf_token"}:
+    # 2) Aplicar valores del form con soporte para multi-values (checkbox + hidden)
+    #    - Si llega ["false", "true"] -> debe quedar True
+    #    - Si llega solo ["false"]    -> queda False
+    #    - Si llega solo ["true"]     -> queda True
+    #    - Si llega valor único       -> se parsea normal
+    ignore_keys = {"csrf_token"}
+
+    for key in form.keys():
+        if key in ignore_keys:
             continue
-        data[key] = _parse_form_value(raw_value)
+
+        values = form.getlist(key)
+
+        if not values:
+            data[key] = None
+            continue
+
+        # Caso checkbox: prioriza true si aparece
+        lowered = [str(v).strip().lower() for v in values if v is not None]
+        if "true" in lowered or "on" in lowered or "1" in lowered or "yes" in lowered or "si" in lowered or "sí" in lowered:
+            data[key] = True
+            continue
+        if "false" in lowered or "off" in lowered or "0" in lowered or "no" in lowered:
+            # si solo vienen falsos, queda False
+            data[key] = False
+            continue
+
+        # Fallback: toma el último valor y parsea
+        data[key] = _parse_form_value(values[-1])
 
     # 3) Persistir
     config.reglas_json = json.dumps(data, ensure_ascii=False)
@@ -189,3 +211,5 @@ async def inbound_config_save(
     )
 
     return RedirectResponse(url="/inbound/config", status_code=302)
+
+

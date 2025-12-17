@@ -1,0 +1,451 @@
+﻿{# =========================================================
+   ORBION · INBOUND · RECEPCIÓN · DETALLE (ULTRA ENTERPRISE)
+   - Header dentro del content (igual a dashboard y form)
+   - Estado normalizado (Enum/string)
+   - Stepper workflow
+   - Datos básicos
+   - Timeline + KPIs (no rompe si faltan campos)
+   - Acciones de estado (POST /inbound/recepciones/{id}/estado)
+   - Preview de líneas (top 5) + link a lista + crear
+   ========================================================= #}
+
+{% extends "base/base_app.html" %}
+
+{% block title %}
+ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontrada" }}
+{% endblock %}
+
+{# 🚫 No usamos page_header para que el layout sea idéntico al dashboard y forms #}
+{% block page_header %}{% endblock %}
+
+{# =========================================================
+ESTADO NORMALIZADO (Enum o string)
+========================================================= #}
+{% if recepcion %}
+  {% set _estado_raw =
+        recepcion.estado.name
+        if recepcion.estado is not none and recepcion.estado.name is defined
+        else (
+          recepcion.estado.value
+          if recepcion.estado is not none and recepcion.estado.value is defined
+          else (recepcion.estado|string)
+        )
+  %}
+  {% set estado_recepcion = (_estado_raw or 'PRE_REGISTRADO') %}
+{% else %}
+  {% set estado_recepcion = 'PRE_REGISTRADO' %}
+{% endif %}
+
+{% set estado_label = estado_recepcion.replace('_', ' ') %}
+{% set es_cerrada = (estado_recepcion == 'CERRADO') %}
+
+{# helper: orden de estados para stepper #}
+{% set steps = ['PRE_REGISTRADO','EN_ESPERA','EN_DESCARGA','EN_CONTROL_CALIDAD','CERRADO'] %}
+{% set step_index = steps.index(estado_recepcion) if estado_recepcion in steps else 0 %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =====================================================
+    HEADER ÚNICO (mobile-first, consistente con dashboard/form)
+    ===================================================== #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Detalle de recepción
+            </p>
+
+            {% if recepcion %}
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recepcion.codigo_recepcion }}
+                <span class="text-slate-500 font-normal">
+                    · {{ recepcion.proveedor.nombre if recepcion.proveedor else 'Sin proveedor' }}
+                </span>
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 truncate max-w-xl">
+                {% if recepcion.documento_ref %}
+                Ref: {{ recepcion.documento_ref }}
+                {% else %}
+                Sin documento de referencia
+                {% endif %}
+            </p>
+            {% else %}
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight">
+                Recepción no encontrada
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400">
+                No tienes acceso a esta recepción o no existe.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                {% if estado_recepcion == 'CERRADO' %}
+                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
+                {% elif estado_recepcion == 'EN_DESCARGA' %}
+                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
+                {% elif estado_recepcion == 'EN_CONTROL_CALIDAD' %}
+                    bg-amber-500/10 text-amber-200 border-amber-500/40
+                {% elif estado_recepcion == 'EN_ESPERA' %}
+                    bg-sky-500/10 text-sky-200 border-sky-500/40
+                {% else %}
+                    bg-slate-700/40 text-slate-100 border-slate-600
+                {% endif %}">
+                {{ estado_label }}
+            </span>
+
+            <a href="/inbound/recepciones"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Recepciones
+            </a>
+        </div>
+    </header>
+
+    {# =====================================================
+    ALERTAS (ok/error)
+    ===================================================== #}
+    {% if ok %}
+    <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Listo</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+    </section>
+    {% endif %}
+
+    {% if error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ error }}</p>
+    </section>
+    {% endif %}
+
+    {% if recepcion %}
+
+    {# =====================================================
+    STEPPER (workflow)
+    ===================================================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Flujo</p>
+                <p class="text-[11px] text-slate-500">Estado operativo de la recepción.</p>
+            </div>
+
+            {% if es_cerrada %}
+            <span class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10
+                         px-3 py-1 text-[10px] font-semibold text-emerald-200">
+                Solo lectura
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+            {% for s in steps %}
+            {% set idx = loop.index0 %}
+            {% set done = (idx < step_index) %}
+            {% set active = (idx == step_index) %}
+            <div class="rounded-xl border px-3 py-2
+                {% if active %}
+                    border-cyan-400/50 bg-cyan-500/5
+                {% elif done %}
+                    border-emerald-500/30 bg-emerald-500/5
+                {% else %}
+                    border-slate-800 bg-slate-900
+                {% endif %}">
+                <p class="text-[10px] font-semibold uppercase tracking-wide
+                    {% if active %}text-cyan-200{% elif done %}text-emerald-200{% else %}text-slate-400{% endif %}">
+                    {{ s.replace('_',' ') }}
+                </p>
+                <p class="text-[10px] mt-1
+                    {% if active %}text-slate-200{% elif done %}text-slate-300{% else %}text-slate-500{% endif %}">
+                    {% if active %}En curso{% elif done %}Completado{% else %}Pendiente{% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# =====================================================
+    OPERACIÓN (accesos rápidos)
+    ===================================================== #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="space-y-0.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Operación de recepción
+                </p>
+                <p class="text-[11px] text-slate-400 max-w-md">
+                    Accesos directos a líneas, pallets y evidencias.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <a href="/inbound/recepciones/{{ recepcion.id }}/lineas"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Líneas
+                </a>
+
+                <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Pallets
+                </a>
+
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                             text-[11px] font-medium text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                      title="Próximamente">
+                    Checklist
+                </span>
+
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                             text-[11px] font-medium text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                      title="Próximamente">
+                    Documentos
+                </span>
+
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                             text-[11px] font-medium text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                      title="Próximamente">
+                    Fotos / evidencia
+                </span>
+            </div>
+        </div>
+
+        {% if es_cerrada %}
+        <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+            <p class="text-[11px] text-emerald-200">
+                Esta recepción está <span class="font-semibold">cerrada</span>. Solo lectura: no se permiten modificaciones.
+            </p>
+        </div>
+        {% endif %}
+    </section>
+
+    {# =====================================================
+    DATOS BÁSICOS (no rompe si cambian nombres de campos)
+    ===================================================== #}
+    {% set contenedor = (recepcion.contenedor if recepcion.contenedor is defined else None) %}
+    {% set patente = (recepcion.patente_camion if recepcion.patente_camion is defined else None) %}
+    {% set tipo_carga = (recepcion.tipo_carga if recepcion.tipo_carga is defined else None) %}
+    {% set eta = (recepcion.fecha_estimada_llegada if recepcion.fecha_estimada_llegada is defined else None) %}
+    {% set fecha_real = (recepcion.fecha_recepcion if recepcion.fecha_recepcion is defined else None) %}
+    {% set created_at = (recepcion.created_at if recepcion.created_at is defined else (recepcion.creado_en if recepcion.creado_en is defined else None)) %}
+    {% set updated_at = (recepcion.updated_at if recepcion.updated_at is defined else (recepcion.actualizado_en if recepcion.actualizado_en is defined else None)) %}
+    {% set obs = (recepcion.observaciones if recepcion.observaciones is defined else None) %}
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Datos de transporte</p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Contenedor:</span> {{ contenedor or 'No registrado' }}
+                </p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Patente:</span> {% if patente %}{{ patente|upper }}{% else %}No registrada{% endif %}
+                </p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Tipo carga:</span> {{ tipo_carga or 'No definido' }}
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Fechas clave</p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">ETA:</span>
+                    {% if eta and eta.strftime is defined %}{{ eta.strftime('%d-%m-%Y') }}{% elif eta %}{{ eta }}{% else %}No definida{% endif %}
+                </p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Recepción real:</span>
+                    {% if fecha_real and fecha_real.strftime is defined %}{{ fecha_real.strftime('%d-%m-%Y') }}{% elif fecha_real %}{{ fecha_real }}{% else %}—{% endif %}
+                </p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Creado:</span>
+                    {% if created_at and created_at.strftime is defined %}{{ created_at.strftime('%d-%m-%Y %H:%M') }}{% elif created_at %}{{ created_at }}{% else %}—{% endif %}
+                </p>
+                <p class="text-xs text-slate-200">
+                    <span class="font-semibold text-slate-300">Actualizado:</span>
+                    {% if updated_at and updated_at.strftime is defined %}{{ updated_at.strftime('%d-%m-%Y %H:%M') }}{% elif updated_at %}{{ updated_at }}{% else %}—{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-3 rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Observaciones</p>
+            <p class="text-xs text-slate-200 whitespace-pre-line">
+                {{ obs or 'Sin observaciones registradas.' }}
+            </p>
+        </div>
+    </section>
+
+    {# =====================================================
+    TIMELINE + MÉTRICAS (no rompe si faltan)
+    ===================================================== #}
+    {% set fecha_arribo = (recepcion.fecha_arribo if recepcion.fecha_arribo is defined else None) %}
+    {% set fecha_inicio_descarga = (recepcion.fecha_inicio_descarga if recepcion.fecha_inicio_descarga is defined else None) %}
+    {% set fecha_fin_descarga = (recepcion.fecha_fin_descarga if recepcion.fecha_fin_descarga is defined else None) %}
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Timeline de recepción</p>
+
+            <ol class="space-y-3 text-xs text-slate-200">
+                <li class="flex items-start gap-2">
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if fecha_arribo %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
+                    <div>
+                        <p class="font-semibold text-slate-100">Arribo al recinto</p>
+                        <p class="text-[11px] text-slate-400">
+                            {% if fecha_arribo and fecha_arribo.strftime is defined %}{{ fecha_arribo.strftime('%d-%m-%Y %H:%M') }}
+                            {% elif fecha_arribo %}{{ fecha_arribo }}
+                            {% else %}Aún no registrado.{% endif %}
+                        </p>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-2">
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if fecha_inicio_descarga %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
+                    <div>
+                        <p class="font-semibold text-slate-100">Inicio de descarga</p>
+                        <p class="text-[11px] text-slate-400">
+                            {% if fecha_inicio_descarga and fecha_inicio_descarga.strftime is defined %}{{ fecha_inicio_descarga.strftime('%d-%m-%Y %H:%M') }}
+                            {% elif fecha_inicio_descarga %}{{ fecha_inicio_descarga }}
+                            {% else %}Aún no registrado.{% endif %}
+                        </p>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-2">
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if fecha_fin_descarga %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
+                    <div>
+                        <p class="font-semibold text-slate-100">Fin de descarga</p>
+                        <p class="text-[11px] text-slate-400">
+                            {% if fecha_fin_descarga and fecha_fin_descarga.strftime is defined %}{{ fecha_fin_descarga.strftime('%d-%m-%Y %H:%M') }}
+                            {% elif fecha_fin_descarga %}{{ fecha_fin_descarga }}
+                            {% else %}Aún no registrado.{% endif %}
+                        </p>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-2">
+                    <div class="mt-[3px] h-2 w-2 rounded-full {% if es_cerrada %}bg-emerald-400{% else %}bg-slate-500{% endif %}"></div>
+                    <div>
+                        <p class="font-semibold text-slate-100">Cierre de recepción</p>
+                        <p class="text-[11px] text-slate-400">
+                            {% if es_cerrada %}Recepción cerrada.{% else %}Aún no cerrada.{% endif %}
+                        </p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Indicadores de eficiencia</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de espera</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-100">
+                        {% if metrics and metrics.tiempo_espera_min is not none %}{{ metrics.tiempo_espera_min|round(1) }} min{% else %}—{% endif %}
+                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Arribo → inicio descarga.</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de descarga</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-100">
+                        {% if metrics and metrics.tiempo_descarga_min is not none %}{{ metrics.tiempo_descarga_min|round(1) }} min{% else %}—{% endif %}
+                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Inicio → fin descarga.</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo total</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-100">
+                        {% if metrics and metrics.tiempo_total_hasta_fin_descarga_min is not none %}{{ metrics.tiempo_total_hasta_fin_descarga_min|round(1) }} min{% else %}—{% endif %}
+                    </p>
+                    <p class="text-[10px] text-slate-500 mt-1">Arribo → fin descarga.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# =====================================================
+    ACCIONES DE ESTADO (alineado a servicio aplicar_accion_estado)
+    POST /inbound/recepciones/{id}/estado
+    ===================================================== #}
+    {% if not es_cerrada %}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-2">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+            Acciones sobre la recepción
+        </p>
+
+        <div class="flex flex-wrap items-center gap-2">
+            {% if estado_recepcion == 'PRE_REGISTRADO' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="marcar_en_espera">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Marcar arribado
+                </button>
+            </form>
+
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="iniciar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full border border-slate-700 px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Iniciar descarga
+                </button>
+            </form>
+
+            {% elif estado_recepcion == 'EN_ESPERA' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="iniciar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Iniciar descarga
+                </button>
+            </form>
+
+            {% elif estado_recepcion == 'EN_DESCARGA' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado">
+                <input type="hidden" name="accion" value="finalizar_descarga">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Finalizar descarga / Enviar a control
+                </button>
+            </form>
+
+            {% elif estado_recepcion == 'EN_CONTROL_CALIDAD' %}
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/estado"
+                  onsubmit="return confirm('¿Cerrar recepción? Se validarán documento, líneas, pallets e ítems.');">
+                <input type="hidden" name="accion" value="cerrar_recepcion">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Cerrar recepción
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <p class="text-[10px] text-slate-500">
+            Nota: el cierre aplica reglas enterprise (documento, líneas, pallets + ítems, reconciliación + contrato strict).
+        </p>
+    </section>
+    {% endif %}
+
+    
+    {% endif %}
+</div>
+{% endblock %}

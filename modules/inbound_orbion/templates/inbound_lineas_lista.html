@@ -1,0 +1,238 @@
+﻿{# modules/inbound_orbion/templates/inbound_lineas_lista.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}
+ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{# ======= helpers: estado recepcion (para deshabilitar acciones si cerrada) ======= #}
+{% if recepcion %}
+  {% set _estado_raw = (recepcion.estado.name if recepcion.estado is not none and recepcion.estado.name is defined else (recepcion.estado.value if recepcion.estado is not none and recepcion.estado.value is defined else (recepcion.estado|string))) %}
+  {% set estado_recepcion = (_estado_raw or 'PRE_REGISTRADO') %}
+{% else %}
+  {% set estado_recepcion = 'PRE_REGISTRADO' %}
+{% endif %}
+{% set es_cerrada = (estado_recepcion == 'CERRADO') %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER (como dashboard)
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Recepción · Líneas
+            </p>
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+                <span class="text-slate-500 font-normal">
+                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                </span>
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl truncate">
+                {% if recepcion and recepcion.documento_ref %}Ref: {{ recepcion.documento_ref }}{% else %}Sin documento de referencia{% endif %}
+            </p>
+        </div>
+
+        <div class="flex flex-col items-end gap-2 shrink-0">
+            <a href="/inbound/recepciones/{{ recepcion.id if recepcion else '' }}"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a recepción
+            </a>
+
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/lineas/reconciliar">
+                    <button type="submit"
+                            class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-[11px] font-semibold
+                         text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors
+                         {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}"
+                            {% if es_cerrada %}disabled{% endif %}>
+                        Reconciliar (recalcular recibidos)
+                    </button>
+                </form>
+
+                <a href="/inbound/recepciones/{{ recepcion.id }}/lineas/nueva"
+                   class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                  text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                  transition-transform transition-colors
+                  {% if es_cerrada %}opacity-50 pointer-events-none{% endif %}">
+                    + Agregar línea
+                </a>
+            </div>
+        </div>
+    </header>
+
+    {% if qs_success %}
+    <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Operación realizada</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_success }}</p>
+    </section>
+    {% endif %}
+
+    {% if qs_error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ qs_error }}</p>
+    </section>
+    {% endif %}
+
+    {% if es_cerrada %}
+    <section class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] text-emerald-200">
+            Recepción cerrada: <span class="font-semibold">solo lectura</span>. No se permiten cambios.
+        </p>
+    </section>
+    {% endif %}
+
+    {# =========================
+    LISTA DE LÍNEAS
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Líneas</p>
+                <p class="text-[11px] text-slate-500">
+                    Oficial = según contrato (Cantidad o Peso). Derivado = <span class="font-semibold text-slate-300">Estimado</span>.
+                </p>
+            </div>
+            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-300">
+                Total: {{ lineas|length if lineas else 0 }}
+            </span>
+        </div>
+
+        {% if lineas and lineas|length > 0 %}
+        <div class="space-y-2">
+
+            {% for l in lineas %}
+            {# ======= modo oficial (igual regla que contrato: cant_doc manda, si no kg_doc) ======= #}
+            {% set cant_doc = l.cantidad_documento %}
+            {% set kg_doc = l.peso_kg %}
+            {% set modo = 'CANTIDAD' if (cant_doc is not none and cant_doc > 0) else ('PESO' if (kg_doc is not none and kg_doc > 0) else 'DRAFT') %}
+
+            {# ======= conversión (producto + overrides) ======= #}
+            {% set pu = (l.peso_unitario_kg_override if l.peso_unitario_kg_override is not none else (l.producto.peso_unitario_kg if l.producto and l.producto.peso_unitario_kg is not none else none)) %}
+            {% set ub = (l.unidades_por_bulto_override if l.unidades_por_bulto_override is not none else (l.producto.unidades_por_bulto if l.producto and l.producto.unidades_por_bulto is not none else none)) %}
+            {% set pb = (l.peso_por_bulto_kg_override if l.peso_por_bulto_kg_override is not none else (l.producto.peso_por_bulto_kg if l.producto and l.producto.peso_por_bulto_kg is not none else none)) %}
+            {% set nb = (l.nombre_bulto_override if l.nombre_bulto_override else (l.producto.nombre_bulto if l.producto and l.producto.nombre_bulto else 'bulto')) %}
+
+            {# ======= estimado kg desde bultos/cantidad (prioridad robusta) ======= #}
+            {% set est_kg = none %}
+            {% if l.bultos is not none and l.bultos > 0 and pb is not none and pb > 0 %}
+            {% set est_kg = (l.bultos * pb) %}
+            {% elif l.bultos is not none and l.bultos > 0 and ub is not none and ub > 0 and pu is not none and pu > 0 %}
+            {% set est_kg = (l.bultos * ub * pu) %}
+            {% elif cant_doc is not none and cant_doc > 0 and pu is not none and pu > 0 %}
+            {% set est_kg = (cant_doc * pu) %}
+            {% endif %}
+
+            {# ======= estimado unidades desde kg (si modo PESO) ======= #}
+            {% set est_unidades = none %}
+            {% if modo == 'PESO' and kg_doc is not none and kg_doc > 0 and pu is not none and pu > 0 %}
+            {% set est_unidades = (kg_doc / pu) %}
+            {% endif %}
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-100 truncate">
+                            {{ l.producto.nombre if l.producto and l.producto.nombre else ("Producto #" ~ (l.producto_id or "-")) }}
+                        </p>
+
+                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
+                    {% if modo == 'PESO' %}
+                      bg-indigo-500/10 text-indigo-200 border-indigo-500/40
+                    {% elif modo == 'CANTIDAD' %}
+                      bg-sky-500/10 text-sky-200 border-sky-500/40
+                    {% else %}
+                      bg-slate-700/40 text-slate-200 border-slate-600
+                    {% endif %}">
+                                Oficial: {{ modo }}
+                            </span>
+
+                            {% if l.bultos is not none and l.bultos > 0 %}
+                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
+                                {{ l.bultos }} {{ nb }}{% if l.bultos != 1 %}s{% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        {# ======= OFICIAL (contrato) ======= #}
+                        {% if modo == 'CANTIDAD' %}
+                        <p class="text-[11px] text-slate-300 mt-2">
+                            <span class="text-slate-500">Cantidad doc</span>:
+                            <span class="font-semibold text-slate-100">{{ cant_doc }}</span>
+                            · <span class="text-slate-500">Recibida</span>:
+                            <span class="font-semibold text-slate-100">{{ l.cantidad_recibida if l.cantidad_recibida is not none else "—" }}</span>
+                            · <span class="text-slate-500">{{ l.unidad or (l.producto.unidad if l.producto else "unidad") }}</span>
+                        </p>
+
+                        {% if est_kg is not none %}
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[1px] text-[10px] font-semibold text-slate-300">Estimado</span>
+                            <span class="text-slate-500">Peso doc</span>:
+                            <span class="font-semibold text-slate-200">{{ '%.3f'|format(est_kg) }}</span> kg
+                        </p>
+                        {% endif %}
+
+                        {% elif modo == 'PESO' %}
+                        <p class="text-[11px] text-slate-300 mt-2">
+                            <span class="text-slate-500">Kg doc</span>:
+                            <span class="font-semibold text-slate-100">{{ '%.3f'|format(kg_doc) }}</span>
+                            · <span class="text-slate-500">Kg recibido</span>:
+                            <span class="font-semibold text-slate-100">
+                                {% if l.peso_recibido_kg is not none %}{{ '%.3f'|format(l.peso_recibido_kg) }}{% else %}—{% endif %}
+                            </span>
+                        </p>
+
+                        {% if est_unidades is not none %}
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[1px] text-[10px] font-semibold text-slate-300">Estimado</span>
+                            <span class="text-slate-500">Cantidad</span>:
+                            <span class="font-semibold text-slate-200">{{ est_unidades|round(2) }}</span>
+                            <span class="text-slate-500">{{ l.unidad or (l.producto.unidad if l.producto else "unidad") }}</span>
+                        </p>
+                        {% endif %}
+                        {% endif %}
+
+                        <p class="text-[11px] text-slate-500 mt-2">
+                            Lote: {{ l.lote or "-" }}
+                            · Venc: {{ l.fecha_vencimiento.strftime('%d-%m-%Y') if l.fecha_vencimiento else "-" }}
+                            {% if l.temperatura_recibida is not none %}
+                            · Temp: {{ l.temperatura_recibida }}°C
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    {% if not es_cerrada %}
+                    <form method="post"
+                          action="/inbound/recepciones/{{ recepcion.id }}/lineas/{{ l.id }}/eliminar"
+                          onsubmit="return confirm('¿Eliminar esta línea?');">
+                        <button type="submit"
+                                class="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10
+                               px-3 py-1 text-[11px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100">
+                            Eliminar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+            <p class="text-[11px] text-slate-300">Aún no hay líneas registradas en esta recepción.</p>
+        </div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

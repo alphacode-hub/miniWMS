@@ -1,356 +1,257 @@
-﻿<!-- modules/inbound_orbion/templates/inbound_linea_form.html -->
+﻿{# modules/inbound_orbion/templates/inbound_linea_form.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}ORBION · Nueva línea inbound{% endblock %}
-
-{% set estado_recepcion = (recepcion.estado or 'PRE_REGISTRADO') %}
-{% set es_cerrada = (estado_recepcion == 'CERRADO') %}
-
-{% block page_header %}
-<div class="hidden sm:flex items-center justify-between gap-4">
-    <div class="min-w-0 space-y-1">
-        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Módulo inbound · Nueva línea
-        </p>
-        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-            Recepción {{ recepcion.codigo }} · {{ recepcion.proveedor or "Sin proveedor" }}
-        </h1>
-        <p class="text-xs text-slate-400 truncate max-w-xl">
-            {{ recepcion.referencia_externa or 'Sin referencia externa' }}
-        </p>
-    </div>
-
-    <div class="flex flex-col items-end gap-2">
-        <a href="/inbound/recepciones/{{ recepcion.id }}"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
-            ← Volver al detalle
-        </a>
-    </div>
-</div>
+{% block title %}
+ORBION · Nueva línea · {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
 {% endblock %}
 
-{% block content %}
-<div class="max-w-3xl mx-auto space-y-6 sm:space-y-8">
+{% block page_header %}{% endblock %}
 
-    {# HEADER MOBILE #}
-    <div class="sm:hidden space-y-3">
-        <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 space-y-1">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Módulo inbound · Nueva línea
-                </p>
-                <h1 class="text-base font-semibold text-slate-100 tracking-tight truncate">
-                    Recepción {{ recepcion.codigo }}
-                </h1>
-                <p class="text-[11px] text-slate-400 truncate max-w-xs">
-                    {{ recepcion.proveedor or "Sin proveedor" }}
-                </p>
-            </div>
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER (1 solo, como dashboard)
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Líneas · Nueva línea
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+                <span class="text-slate-500 font-normal">· Agregar línea</span>
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Define el objetivo documental por <span class="font-semibold text-slate-300">Cantidad</span> o por <span class="font-semibold text-slate-300">Peso</span>.
+                Los equivalentes se calculan como <span class="font-semibold text-slate-300">Estimado</span> usando conversión del producto u overrides.
+            </p>
         </div>
 
-        <div class="flex flex-wrap gap-2">
-            <a href="/inbound/recepciones/{{ recepcion.id }}"
-               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                      transition-colors">
-                ← Volver al detalle
+        <div class="shrink-0">
+            <a href="/inbound/recepciones/{{ recepcion.id }}/lineas"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a líneas
             </a>
         </div>
-    </div>
+    </header>
 
-    {% if es_cerrada %}
-    <section class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4">
-        <p class="text-[11px] text-emerald-200">
-            Esta recepción está cerrada. No se pueden agregar nuevas líneas.
-        </p>
+    {% if error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo crear la línea</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ error }}</p>
     </section>
-    {% else %}
+    {% endif %}
 
-    {# FORMULARIO LÍNEA #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
-        <form id="frmLineaInbound" method="post"
-              action="/inbound/recepciones/{{ recepcion.id }}/lineas"
-              class="space-y-4 sm:space-y-5">
+    <form method="post" action="{{ form_action }}" class="space-y-4">
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
 
-            {# PRODUCTO: CATÁLOGO + PRODUCTO RÁPIDO #}
-            <div class="space-y-3">
-                {% if productos %}
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Producto (catálogo)
-                    </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {# =========================
+                PRODUCTO (select)
+                ========================= #}
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Producto</p>
 
-                    <select id="producto_id" name="producto_id"
-                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                   text-xs sm:text-sm text-slate-100
-                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                        <option value="">Selecciona un producto</option>
+                    <label class="block text-[11px] text-slate-400">Seleccionar producto</label>
+                    <select name="producto_id"
+                            class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                         focus:outline-none focus:ring-2 focus:ring-cyan-500/40">
+                        <option value="">— Selecciona —</option>
                         {% for p in productos %}
-                        <option value="{{ p.id }}" data-unidad="{{ p.unidad or '' }}">
-                            {{ p.nombre }}
-                        </option>
+                        <option value="{{ p.id }}">{{ p.nombre }} · {{ p.unidad or 'unidad' }}</option>
                         {% endfor %}
                     </select>
 
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Si seleccionas un producto del catálogo, el producto rápido queda deshabilitado.
-                    </p>
-                </div>
-                {% else %}
-                <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-3">
-                    <p class="text-[11px] text-amber-200">
-                        No hay productos activos en el catálogo core WMS para este negocio.
-                        Puedes usar producto rápido.
-                    </p>
-                </div>
-                {% endif %}
+                    <div class="mt-2 pt-2 border-t border-slate-800">
+                        <p class="text-[11px] text-slate-500">o crea un producto rápido</p>
 
-                <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-3 space-y-2">
-                    <p class="text-[11px] font-semibold text-slate-300">
-                        Producto rápido inbound (opcional)
-                    </p>
-                    <p class="text-[10px] text-slate-400">
-                        Si no encuentras el producto en el catálogo, puedes crearlo rápido.
-                        Se guardará en el catálogo del negocio.
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] text-slate-400">Nombre producto rápido</label>
+                                <input name="nuevo_producto_nombre" type="text" placeholder="Ej: Harina 25kg"
+                                       class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                              placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400">Unidad base</label>
+                                <input name="nuevo_producto_unidad_base" type="text" placeholder="Ej: saco"
+                                       class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                              placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# =========================
+                OBJETIVO DOC (contrato)
+                ========================= #}
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Objetivo documental (contrato)</p>
+                    <p class="text-[11px] text-slate-500">
+                        Completa <span class="font-semibold text-slate-300">solo uno</span>: Cantidad o Kg.
                     </p>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="space-y-1.5">
-                            <label class="block text-[11px] font-semibold text-slate-200">
-                                Nombre producto rápido
-                            </label>
-                            <input id="nuevo_producto_nombre" type="text" name="nuevo_producto_nombre"
-                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                          text-xs sm:text-sm text-slate-100
-                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                                   placeholder="Ej: Pollo entero congelado 2kg">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Cantidad documento</label>
+                            <input name="cantidad_documento" inputmode="decimal" placeholder="Ej: 120"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                            <p class="text-[10px] text-slate-600 mt-1">Modo oficial: CANTIDAD</p>
                         </div>
 
-                        <div class="space-y-1.5">
-                            <label class="block text-[11px] font-semibold text-slate-200">
-                                Unidad base (producto rápido)
-                            </label>
-                            <input id="nuevo_producto_unidad_base" type="text" name="nuevo_producto_unidad_base"
-                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                          text-xs sm:text-sm text-slate-100
-                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                                   placeholder="Ej: cajas, kg, pallets">
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Kilos documento (kg)</label>
+                            <input name="kilos" inputmode="decimal" placeholder="Ej: 3000"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                            <p class="text-[10px] text-slate-600 mt-1">Modo oficial: PESO</p>
                         </div>
                     </div>
 
-                    <p class="text-[10px] text-slate-500">
-                        Regla enterprise:
-                        <span class="text-slate-300">
-                            Debes elegir un producto del catálogo o ingresar nombre de producto rápido.
-                        </span>
-                    </p>
-
-                    <div id="msgProducto" class="hidden rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
-                        <p class="text-[11px] text-red-200">
-                            Debes seleccionar un producto del catálogo o indicar un nombre de producto rápido.
+                    <div class="mt-2 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                        <p class="text-[11px] text-slate-300">
+                            Nota: los equivalentes se muestran como <span class="font-semibold text-slate-200">Estimado</span> si existe conversión.
                         </p>
                     </div>
                 </div>
             </div>
 
-            {# Cantidades #}
+            {# =========================
+            DATOS OPERATIVOS
+            ========================= #}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Cantidad recibida
-                    </label>
-                    <input type="number" step="0.01" min="0" name="cantidad_recibida"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Ej: 100">
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Operación</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Bultos (opcional)</label>
+                            <input name="bultos" inputmode="numeric" placeholder="Ej: 80"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Unidad</label>
+                            <input name="unidad" type="text" placeholder="Ej: saco"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Lote</label>
+                            <input name="lote" type="text" placeholder="Ej: L-2025-12-01"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Vencimiento</label>
+                            <input name="fecha_vencimiento" type="date"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                    </div>
                 </div>
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Cantidad esperada
-                    </label>
-                    <input type="number" step="0.01" min="0" name="cantidad_esperada"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
+
+                <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Temperatura (si aplica)</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Temp objetivo (°C)</label>
+                            <input name="temperatura_objetivo" inputmode="decimal" placeholder="Ej: -18"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400">Temp recibida (°C)</label>
+                            <input name="temperatura_recibida" inputmode="decimal" placeholder="Ej: -17.5"
+                                   class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                            placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] text-slate-400">Observaciones</label>
+                        <textarea name="observaciones" rows="3" placeholder="Notas de control, daño, etc."
+                                  class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                             placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"></textarea>
+                    </div>
                 </div>
             </div>
 
-            {# Lote / Vencimiento #}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Lote
-                    </label>
-                    <input type="text" name="lote"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Fecha vencimiento
-                    </label>
-                    <input type="date" name="fecha_vencimiento"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
-                </div>
-            </div>
+            {# =========================
+            OVERRIDES (enterprise)
+            ========================= #}
+            <details class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <summary class="cursor-pointer list-none flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-300 uppercase tracking-wide">Overrides de conversión</p>
+                        <p class="text-[11px] text-slate-500">Opcional. Solo para “Estimado” (no cambia el contrato).</p>
+                    </div>
+                    <span class="text-[11px] text-slate-400">▼</span>
+                </summary>
 
-            {# Unidad (esta SÍ existe en tu route) #}
-            <div class="grid grid-cols-1 sm:grid-cols-1 gap-3">
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Unidad (línea)
-                    </label>
-                    <input id="unidad_linea" type="text" name="unidad"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Ej: cajas, kg, pallets">
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Tip: al elegir un producto del catálogo, intentamos sugerir su unidad automáticamente.
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-slate-400">Peso unitario override (kg)</label>
+                        <input name="peso_unitario_kg_override" inputmode="decimal" placeholder="Ej: 25"
+                               class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] text-slate-400">Unidades por bulto override</label>
+                        <input name="unidades_por_bulto_override" inputmode="numeric" placeholder="Ej: 20"
+                               class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] text-slate-400">Peso por bulto override (kg)</label>
+                        <input name="peso_por_bulto_kg_override" inputmode="decimal" placeholder="Ej: 500"
+                               class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] text-slate-400">Nombre bulto override</label>
+                        <input name="nombre_bulto_override" type="text" placeholder="Ej: saco"
+                               class="w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" />
+                    </div>
+                </div>
+
+                <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                    <p class="text-[11px] text-slate-300">
+                        Prioridad estimada: <span class="font-semibold text-slate-200">bultos×peso_bulto</span> →
+                        <span class="font-semibold text-slate-200">bultos×unid_bulto×peso_unit</span> →
+                        <span class="font-semibold text-slate-200">cantidad×peso_unit</span>.
                     </p>
                 </div>
-            </div>
+            </details>
 
-            {# Temperaturas #}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Temp. objetivo (°C)
-                    </label>
-                    <input type="number" step="0.1" name="temperatura_objetivo"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold text-slate-200">
-                        Temp. recibida (°C)
-                    </label>
-                    <input type="number" step="0.1" name="temperatura_recibida"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Opcional">
-                </div>
-            </div>
+            <div class="flex flex-wrap items-center gap-2 pt-2">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-2 text-[12px] font-semibold
+                       text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.98]
+                       transition-transform transition-colors">
+                    Crear línea
+                </button>
 
-            {# Observaciones #}
-            <div class="space-y-1.5">
-                <label class="block text-[11px] font-semibold text-slate-200">
-                    Observaciones
-                </label>
-                <textarea name="observaciones" rows="3"
-                          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                                 text-xs sm:text-sm text-slate-100
-                                 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          placeholder="Notas sobre esta línea (daños, embalaje, etc.)."></textarea>
-            </div>
-
-            {# Botones #}
-            <div class="flex items-center justify-end gap-2 pt-2">
-                <a href="/inbound/recepciones/{{ recepcion.id }}"
-                   class="inline-flex items-center rounded-full px-3 py-1.5
-                          text-[11px] font-semibold text-slate-300 border border-slate-700
-                          hover:border-slate-500 hover:text-slate-50">
+                <a href="/inbound/recepciones/{{ recepcion.id }}/lineas"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2 text-[12px] font-semibold
+                  text-slate-200 hover:border-slate-500 transition-colors">
                     Cancelar
                 </a>
-                <button type="submit"
-                        class="inline-flex items-center rounded-full px-4 py-1.5
-                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
-                               hover:bg-cyan-300 active:scale-[0.97]
-                               transition-transform transition-colors">
-                    Guardar línea
-                </button>
             </div>
 
-        </form>
-    </section>
-
-    {# JS liviano: mutual exclusivity + sugerir unidad + validación mínima #}
-    <script>
-        (function () {
-            const form = document.getElementById('frmLineaInbound');
-            const sel = document.getElementById('producto_id');
-            const unidadLinea = document.getElementById('unidad_linea');
-
-            const quickName = document.getElementById('nuevo_producto_nombre');
-            const quickUnit = document.getElementById('nuevo_producto_unidad_base');
-            const msgProducto = document.getElementById('msgProducto');
-
-            function toggleQuickDisabled(disabled) {
-                if (!quickName || !quickUnit) return;
-                quickName.disabled = disabled;
-                quickUnit.disabled = disabled;
-
-                if (disabled) {
-                    quickName.value = '';
-                    quickUnit.value = '';
-                }
-            }
-
-            function suggestUnidadFromSelected() {
-                if (!sel || !unidadLinea) return;
-                const opt = sel.options[sel.selectedIndex];
-                const u = (opt && opt.dataset) ? (opt.dataset.unidad || '') : '';
-                // solo sugerimos si está vacío (no pisamos al usuario)
-                if (u && !unidadLinea.value) {
-                    unidadLinea.value = u;
-                }
-            }
-
-            function validateProducto() {
-                const hasCatalog = sel && sel.value && String(sel.value).trim() !== '';
-                const hasQuick = quickName && quickName.value && quickName.value.trim() !== '';
-                const ok = hasCatalog || hasQuick;
-
-                if (msgProducto) {
-                    msgProducto.classList.toggle('hidden', ok);
-                }
-                return ok;
-            }
-
-            if (sel) {
-                sel.addEventListener('change', function () {
-                    const hasCatalog = sel.value && String(sel.value).trim() !== '';
-                    toggleQuickDisabled(!!hasCatalog);
-                    suggestUnidadFromSelected();
-                    validateProducto();
-                });
-            }
-
-            if (quickName) {
-                quickName.addEventListener('input', function () {
-                    // si el usuario empieza a escribir producto rápido, deselecciona catálogo (para evitar ambigüedad)
-                    if (sel && quickName.value.trim() !== '') {
-                        sel.value = '';
-                        toggleQuickDisabled(false);
-                    }
-                    validateProducto();
-                });
-            }
-
-            if (form) {
-                form.addEventListener('submit', function (e) {
-                    if (!validateProducto()) {
-                        e.preventDefault();
-                        // foco inteligente
-                        if (sel) sel.focus();
-                        return false;
-                    }
-                });
-            }
-        })();
-    </script>
+        </section>
+    </form>
 
 </div>
-{% endif %}
 {% endblock %}

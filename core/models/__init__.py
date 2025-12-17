@@ -24,6 +24,7 @@ from sqlalchemy import (
     Float,
     Text,
     CheckConstraint,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import Enum as SAEnum
@@ -169,23 +170,108 @@ class Producto(Base):
     id = Column(Integer, primary_key=True)
     negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=False, index=True)
 
+    # Identidad
     nombre = Column(String, nullable=False, index=True)
+
+    # Unidad “operativa” base (ej: saco, caja, unidad, kg, etc.)
     unidad = Column(String, default="unidad", nullable=False)
+
+    # Stock / control
     stock_min = Column(Integer, nullable=True)
     stock_max = Column(Integer, nullable=True)
     activo = Column(Integer, default=1, nullable=False)
     costo_unitario = Column(Float, nullable=True)
 
+    # Códigos
     sku = Column(String, nullable=True, index=True)
     ean13 = Column(String, nullable=True, index=True)
     origen = Column(String, default="core")
 
+    # =========================================================
+    # ✅ ENTERPRISE: Conversión Cantidad <-> Peso (para estimados)
+    # =========================================================
+    # Peso unitario en KG (ej: “cada saco pesa 25 kg” => 25.0)
+    peso_unitario_kg = Column(Float, nullable=True)
+
+    # “Bulto” como contenedor operacional (ej: pallet tiene bultos, o bultos = sacos/cajas)
+    # Unidades por bulto (ej: 20 unidades por caja)
+    unidades_por_bulto = Column(Integer, nullable=True)
+
+    # Peso por bulto en KG (si el documento opera por bultos directos)
+    peso_por_bulto_kg = Column(Float, nullable=True)
+
+    # Etiqueta opcional (ej: "saco", "caja", "bolsa")
+    nombre_bulto = Column(String, nullable=True)
+
+    # Relaciones
     negocio = relationship("Negocio", back_populates="productos")
+
     plantillas_proveedor_lineas = relationship(
         "InboundPlantillaProveedorLinea",
         back_populates="producto",
         cascade="all, delete-orphan",
     )
+
+    # =========================
+    # Helpers (no DB) para UI/servicios
+    # =========================
+    def kg_desde_unidades(self, unidades: float | int | None) -> float | None:
+        if unidades is None:
+            return None
+        if not self.peso_unitario_kg:
+            return None
+        try:
+            u = float(unidades)
+        except Exception:
+            return None
+        if u < 0:
+            return None
+        return round(u * float(self.peso_unitario_kg), 6)
+
+    def unidades_desde_kg(self, kg: float | int | None) -> float | None:
+        if kg is None:
+            return None
+        if not self.peso_unitario_kg:
+            return None
+        try:
+            k = float(kg)
+        except Exception:
+            return None
+        if k < 0:
+            return None
+        return round(k / float(self.peso_unitario_kg), 6)
+
+    def kg_desde_bultos(self, bultos: int | None) -> float | None:
+        if bultos is None:
+            return None
+        try:
+            b = int(bultos)
+        except Exception:
+            return None
+        if b < 0:
+            return None
+
+        if self.peso_por_bulto_kg:
+            return round(b * float(self.peso_por_bulto_kg), 6)
+
+        # fallback: unidades_por_bulto * peso_unitario_kg
+        if self.unidades_por_bulto and self.peso_unitario_kg:
+            return round(b * int(self.unidades_por_bulto) * float(self.peso_unitario_kg), 6)
+
+        return None
+
+    def unidades_desde_bultos(self, bultos: int | None) -> float | None:
+        if bultos is None:
+            return None
+        try:
+            b = int(bultos)
+        except Exception:
+            return None
+        if b < 0:
+            return None
+        if not self.unidades_por_bulto:
+            return None
+        return float(b * int(self.unidades_por_bulto))
 
 
 class Movimiento(Base):
@@ -207,7 +293,7 @@ class Movimiento(Base):
     codigo_producto = Column(String, nullable=True, index=True)
 
     negocio = relationship("Negocio", back_populates="movimientos")
-
+    
 
 class Alerta(Base):
     __tablename__ = "alertas"

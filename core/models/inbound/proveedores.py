@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
 from core.database import Base
-from core.models import utcnow
+from core.models.time import utcnow  # ✅ correcto
 
 
 class Proveedor(Base):

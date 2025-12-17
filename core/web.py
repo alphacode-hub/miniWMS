@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from jinja2 import ChoiceLoader, FileSystemLoader
+from jinja2 import ChoiceLoader, FileSystemLoader, Environment
 
 from core.templates import create_templates
 

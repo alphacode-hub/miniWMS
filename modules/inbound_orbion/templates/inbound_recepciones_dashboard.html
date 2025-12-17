@@ -1,0 +1,370 @@
+﻿<!-- modules/inbound_orbion/templates/inbound_recepciones_dashboard.html -->
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Inbound{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER (mobile-first, 1 solo)
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Orbion Inbound
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Panel de recepciones: control de documentos, tiempos y pallets para tu operación.
+            </p>
+        </div>
+
+        <div class="shrink-0">
+            <a href="/app"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                transition-colors">
+                ← Hub
+            </a>
+        </div>
+    </header>
+
+    {# =========================
+    ACCIONES RÁPIDAS
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="space-y-0.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Acciones rápidas
+                </p>
+                <p class="text-[11px] text-slate-400 max-w-md">
+                    Configura el módulo, revisa analítica (si tu plan lo permite) y crea nuevas recepciones.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
+                <a href="/inbound/proveedores"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Proveedores
+                </a>
+
+                {# Si aún no tienes citas, mejor no romper UX: #}
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                 text-[11px] font-medium text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                      title="Próximamente">
+                    Citas / agenda
+                </span>
+
+                <a href="/inbound/recepciones/nueva"
+                   class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                  text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                  active:scale-[0.97] transition-transform transition-colors">
+                    Nueva recepción
+                </a>
+
+                {% if user and user["rol"] == "admin" %}
+                <a href="/inbound/config"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Configuración
+                </a>
+                {% endif %}
+
+                {% if inbound_analytics_enabled %}
+                <a href="/inbound/analytics"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Ver analítica
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {# =========================
+    FILTROS
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Filtros de recepciones
+            </p>
+            <p class="text-[11px] text-slate-400 max-w-md">
+                Filtra por estado y rango de fechas para concentrarte en las recepciones relevantes.
+            </p>
+        </header>
+
+        <form method="get"
+              class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
+
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-200">Estado</label>
+                <select name="estado"
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                       text-xs sm:text-sm text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <option value="" {% if filtros is defined and (filtros.estado or '' ) == '' %}selected{% endif %}>Todos</option>
+                    <option value="PRE_REGISTRADO" {% if filtros is defined and filtros.estado == 'PRE_REGISTRADO' %}selected{% endif %}>Pre-registrado</option>
+                    <option value="EN_ESPERA" {% if filtros is defined and filtros.estado == 'EN_ESPERA' %}selected{% endif %}>En espera</option>
+                    <option value="EN_DESCARGA" {% if filtros is defined and filtros.estado == 'EN_DESCARGA' %}selected{% endif %}>En descarga</option>
+                    <option value="EN_CONTROL_CALIDAD" {% if filtros is defined and filtros.estado == 'EN_CONTROL_CALIDAD' %}selected{% endif %}>En control de calidad</option>
+                    <option value="CERRADO" {% if filtros is defined and filtros.estado == 'CERRADO' %}selected{% endif %}>Cerrado</option>
+                </select>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-200">Desde</label>
+                <input type="date" name="desde"
+                       value="{{ filtros.desde if filtros is defined and filtros.desde is not none else '' }}"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                      text-xs sm:text-sm text-slate-100
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-slate-200">Hasta</label>
+                <input type="date" name="hasta"
+                       value="{{ filtros.hasta if filtros is defined and filtros.hasta is not none else '' }}"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                      text-xs sm:text-sm text-slate-100
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+            </div>
+
+            <div class="sm:col-span-3 flex flex-wrap gap-2 pt-1">
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
+                       text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                       active:scale-[0.97] transition-transform transition-colors">
+                    Aplicar filtros
+                </button>
+
+                <a href="/inbound/recepciones"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Limpiar
+                </a>
+            </div>
+        </form>
+    </section>
+
+    {# =========================
+    LISTA DE RECEPCIONES
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
+
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="space-y-0.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Recepciones recientes
+                </p>
+                <p class="text-[11px] text-slate-400">
+                    Abre cada recepción para trabajar líneas, pallets, documentos y fotos.
+                </p>
+            </div>
+
+            {% if recepciones %}
+            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                  text-[11px] text-slate-300">
+                <span class="mr-1 text-slate-500">Registros:</span>
+                <span class="font-semibold text-slate-100">{{ recepciones|length }}</span>
+            </div>
+            {% endif %}
+        </header>
+
+        {% if recepciones %}
+        <div class="space-y-3">
+            {% for r in recepciones %}
+            {% set estado_name = r.estado.name if r.estado is not none and r.estado.name is defined else (r.estado|string) %}
+
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
+                          hover:border-cyan-400/60 hover:bg-slate-900/80 transition-colors">
+
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 space-y-0.5">
+                        <a href="/inbound/recepciones/{{ r.id }}"
+                           class="block text-xs sm:text-sm font-semibold text-slate-100 truncate hover:text-cyan-200 transition-colors">
+                            {{ r.codigo_recepcion }} ·
+                            {% if r.proveedor %}
+                            {{ r.proveedor.nombre }}
+                            {% else %}
+                            <span class="text-slate-300">Sin proveedor</span>
+                            {% endif %}
+                        </a>
+
+                        <p class="text-[11px] text-slate-400 truncate">
+                            {{ r.documento_ref or "Sin documento / referencia" }}
+                        </p>
+
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <a href="/inbound/recepciones/{{ r.id }}/lineas"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                            text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Líneas
+                            </a>
+
+                            <a href="/inbound/recepciones/{{ r.id }}/pallets"
+                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                            text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Pallets
+                            </a>
+
+                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                               text-[10px] font-semibold text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                                  title="Próximamente">
+                                Checklist
+                            </span>
+
+                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                               text-[10px] font-semibold text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                                  title="Próximamente">
+                                Docs
+                            </span>
+
+                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
+                               text-[10px] font-semibold text-slate-500 bg-slate-900/40 cursor-not-allowed"
+                                  title="Próximamente">
+                                Fotos
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-end gap-1 shrink-0">
+                        <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                  {% if estado_name == 'CERRADO' %}
+                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
+                  {% elif estado_name == 'EN_DESCARGA' %}
+                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
+                  {% elif estado_name == 'EN_CONTROL_CALIDAD' %}
+                    bg-amber-500/10 text-amber-200 border-amber-500/40
+                  {% elif estado_name == 'EN_ESPERA' %}
+                    bg-sky-500/10 text-sky-200 border-sky-500/40
+                  {% else %}
+                    bg-slate-700/40 text-slate-100 border-slate-600
+                  {% endif %}">
+                            {{ estado_name.replace('_', ' ') }}
+                        </span>
+
+                        <p class="text-[10px] text-slate-400 whitespace-nowrap">
+                            {% if r.created_at %}
+                            {{ r.created_at.strftime('%d-%m-%Y %H:%M') }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                {# meta extra si existe #}
+                {% set contenedor = (r.contenedor if r.contenedor is defined else None) %}
+                {% set patente = (r.patente_camion if r.patente_camion is defined else None) %}
+                {% set tipo_carga = (r.tipo_carga if r.tipo_carga is defined else None) %}
+                {% set eta = (r.fecha_estimada_llegada if r.fecha_estimada_llegada is defined else None) %}
+
+                {% if contenedor or patente or tipo_carga or eta %}
+                <div class="mt-2 flex flex-wrap gap-2">
+                    {% if contenedor %}
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
+                        Contenedor: <span class="ml-1 text-slate-100">{{ contenedor }}</span>
+                    </span>
+                    {% endif %}
+                    {% if patente %}
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
+                        Patente: <span class="ml-1 text-slate-100">{{ patente|upper }}</span>
+                    </span>
+                    {% endif %}
+                    {% if tipo_carga %}
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
+                        Tipo: <span class="ml-1 text-slate-100">{{ tipo_carga }}</span>
+                    </span>
+                    {% endif %}
+                    {% if eta %}
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
+                        ETA:
+                        <span class="ml-1 text-slate-100">
+                            {% if eta.strftime is defined %}
+                            {{ eta.strftime('%d-%m-%Y') }}
+                            {% else %}
+                            {{ eta }}
+                            {% endif %}
+                        </span>
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+            </article>
+            {% endfor %}
+        </div>
+
+        {# paginación legacy (si existe en tu contexto) #}
+        {% if total_pages and total_pages > 1 %}
+        <nav class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 mt-2">
+            <div class="text-[11px] text-slate-400">
+                Página <span class="font-semibold text-slate-100">{{ page }}</span>
+                de <span class="font-semibold text-slate-100">{{ total_pages }}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {% if page > 1 %}
+                <a href="/inbound/recepciones?page={{ page - 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                        text-[11px] font-medium text-slate-200 bg-slate-900
+                        hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    ← Anterior
+                </a>
+                {% else %}
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                           text-[11px] font-medium text-slate-500 bg-slate-900/60 cursor-not-allowed">
+                    ← Anterior
+                </span>
+                {% endif %}
+
+                {% if page < total_pages %}
+                <a href="/inbound/recepciones?page={{ page + 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                        text-[11px] font-medium text-slate-200 bg-slate-900
+                        hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Siguiente →
+                </a>
+                {% else %}
+                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
+                           text-[11px] font-medium text-slate-500 bg-slate-900/60 cursor-not-allowed">
+                    Siguiente →
+                </span>
+                {% endif %}
+            </div>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900 px-4 py-6 text-center space-y-1.5">
+            <p class="text-xs font-semibold text-slate-100">
+                Aún no tienes recepciones inbound.
+            </p>
+            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">
+                Comienza creando tu primera recepción para controlar el flujo completo con Orbion Inbound.
+            </p>
+            <div class="pt-2">
+                <a href="/inbound/recepciones/nueva"
+                   class="inline-flex items-center justify-center rounded-full px-4 py-1.5
+                    text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                    hover:bg-cyan-300 active:scale-[0.97]
+                    transition-transform transition-colors">
+                    Crear primera recepción
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}
