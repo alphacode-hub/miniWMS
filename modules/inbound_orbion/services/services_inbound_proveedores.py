@@ -1,12 +1,12 @@
-﻿# modules/inbound_orbion/services/services_inbound_proveedores.py
-"""
+﻿"""
 Servicios – Proveedores + Plantillas (Inbound ORBION)
 
 ✔ Multi-tenant estricto (negocio_id)
-✔ Prevención de duplicados útiles (proveedor/plantilla por negocio)
-✔ Operaciones consistentes (transacciones y rollback)
-✔ Validaciones enterprise (producto pertenece al negocio, plantilla activa opcional)
-✔ Compatible con split de modelos (core.models.*)
+✔ Prevención de duplicados operativos
+✔ Rollback seguro
+✔ Normalización de datos
+✔ Plantillas proveedor + líneas (base para citas y prealertas)
+✔ Compatible con baseline Inbound actual
 """
 
 from __future__ import annotations
@@ -17,17 +17,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.models import (
+    Proveedor,
+    Producto,
     InboundPlantillaProveedor,
     InboundPlantillaProveedorLinea,
-    Producto,
-    Proveedor,
 )
+
 from .services_inbound_core import InboundDomainError
 
 
-# ============================
-#   HELPERS COMUNES
-# ============================
+# =========================================================
+# HELPERS INTERNOS
+# =========================================================
 
 def _norm_str(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
@@ -43,6 +44,10 @@ def _norm_email(v: Optional[str]) -> Optional[str]:
     s = _norm_str(v)
     return s.lower() if s else None
 
+
+# =========================================================
+# VALIDACIONES SEGURAS
+# =========================================================
 
 def obtener_proveedor_seguro(
     db: Session,
@@ -74,11 +79,16 @@ def _validar_producto_de_negocio(
     producto = db.get(Producto, producto_id)
     if not producto or producto.negocio_id != negocio_id:
         raise InboundDomainError(f"Producto {producto_id} no pertenece a este negocio.")
-    # Si tienes campo activo en Producto, lo respetamos (sin romper si no existe)
+
     if hasattr(producto, "activo") and getattr(producto, "activo") in (0, False):
-        raise InboundDomainError(f"Producto {producto_id} se encuentra inactivo.")
+        raise InboundDomainError(f"Producto {producto.nombre} se encuentra inactivo.")
+
     return producto
 
+
+# =========================================================
+# PROVEEDORES
+# =========================================================
 
 def listar_proveedores(
     db: Session,
@@ -87,30 +97,22 @@ def listar_proveedores(
 ) -> List[Proveedor]:
     q = db.query(Proveedor).filter(Proveedor.negocio_id == negocio_id)
     if solo_activos:
-        q = q.filter(Proveedor.activo.is_(True))  # noqa: E712
+        q = q.filter(Proveedor.activo == 1)
     return q.order_by(Proveedor.nombre.asc()).all()
 
-
-# ============================
-#   PROVEEDORES
-# ============================
 
 def crear_proveedor(
     db: Session,
     negocio_id: int,
     nombre: str,
     rut: Optional[str] = None,
-    contacto: Optional[str] = None,
-    telefono: Optional[str] = None,
     email: Optional[str] = None,
-    direccion: Optional[str] = None,
-    observaciones: Optional[str] = None,
+    telefono: Optional[str] = None,
 ) -> Proveedor:
     nombre_norm = _norm_str(nombre)
     if not nombre_norm:
         raise InboundDomainError("El nombre del proveedor es obligatorio.")
 
-    # Evitar duplicados por nombre dentro del negocio (enterprise: consistencia operativa)
     existe = (
         db.query(Proveedor.id)
         .filter(
@@ -120,20 +122,15 @@ def crear_proveedor(
         .first()
     )
     if existe:
-        raise InboundDomainError(
-            f"Ya existe un proveedor con el nombre '{nombre_norm}' en este negocio."
-        )
+        raise InboundDomainError(f"Ya existe un proveedor llamado '{nombre_norm}'.")
 
     proveedor = Proveedor(
         negocio_id=negocio_id,
         nombre=nombre_norm,
         rut=_norm_rut(rut),
-        contacto=_norm_str(contacto),
-        telefono=_norm_str(telefono),
         email=_norm_email(email),
-        direccion=_norm_str(direccion),
-        observaciones=_norm_str(observaciones),
-        activo=True,
+        telefono=_norm_str(telefono),
+        activo=1,
     )
 
     try:
@@ -141,10 +138,9 @@ def crear_proveedor(
         db.commit()
         db.refresh(proveedor)
         return proveedor
-    except IntegrityError as exc:
+    except IntegrityError:
         db.rollback()
-        # Por si luego agregas unique constraints (rut, email, etc.)
-        raise InboundDomainError("No se pudo crear el proveedor (posible duplicado).") from exc
+        raise InboundDomainError("No se pudo crear el proveedor (posible duplicado).")
 
 
 def actualizar_proveedor(
@@ -155,13 +151,11 @@ def actualizar_proveedor(
 ) -> Proveedor:
     proveedor = obtener_proveedor_seguro(db, negocio_id, proveedor_id)
 
-    # Normalización controlada
     if "nombre" in updates and updates["nombre"] is not None:
-        nombre_norm = _norm_str(str(updates["nombre"]))
+        nombre_norm = _norm_str(updates["nombre"])
         if not nombre_norm:
-            raise InboundDomainError("El nombre del proveedor no puede estar vacío.")
+            raise InboundDomainError("El nombre no puede estar vacío.")
 
-        # Evitar colisión por nombre con otro proveedor
         colision = (
             db.query(Proveedor.id)
             .filter(
@@ -172,41 +166,28 @@ def actualizar_proveedor(
             .first()
         )
         if colision:
-            raise InboundDomainError(
-                f"Ya existe otro proveedor con el nombre '{nombre_norm}'."
-            )
+            raise InboundDomainError(f"Ya existe otro proveedor llamado '{nombre_norm}'.")
         proveedor.nombre = nombre_norm
 
-    # Campos texto opcionales
-    if "rut" in updates and updates["rut"] is not None:
+    if "rut" in updates:
         proveedor.rut = _norm_rut(updates["rut"])
 
-    if "contacto" in updates and updates["contacto"] is not None:
-        proveedor.contacto = _norm_str(updates["contacto"])
-
-    if "telefono" in updates and updates["telefono"] is not None:
-        proveedor.telefono = _norm_str(updates["telefono"])
-
-    if "email" in updates and updates["email"] is not None:
+    if "email" in updates:
         proveedor.email = _norm_email(updates["email"])
 
-    if "direccion" in updates and updates["direccion"] is not None:
-        proveedor.direccion = _norm_str(updates["direccion"])
+    if "telefono" in updates:
+        proveedor.telefono = _norm_str(updates["telefono"])
 
-    if "observaciones" in updates and updates["observaciones"] is not None:
-        proveedor.observaciones = _norm_str(updates["observaciones"])
-
-    # Estado activo (si se quiere tocar desde update)
     if "activo" in updates and updates["activo"] is not None:
-        proveedor.activo = bool(updates["activo"])
+        proveedor.activo = 1 if updates["activo"] else 0
 
     try:
         db.commit()
         db.refresh(proveedor)
         return proveedor
-    except IntegrityError as exc:
+    except IntegrityError:
         db.rollback()
-        raise InboundDomainError("No se pudo actualizar el proveedor (posible duplicado).") from exc
+        raise InboundDomainError("No se pudo actualizar el proveedor.")
 
 
 def cambiar_estado_proveedor(
@@ -216,15 +197,15 @@ def cambiar_estado_proveedor(
     activo: bool,
 ) -> Proveedor:
     proveedor = obtener_proveedor_seguro(db, negocio_id, proveedor_id)
-    proveedor.activo = bool(activo)
+    proveedor.activo = 1 if activo else 0
     db.commit()
     db.refresh(proveedor)
     return proveedor
 
 
-# ============================
-#   PLANTILLAS DE PROVEEDOR
-# ============================
+# =========================================================
+# PLANTILLAS DE PROVEEDOR
+# =========================================================
 
 def crear_plantilla_proveedor(
     db: Session,
@@ -239,7 +220,7 @@ def crear_plantilla_proveedor(
     if not nombre_norm:
         raise InboundDomainError("El nombre de la plantilla es obligatorio.")
 
-    existente = (
+    existe = (
         db.query(InboundPlantillaProveedor.id)
         .filter(
             InboundPlantillaProveedor.negocio_id == negocio_id,
@@ -248,17 +229,15 @@ def crear_plantilla_proveedor(
         )
         .first()
     )
-    if existente:
-        raise InboundDomainError(
-            f"Ya existe una plantilla llamada '{nombre_norm}' para este proveedor."
-        )
+    if existe:
+        raise InboundDomainError("Ya existe una plantilla con ese nombre.")
 
     plantilla = InboundPlantillaProveedor(
         negocio_id=negocio_id,
         proveedor_id=proveedor.id,
         nombre=nombre_norm,
         descripcion=_norm_str(descripcion),
-        activo=True,
+        activo=1,
     )
 
     try:
@@ -266,9 +245,9 @@ def crear_plantilla_proveedor(
         db.commit()
         db.refresh(plantilla)
         return plantilla
-    except IntegrityError as exc:
+    except IntegrityError:
         db.rollback()
-        raise InboundDomainError("No se pudo crear la plantilla (posible duplicado).") from exc
+        raise InboundDomainError("No se pudo crear la plantilla.")
 
 
 def actualizar_plantilla_proveedor(
@@ -280,54 +259,24 @@ def actualizar_plantilla_proveedor(
     plantilla = obtener_plantilla_segura(db, negocio_id, plantilla_id)
 
     if "nombre" in updates and updates["nombre"] is not None:
-        nombre_norm = _norm_str(str(updates["nombre"]))
+        nombre_norm = _norm_str(updates["nombre"])
         if not nombre_norm:
-            raise InboundDomainError("El nombre de la plantilla no puede estar vacío.")
-
-        # Evitar duplicado por (proveedor_id, nombre) dentro del negocio
-        colision = (
-            db.query(InboundPlantillaProveedor.id)
-            .filter(
-                InboundPlantillaProveedor.negocio_id == negocio_id,
-                InboundPlantillaProveedor.proveedor_id == plantilla.proveedor_id,
-                InboundPlantillaProveedor.nombre == nombre_norm,
-                InboundPlantillaProveedor.id != plantilla.id,
-            )
-            .first()
-        )
-        if colision:
-            raise InboundDomainError(
-                f"Ya existe otra plantilla llamada '{nombre_norm}' para este proveedor."
-            )
-
+            raise InboundDomainError("El nombre no puede estar vacío.")
         plantilla.nombre = nombre_norm
 
-    if "descripcion" in updates and updates["descripcion"] is not None:
+    if "descripcion" in updates:
         plantilla.descripcion = _norm_str(updates["descripcion"])
 
     if "activo" in updates and updates["activo"] is not None:
-        plantilla.activo = bool(updates["activo"])
+        plantilla.activo = 1 if updates["activo"] else 0
 
     try:
         db.commit()
         db.refresh(plantilla)
         return plantilla
-    except IntegrityError as exc:
+    except IntegrityError:
         db.rollback()
-        raise InboundDomainError("No se pudo actualizar la plantilla (posible duplicado).") from exc
-
-
-def cambiar_estado_plantilla_proveedor(
-    db: Session,
-    negocio_id: int,
-    plantilla_id: int,
-    activo: bool,
-) -> InboundPlantillaProveedor:
-    plantilla = obtener_plantilla_segura(db, negocio_id, plantilla_id)
-    plantilla.activo = bool(activo)
-    db.commit()
-    db.refresh(plantilla)
-    return plantilla
+        raise InboundDomainError("No se pudo actualizar la plantilla.")
 
 
 def eliminar_plantilla_proveedor(
@@ -340,9 +289,9 @@ def eliminar_plantilla_proveedor(
     db.commit()
 
 
-# ============================
-#   LÍNEAS DE PLANTILLA
-# ============================
+# =========================================================
+# LÍNEAS DE PLANTILLA
+# =========================================================
 
 def agregar_lineas_a_plantilla_proveedor(
     db: Session,
@@ -350,30 +299,14 @@ def agregar_lineas_a_plantilla_proveedor(
     plantilla_id: int,
     lineas: Iterable[dict[str, Any]],
 ) -> None:
-    """
-    Agrega líneas a una plantilla SIN borrar las existentes.
-
-    Reglas enterprise:
-    - Producto pertenece al negocio
-    - (Opcional) evitar duplicar mismo producto dentro de una plantilla
-    """
     plantilla = obtener_plantilla_segura(db, negocio_id, plantilla_id)
 
     try:
         for data in lineas:
-            producto_id_raw = data.get("producto_id")
-            if producto_id_raw is None:
-                raise InboundDomainError("Cada línea debe incluir 'producto_id'.")
-
-            try:
-                producto_id = int(producto_id_raw)
-            except (TypeError, ValueError) as exc:
-                raise InboundDomainError("producto_id inválido.") from exc
-
+            producto_id = int(data.get("producto_id"))
             producto = _validar_producto_de_negocio(db, negocio_id, producto_id)
 
-            # Evitar duplicar producto en la misma plantilla (muy útil en operación)
-            dup = (
+            existe = (
                 db.query(InboundPlantillaProveedorLinea.id)
                 .filter(
                     InboundPlantillaProveedorLinea.plantilla_id == plantilla.id,
@@ -381,17 +314,17 @@ def agregar_lineas_a_plantilla_proveedor(
                 )
                 .first()
             )
-            if dup:
+            if existe:
                 raise InboundDomainError(
-                    f"El producto '{producto.nombre}' ya está en esta plantilla."
+                    f"El producto '{producto.nombre}' ya existe en la plantilla."
                 )
 
             linea = InboundPlantillaProveedorLinea(
                 plantilla_id=plantilla.id,
                 producto_id=producto.id,
                 cantidad_sugerida=data.get("cantidad_sugerida"),
-                unidad=_norm_str(data.get("unidad")) or getattr(producto, "unidad", None),
                 peso_kg_sugerido=data.get("peso_kg_sugerido"),
+                unidad=_norm_str(data.get("unidad")) or getattr(producto, "unidad", None),
             )
             db.add(linea)
 
@@ -400,12 +333,9 @@ def agregar_lineas_a_plantilla_proveedor(
     except InboundDomainError:
         db.rollback()
         raise
-    except IntegrityError as exc:
+    except Exception:
         db.rollback()
-        raise InboundDomainError("No se pudieron agregar líneas (posible duplicado).") from exc
-    except Exception as exc:
-        db.rollback()
-        raise exc
+        raise
 
 
 def reemplazar_lineas_plantilla_proveedor(
@@ -414,39 +344,23 @@ def reemplazar_lineas_plantilla_proveedor(
     plantilla_id: int,
     nuevas_lineas: Iterable[dict[str, Any]],
 ) -> None:
-    """
-    Reemplazo total:
-    1) Borra todas las líneas actuales
-    2) Inserta las nuevas
-    Todo en UNA transacción (enterprise).
-    """
     plantilla = obtener_plantilla_segura(db, negocio_id, plantilla_id)
 
     try:
-        # Borrar líneas actuales
         db.query(InboundPlantillaProveedorLinea).filter(
             InboundPlantillaProveedorLinea.plantilla_id == plantilla.id
         ).delete()
 
-        # Agregar las nuevas
         for data in nuevas_lineas:
-            producto_id_raw = data.get("producto_id")
-            if producto_id_raw is None:
-                raise InboundDomainError("Cada línea debe incluir 'producto_id'.")
-
-            try:
-                producto_id = int(producto_id_raw)
-            except (TypeError, ValueError) as exc:
-                raise InboundDomainError("producto_id inválido.") from exc
-
+            producto_id = int(data.get("producto_id"))
             producto = _validar_producto_de_negocio(db, negocio_id, producto_id)
 
             linea = InboundPlantillaProveedorLinea(
                 plantilla_id=plantilla.id,
                 producto_id=producto.id,
                 cantidad_sugerida=data.get("cantidad_sugerida"),
-                unidad=_norm_str(data.get("unidad")) or getattr(producto, "unidad", None),
                 peso_kg_sugerido=data.get("peso_kg_sugerido"),
+                unidad=_norm_str(data.get("unidad")) or getattr(producto, "unidad", None),
             )
             db.add(linea)
 
@@ -455,9 +369,6 @@ def reemplazar_lineas_plantilla_proveedor(
     except InboundDomainError:
         db.rollback()
         raise
-    except IntegrityError as exc:
+    except Exception:
         db.rollback()
-        raise InboundDomainError("No se pudieron reemplazar líneas (posible duplicado).") from exc
-    except Exception as exc:
-        db.rollback()
-        raise exc
+        raise

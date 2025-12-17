@@ -1,15 +1,18 @@
-﻿# modules/inbound_orbion/routes/routes_inbound_proveedores.py #
+﻿from __future__ import annotations
+
+from urllib.parse import quote_plus
+
 from fastapi import (
     APIRouter,
     Request,
     Depends,
     Form,
-    HTTPException,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.models.inbound.proveedores import Proveedor
 
 from modules.inbound_orbion.services.services_inbound_proveedores import (
     listar_proveedores,
@@ -18,7 +21,6 @@ from modules.inbound_orbion.services.services_inbound_proveedores import (
     cambiar_estado_proveedor,
     crear_plantilla_proveedor,
     actualizar_plantilla_proveedor,
-    cambiar_estado_plantilla_proveedor,
     eliminar_plantilla_proveedor,
     agregar_lineas_a_plantilla_proveedor,
     reemplazar_lineas_plantilla_proveedor,
@@ -31,13 +33,33 @@ from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
 )
 
+from core.models.inbound.plantillas_checklist import InboundPlantillaChecklist
+
 from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
 
 router = APIRouter()
 
 
 # ==========================================================
-#   PROVEEDORES
+# Helpers UX
+# ==========================================================
+
+def _qp(msg: str | None) -> str:
+    return quote_plus((msg or "").strip())
+
+
+def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> RedirectResponse:
+    if ok:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}ok={_qp(ok)}"
+    if error:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}error={_qp(error)}"
+    return RedirectResponse(url=url, status_code=302)
+
+
+# ==========================================================
+# PROVEEDORES
 # ==========================================================
 
 @router.get("/proveedores", response_class=HTMLResponse)
@@ -46,7 +68,7 @@ async def inbound_proveedores_lista(
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     get_negocio_or_404(db, negocio_id)
 
     proveedores = listar_proveedores(
@@ -58,7 +80,7 @@ async def inbound_proveedores_lista(
     log_inbound_event(
         "proveedores_lista_view",
         negocio_id=negocio_id,
-        user_email=user["email"],
+        user_email=user.get("email"),
         total=len(proveedores),
     )
 
@@ -68,6 +90,8 @@ async def inbound_proveedores_lista(
             "request": request,
             "user": user,
             "proveedores": proveedores,
+            "ok": request.query_params.get("ok"),
+            "error": request.query_params.get("error"),
             "modulo_nombre": "Orbion Inbound",
         },
     )
@@ -79,13 +103,10 @@ async def inbound_proveedor_crear(
     user=Depends(inbound_roles_dep()),
     nombre: str = Form(...),
     rut: str = Form(""),
-    contacto: str = Form(""),
     telefono: str = Form(""),
     email: str = Form(""),
-    direccion: str = Form(""),
-    observaciones: str = Form(""),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
 
     try:
         proveedor = crear_proveedor(
@@ -93,29 +114,27 @@ async def inbound_proveedor_crear(
             negocio_id=negocio_id,
             nombre=nombre,
             rut=rut,
-            contacto=contacto,
             telefono=telefono,
             email=email,
-            direccion=direccion,
-            observaciones=observaciones,
         )
+
+        log_inbound_event(
+            "proveedor_creado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            proveedor_id=proveedor.id,
+        )
+
+        return _redirect("/inbound/proveedores", ok="Proveedor creado correctamente.")
+
     except InboundDomainError as e:
         log_inbound_error(
-            "proveedor_crear_domain_error",
+            "proveedor_crear_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
-            error=e.message,
+            user_email=user.get("email"),
+            error=str(e),
         )
-        raise HTTPException(status_code=400, detail=e.message)
-
-    log_inbound_event(
-        "proveedor_creado",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        proveedor_id=proveedor.id,
-    )
-
-    return RedirectResponse("/inbound/proveedores", status_code=302)
+        return _redirect("/inbound/proveedores", error=str(e))
 
 
 @router.post("/proveedores/{proveedor_id}/estado", response_class=HTMLResponse)
@@ -125,7 +144,7 @@ async def inbound_proveedor_toggle(
     user=Depends(inbound_roles_dep()),
     activo: str = Form(...),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     flag = activo.lower() in ("true", "on", "1", "si", "sí")
 
     try:
@@ -135,29 +154,30 @@ async def inbound_proveedor_toggle(
             proveedor_id=proveedor_id,
             activo=flag,
         )
+
+        log_inbound_event(
+            "proveedor_estado_cambiado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            proveedor_id=proveedor.id,
+            activo=proveedor.activo,
+        )
+
+        return _redirect("/inbound/proveedores", ok="Estado del proveedor actualizado.")
+
     except InboundDomainError as e:
         log_inbound_error(
-            "proveedor_toggle_domain_error",
+            "proveedor_estado_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             proveedor_id=proveedor_id,
-            error=e.message,
+            error=str(e),
         )
-        raise HTTPException(status_code=400, detail=e.message)
-
-    log_inbound_event(
-        "proveedor_estado_cambiado",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        proveedor_id=proveedor.id,
-        activo=proveedor.activo,
-    )
-
-    return RedirectResponse("/inbound/proveedores", status_code=302)
+        return _redirect("/inbound/proveedores", error=str(e))
 
 
 # ==========================================================
-#   PLANTILLAS DE PROVEEDOR
+# PLANTILLAS DE CHECKLIST POR PROVEEDOR
 # ==========================================================
 
 @router.get("/proveedores/plantillas", response_class=HTMLResponse)
@@ -166,16 +186,15 @@ async def inbound_plantillas_lista(
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     get_negocio_or_404(db, negocio_id)
 
-    # Las plantillas se listan vía join en template
-    from core.models import InboundPlantillaProveedor
+    
 
     plantillas = (
-        db.query(InboundPlantillaProveedor)
-        .filter(InboundPlantillaProveedor.negocio_id == negocio_id)
-        .order_by(InboundPlantillaProveedor.nombre.asc())
+        db.query(InboundPlantillaChecklist)
+        .filter(InboundPlantillaChecklist.negocio_id == negocio_id)
+        .order_by(InboundPlantillaChecklist.nombre.asc())
         .all()
     )
 
@@ -185,6 +204,8 @@ async def inbound_plantillas_lista(
             "request": request,
             "user": user,
             "plantillas": plantillas,
+            "ok": request.query_params.get("ok"),
+            "error": request.query_params.get("error"),
             "modulo_nombre": "Orbion Inbound",
         },
     )
@@ -198,7 +219,7 @@ async def inbound_plantilla_crear(
     nombre: str = Form(...),
     descripcion: str = Form(""),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
 
     try:
         plantilla = crear_plantilla_proveedor(
@@ -208,24 +229,26 @@ async def inbound_plantilla_crear(
             nombre=nombre,
             descripcion=descripcion,
         )
+
+        log_inbound_event(
+            "plantilla_proveedor_creada",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            proveedor_id=proveedor_id,
+            plantilla_id=plantilla.id,
+        )
+
+        return _redirect("/inbound/proveedores/plantillas", ok="Plantilla creada.")
+
     except InboundDomainError as e:
         log_inbound_error(
-            "plantilla_crear_domain_error",
+            "plantilla_crear_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             proveedor_id=proveedor_id,
-            error=e.message,
+            error=str(e),
         )
-        raise HTTPException(status_code=400, detail=e.message)
-
-    log_inbound_event(
-        "plantilla_creada",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        plantilla_id=plantilla.id,
-    )
-
-    return RedirectResponse("/inbound/proveedores/plantillas", status_code=302)
+        return _redirect("/inbound/proveedores/plantillas", error=str(e))
 
 
 @router.post("/proveedores/plantillas/{plantilla_id}/estado", response_class=HTMLResponse)
@@ -235,7 +258,7 @@ async def inbound_plantilla_toggle(
     user=Depends(inbound_roles_dep()),
     activo: str = Form(...),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     flag = activo.lower() in ("true", "on", "1", "si", "sí")
 
     try:
@@ -245,22 +268,23 @@ async def inbound_plantilla_toggle(
             plantilla_id=plantilla_id,
             activo=flag,
         )
+
+        log_inbound_event(
+            "plantilla_proveedor_estado_cambiado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            plantilla_id=plantilla.id,
+            activo=plantilla.activo,
+        )
+
+        return _redirect("/inbound/proveedores/plantillas", ok="Estado de plantilla actualizado.")
+
     except InboundDomainError as e:
         log_inbound_error(
-            "plantilla_toggle_domain_error",
+            "plantilla_estado_error",
             negocio_id=negocio_id,
-            user_email=user["email"],
+            user_email=user.get("email"),
             plantilla_id=plantilla_id,
-            error=e.message,
+            error=str(e),
         )
-        raise HTTPException(status_code=400, detail=e.message)
-
-    log_inbound_event(
-        "plantilla_estado_cambiado",
-        negocio_id=negocio_id,
-        user_email=user["email"],
-        plantilla_id=plantilla.id,
-        activo=plantilla.activo,
-    )
-
-    return RedirectResponse("/inbound/proveedores/plantillas", status_code=302)
+        return _redirect("/inbound/proveedores/plantillas", error=str(e))

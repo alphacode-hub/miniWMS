@@ -47,6 +47,14 @@
             </div>
 
             <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
+                {% if user and user["rol"] == "admin" %}
+                <a href="/inbound/config"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-200 bg-slate-900
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Configuración
+                </a>
+                {% endif %}
                 <a href="/inbound/proveedores"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
                   text-[11px] font-medium text-slate-200 bg-slate-900
@@ -55,11 +63,12 @@
                 </a>
 
                 {# Si aún no tienes citas, mejor no romper UX: #}
-                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
-                 text-[11px] font-medium text-slate-500 bg-slate-900/40 cursor-not-allowed"
-                      title="Próximamente">
-                    Citas / agenda
-                </span>
+                <a href="/inbound/citas"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Cita / Agenda
+                </a>
 
                 <a href="/inbound/recepciones/nueva"
                    class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
@@ -68,14 +77,7 @@
                     Nueva recepción
                 </a>
 
-                {% if user and user["rol"] == "admin" %}
-                <a href="/inbound/config"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Configuración
-                </a>
-                {% endif %}
+
 
                 {% if inbound_analytics_enabled %}
                 <a href="/inbound/analytics"
