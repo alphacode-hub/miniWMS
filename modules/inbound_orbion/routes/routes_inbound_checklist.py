@@ -79,7 +79,7 @@ async def inbound_checklist_recepcion(
         vm = obtener_checklist_vm(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
         return templates.TemplateResponse(
-            "checklist_recepcion.html",
+            "inbound_checklist_recepcion.html",
             {
                 "request": request,
                 "user": user,
@@ -92,7 +92,7 @@ async def inbound_checklist_recepcion(
 
     except InboundDomainError as e:
         return templates.TemplateResponse(
-            "checklist_recepcion.html",
+            "inbound_checklist_recepcion.html",
             {
                 "request": request,
                 "user": user,
