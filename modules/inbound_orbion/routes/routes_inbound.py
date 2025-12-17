@@ -19,7 +19,7 @@ from .routes_inbound_lineas import router as lineas_router
 from .routes_inbound_checklist import router as checklist_router
 #from .routes_inbound_citas import router as citas_router
 from .routes_inbound_documentos import router as documentos_router
-#from .routes_inbound_fotos import router as fotos_router
+from .routes_inbound_fotos import router as fotos_router
 from .routes_inbound_pallets import router as pallets_router
 from .routes_inbound_proveedores import router as proveedores_router
 from .routes_inbound_recepciones import router as router_recepciones
@@ -50,7 +50,7 @@ router.include_router(lineas_router)
 router.include_router(checklist_router)
 #router.include_router(citas_router)
 router.include_router(documentos_router)
-#router.include_router(fotos_router)
+router.include_router(fotos_router)
 router.include_router(pallets_router)
 router.include_router(proveedores_router)
 router.include_router(router_recepciones)
