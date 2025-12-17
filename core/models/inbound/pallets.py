@@ -1,4 +1,4 @@
-﻿# core/models/inbound/pallets.py #
+﻿# core/models/inbound/pallets.py
 from __future__ import annotations
 
 from sqlalchemy import (
@@ -43,13 +43,13 @@ class InboundPallet(Base):
     temperatura_promedio = Column(Float, nullable=True)
     observaciones = Column(Text, nullable=True)
 
-    # Pesos
+    # Pesos (medición real del pallet)
     peso_bruto_kg = Column(Float, nullable=True)
     peso_tara_kg = Column(Float, nullable=True)
     peso_neto_kg = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     cerrado_at = Column(DateTime(timezone=True), nullable=True)
     cerrado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
@@ -73,8 +73,13 @@ class InboundPalletItem(Base):
     pallet_id = Column(Integer, ForeignKey("inbound_pallets.id"), index=True, nullable=False)
     linea_id = Column(Integer, ForeignKey("inbound_lineas.id"), index=True, nullable=False)
 
+    # ✅ Valores reales capturados en operación
     cantidad = Column(Float, nullable=True)
     peso_kg = Column(Float, nullable=True)
+
+    # ✅ Estimados (derivados por conversión, útil para UI/analítica)
+    cantidad_estimada = Column(Float, nullable=True)
+    peso_estimado_kg = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 

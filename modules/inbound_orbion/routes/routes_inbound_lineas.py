@@ -229,7 +229,7 @@ async def inbound_nueva_linea_form(
 # CREAR LINEA (UI libre, reglas en service)
 # ============================================================
 
-@router.post("/recepciones/{recepcion_id}/lineas", response_class=HTMLResponse)
+
 @router.post("/recepciones/{recepcion_id}/lineas", response_class=HTMLResponse)
 async def inbound_agregar_linea(
     recepcion_id: int,

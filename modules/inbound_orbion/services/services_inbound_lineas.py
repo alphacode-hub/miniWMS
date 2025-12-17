@@ -153,6 +153,9 @@ def listar_lineas_recepcion(
     negocio_id: int,
     recepcion_id: int,
 ) -> list[InboundLinea]:
+    print("DEBUG services_lineas InboundLinea:", InboundLinea.__module__, InboundLinea.__tablename__)
+    print("DEBUG services_lineas negocio/recepcion:", negocio_id, recepcion_id)
+
     """
     Lista líneas de una recepción (multi-tenant segura).
     """

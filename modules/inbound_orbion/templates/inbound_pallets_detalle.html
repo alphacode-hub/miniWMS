@@ -1,395 +1,314 @@
-﻿{# modules/inbound_orbion/templates/inbound_pallets_detalle.html #}
-{% extends "base/base_app.html" %}
+﻿{% extends "base/base_app.html" %}
 
-{% block title %}ORBION · Pallet · {{ pallet.codigo_pallet if pallet and pallet.codigo_pallet else ('#' ~ pallet.id) }}{% endblock %}
-
-{% block page_header %}
-<div class="hidden sm:flex items-center justify-between gap-4">
-    <div class="space-y-1 min-w-0">
-        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Inbound · Pallets · Detalle
-        </p>
-
-        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-            Pallet {{ pallet.codigo_pallet if pallet and pallet.codigo_pallet else ('#' ~ pallet.id) }}
-        </h1>
-
-        {% set prov_nombre = "Sin proveedor" %}
-        {% if recepcion is defined and recepcion.proveedor %}
-        {% if recepcion.proveedor is string %}
-        {% set prov_nombre = recepcion.proveedor %}
-        {% elif recepcion.proveedor.nombre is defined and recepcion.proveedor.nombre %}
-        {% set prov_nombre = recepcion.proveedor.nombre %}
-        {% elif recepcion.proveedor.razon_social is defined and recepcion.proveedor.razon_social %}
-        {% set prov_nombre = recepcion.proveedor.razon_social %}
-        {% elif recepcion.proveedor.nombre_comercial is defined and recepcion.proveedor.nombre_comercial %}
-        {% set prov_nombre = recepcion.proveedor.nombre_comercial %}
-        {% endif %}
-        {% endif %}
-
-        <p class="text-xs text-slate-400 leading-snug max-w-xl">
-            Recepción:
-            <span class="text-slate-200 font-semibold">{{ recepcion.codigo }}</span>
-            · {{ prov_nombre }}
-        </p>
-    </div>
-
-    <div class="flex flex-wrap items-center justify-end gap-2">
-        <a href="/inbound/recepciones/{{ recepcion.id }}"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-              text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-            ← Volver a recepción
-        </a>
-
-        <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-              text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-            ← Lista de pallets
-        </a>
-    </div>
-</div>
-{% endblock %}
+{% block title %}Inbound · Pallet{% endblock %}
 
 {% block content %}
-<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+{% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else (recepcion.codigo if recepcion and recepcion.codigo else ("Recepción #" ~ recepcion.id)) %}
+{% set pallet_codigo = pallet.codigo_pallet if pallet and pallet.codigo_pallet else ("Pallet #" ~ pallet.id) %}
 
-    {# =========================
-    ALERTAS
-    ========================= #}
-    {% set err = request.query_params.get("error") if request is defined else None %}
-    {% if err %}
-    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4">
-        <p class="text-[11px] text-rose-100 font-semibold">No se pudo completar la acción</p>
-        <p class="text-[11px] text-rose-200/90 mt-1">{{ err }}</p>
-        <p class="mt-2 text-[10px] text-rose-200/70">
-            Tip: si asignas por peso, la línea debe tener <span class="font-semibold">peso_kg</span> base cargado.
-        </p>
+<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Módulo Inbound · Pallet</p>
+            <h1 class="mt-1 text-xl sm:text-2xl font-semibold text-slate-100 truncate">
+                {{ pallet_codigo }} · {{ recep_codigo }}
+            </h1>
+            <p class="mt-1 text-[12px] text-slate-400">
+                Asigna líneas respetando el modo oficial (cantidad o peso). Mostramos estimados sólo como apoyo.
+            </p>
+        </div>
+
+        <div class="shrink-0 flex items-center gap-2">
+            <span class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200">
+                {# soporta Enum / string #}
+                {% set estado_txt = (pallet.estado.value if pallet.estado is not none and pallet.estado.value is defined else (pallet.estado|string)) %}
+                {% set estado_txt = estado_txt.replace("PalletEstado.", "") %}
+                {{ estado_txt }}
+            </span>
+            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+               class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-[12px] font-semibold text-slate-200
+                hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a pallets
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts (opcional si tus rutas usan querystring) -->
+    {% set qs_success = request.query_params.get("success") if request and request.query_params else None %}
+    {% set qs_error = request.query_params.get("error") if request and request.query_params else None %}
+
+    {% if qs_success %}
+    <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+        <p class="text-[12px] text-emerald-200 font-medium">{{ qs_success }}</p>
     </div>
     {% endif %}
 
-    {# =========================
-    HEADER MOBILE
-    ========================= #}
-    <div class="sm:hidden space-y-3">
-        <div class="space-y-1">
-            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Inbound · Pallets · Detalle
-            </p>
-            <h1 class="text-base font-semibold text-slate-100 tracking-tight">
-                Pallet {{ pallet.codigo_pallet if pallet and pallet.codigo_pallet else ('#' ~ pallet.id) }}
-            </h1>
-            <p class="text-[11px] text-slate-400 leading-snug">
-                Recepción: <span class="text-slate-200 font-semibold">{{ recepcion.codigo }}</span>
-            </p>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-            <a href="/inbound/recepciones/{{ recepcion.id }}"
-               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Recepción
-            </a>
-            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
-               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Pallets
-            </a>
-        </div>
+    {% if qs_error %}
+    <div class="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3">
+        <p class="text-[12px] text-rose-200 font-medium">{{ qs_error }}</p>
     </div>
+    {% endif %}
 
-    {# =========================
-    RESUMEN PALLET
-    ========================= #}
-    {% set est = (pallet.estado or 'ABIERTO')|upper %}
+    <!-- Datos del pallet -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Datos del pallet</p>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div class="space-y-2 min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-[11px] text-slate-400">
-                        Código pallet:
-                        <span class="text-slate-100 font-semibold">{{ pallet.codigo_pallet or ("PAL-" ~ pallet.id) }}</span>
-                    </p>
-
-                    <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-            {% if est == 'LISTO' %}
-              bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-            {% elif est == 'EN_PROCESO' %}
-              bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-            {% else %}
-              bg-slate-700/40 text-slate-100 border-slate-600
-            {% endif %}">
-                        {{ est.replace('_', ' ') }}
-                    </span>
-
-                    <span class="text-[11px] text-slate-500">
-                        Creado:
-                        {% if pallet.creado_en %}
-                        <span class="text-slate-200">{{ pallet.creado_en.strftime('%d-%m-%Y %H:%M') }}</span>
-                        {% elif pallet.created_at %}
-                        <span class="text-slate-200">{{ pallet.created_at.strftime('%d-%m-%Y %H:%M') }}</span>
-                        {% else %}
-                        <span class="text-slate-500">—</span>
-                        {% endif %}
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Bultos</p>
-                        <p class="mt-1 text-xl font-semibold text-slate-100">
-                            {{ pallet.bultos if pallet.bultos is not none else "—" }}
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Bruto (kg)</p>
-                        <p class="mt-1 text-xl font-semibold text-slate-100">
-                            {% if pallet.peso_bruto_kg is not none %}{{ '%.3f'|format(pallet.peso_bruto_kg) }}{% else %}—{% endif %}
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Tara (kg)</p>
-                        <p class="mt-1 text-xl font-semibold text-slate-100">
-                            {% if pallet.peso_tara_kg is not none %}{{ '%.3f'|format(pallet.peso_tara_kg) }}{% else %}—{% endif %}
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Neto (kg)</p>
-                        <p class="mt-1 text-xl font-semibold text-slate-100">
-                            {% if pallet.peso_neto_kg is not none %}{{ '%.3f'|format(pallet.peso_neto_kg) }}{% else %}—{% endif %}
-                        </p>
-                        <p class="text-[10px] text-slate-500 mt-1">Calculado: bruto - tara</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Temp. prom.</p>
-                        <p class="mt-1 text-lg font-semibold text-slate-100">
-                            {% if pallet.temperatura_promedio is not none %}
-                            {{ '%.1f'|format(pallet.temperatura_promedio) }}°C
-                            {% else %}
-                            —{% endif %}
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Observaciones</p>
-                        <p class="mt-1 text-[11px] text-slate-200 leading-snug">
-                            {{ pallet.observaciones or "Sin observaciones" }}
-                        </p>
-                    </div>
-
-                    <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Recepción</p>
-                        <p class="mt-1 text-[11px] text-slate-200 leading-snug">
-                            <span class="font-semibold">{{ recepcion.codigo }}</span>
-                        </p>
-                    </div>
-                </div>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Bruto / Tara / Neto</p>
+                <p class="mt-1 text-[12px] text-slate-200">
+                    <span class="text-slate-400">Bruto:</span>
+                    <strong class="text-slate-100">{{ pallet.peso_bruto_kg if pallet.peso_bruto_kg is not none else "—" }}</strong>
+                    <span class="text-slate-400">· Tara:</span>
+                    <strong class="text-slate-100">{{ pallet.peso_tara_kg if pallet.peso_tara_kg is not none else "—" }}</strong>
+                    <span class="text-slate-400">· Neto:</span>
+                    <strong class="text-slate-100">{{ pallet.peso_neto_kg if pallet.peso_neto_kg is not none else "—" }}</strong>
+                </p>
+                <p class="mt-2 text-[10px] text-slate-500">
+                    Neto se valida: tara no puede superar bruto.
+                </p>
             </div>
 
-            <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
-                {% if est != "LISTO" %}
-                <form method="post"
-                      action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/cerrar"
-                      onsubmit="return confirm('¿Marcar este pallet como LISTO?');">
-                    <button type="submit"
-                            class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                           text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
-                           transition-transform transition-colors">
-                        Marcar LISTO
-                    </button>
-                </form>
-                {% else %}
-                <form method="post"
-                      action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/reabrir"
-                      onsubmit="return confirm('¿Reabrir este pallet?');">
-                    <button type="submit"
-                            class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                           text-[11px] font-semibold text-slate-300 hover:border-indigo-400 hover:text-indigo-200 transition-colors">
-                        Reabrir pallet
-                    </button>
-                </form>
-                {% endif %}
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Temperatura</p>
+                <p class="mt-1 text-[12px] text-slate-200">
+                    {% if pallet.temperatura_promedio is not none %}
+                    <strong class="text-slate-100">{{ pallet.temperatura_promedio }}</strong> °C
+                    {% else %}
+                    <span class="text-slate-500">— °C</span>
+                    {% endif %}
+                </p>
+                <p class="mt-2 text-[10px] text-slate-500">0°C se considera válido si lo ingresas.</p>
+            </div>
 
-                <form method="post"
-                      action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/eliminar"
-                      onsubmit="return confirm('¿Eliminar este pallet? Esta acción no se puede deshacer.');">
-                    <button type="submit"
-                            class="inline-flex items-center rounded-full border border-rose-500/40 px-3 py-1.5
-                         text-[11px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100 transition-colors">
-                        Eliminar pallet
-                    </button>
-                </form>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Observaciones</p>
+                <p class="mt-1 text-[12px] text-slate-200">
+                    {{ pallet.observaciones if pallet.observaciones else "—" }}
+                </p>
             </div>
         </div>
     </section>
 
-    {# =========================
-    LÍNEAS ASIGNADAS AL PALLET
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
-        <header class="flex items-center justify-between gap-3">
-            <div class="space-y-0.5">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Líneas del pallet</p>
-                <p class="text-[11px] text-slate-400">
-                    Asigna por cantidad o peso. (Cantidad = unidades, Peso = kg con decimales)
+    <!-- Asignar línea -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Asignar línea</p>
+                <p class="text-[11px] text-slate-500">
+                    El modo oficial lo define la línea (cantidad o peso). Ingresa el campo requerido; el otro puede autocompletarse si hay conversión.
                 </p>
             </div>
 
-            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
-                <span class="mr-1 text-slate-500">Total:</span>
-                <span class="font-semibold text-slate-100">{{ (pallet_items|length) if pallet_items is defined else 0 }}</span>
+            {# Debug UX (puedes quitarlo luego) #}
+            <span class="hidden sm:inline-flex items-center rounded-full border border-slate-800 bg-slate-950/30 px-3 py-1 text-[11px] text-slate-300">
+                Líneas: {{ lineas|length if lineas is not none else 0 }}
+            </span>
+        </div>
+
+        {% if not lineas or lineas|length == 0 %}
+        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/25 px-4 py-4">
+            <p class="text-[12px] text-slate-200 font-semibold">No hay líneas disponibles para asignar.</p>
+            <p class="mt-1 text-[11px] text-slate-500">
+                Crea una línea en la recepción y vuelve aquí para asignarla a este pallet.
+            </p>
+            <div class="mt-3">
+                <a href="/inbound/recepciones/{{ recepcion.id }}/lineas"
+                   class="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-[12px] font-semibold text-slate-200
+                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Ir a líneas →
+                </a>
             </div>
-        </header>
+        </div>
+        {% else %}
 
         <form method="post"
               action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/items/agregar"
-              class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-3 border-t border-slate-800/80">
+              class="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-2">
 
-            <div class="sm:col-span-6 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Línea</label>
-
+            {# CONTROLES: misma altura (h-10), alineados #}
+            <div class="lg:col-span-6">
                 <select name="linea_id"
-                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                       text-xs sm:text-sm text-slate-100 focus:outline-none focus:ring-2
-                       focus:ring-cyan-500 focus:border-cyan-500">
-                    {% if lineas_disponibles is defined and lineas_disponibles %}
-                    {% for x in lineas_disponibles %}
-                    {% set ln = x.linea %}
-                    <option value="{{ ln.id }}"
-                            data-permite-peso="{{ 1 if x.permite_peso else 0 }}"
-                            data-permite-cantidad="{{ 1 if x.permite_cantidad else 0 }}">
-                        {{ ln.producto.nombre if ln.producto else ('Producto #' ~ ln.producto_id) }}
-                        • Línea #{{ ln.id }}
-                        {% if ln.lote %} • Lote {{ ln.lote }}{% endif %}
-                        {% if ln.fecha_vencimiento %} • Vence {{ ln.fecha_vencimiento.strftime('%d-%m-%Y') }}{% endif %}
-                        {% if x.kg_pend is not none %} • Pend {{ '%.2f'|format(x.kg_pend) }} kg{% endif %}
-                        {% if x.cant_pend is not none %} • Pend {{ '%.0f'|format(x.cant_pend) }}{% if ln.unidad %} {{ ln.unidad }}{% endif %}{% endif %}
+                        class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100
+                               focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400">
+                    <option value="">Selecciona línea…</option>
+
+                    {% for l in lineas %}
+                    {% set prod_nombre = (l.producto.nombre if l.producto and l.producto.nombre else ("Producto #" ~ (l.producto_id or "-"))) %}
+                    {% set modo = "CANTIDAD" if (l.cantidad_documento is not none and l.cantidad_documento > 0) else "PESO" %}
+
+                    {# si tienes pendiente calculado en backend, úsalo; si no, al menos muestra el doc #}
+                    {% set pend_cant = (l.pendiente_cantidad if l.pendiente_cantidad is defined else none) %}
+                    {% set pend_kg = (l.pendiente_kg if l.pendiente_kg is defined else none) %}
+
+                    {# enterprise: deshabilita si pendiente = 0 (si viene calculado) #}
+                    {% set disabled = false %}
+                    {% if modo == "CANTIDAD" and pend_cant is not none and pend_cant <= 0 %}{% set disabled = true %}{% endif %}
+                    {% if modo == "PESO" and pend_kg is not none and pend_kg <= 0 %}{% set disabled = true %}{% endif %}
+
+                    <option value="{{ l.id }}" {% if disabled %}disabled{% endif %}>
+                        {{ prod_nombre }} · {{ modo }}
+                        {% if modo == "CANTIDAD" and l.cantidad_documento is not none %}
+                        · Doc: {{ '%.3f'|format(l.cantidad_documento) }} {{ l.unidad or "u" }}
+                        {% endif %}
+                        {% if modo == "PESO" and l.peso_kg is not none %}
+                        · Doc: {{ '%.3f'|format(l.peso_kg) }} kg
+                        {% endif %}
+
+                        {% if modo == "CANTIDAD" and pend_cant is not none %}
+                        · Pend: {{ '%.3f'|format(pend_cant) }} {{ l.unidad or "u" }}
+                        {% endif %}
+                        {% if modo == "PESO" and pend_kg is not none %}
+                        · Pend: {{ '%.3f'|format(pend_kg) }} kg
+                        {% endif %}
+
+                        {% if disabled %}
+                        · (sin pendiente)
+                        {% endif %}
                     </option>
                     {% endfor %}
-                    {% else %}
-                    <option value="" disabled selected>No hay líneas disponibles</option>
-                    {% endif %}
                 </select>
-
-                <p class="text-[10px] text-slate-500">
-                    Si una línea no tiene peso_kg base, el sistema bloqueará el peso y solo permitirá cantidad.
-                </p>
             </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Cantidad</label>
-                <input type="number" step="1" min="0" name="cantidad" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+            <div class="lg:col-span-2">
+                <input name="cantidad"
+                       placeholder="Cantidad"
+                       inputmode="decimal"
+                       class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
             </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Peso (kg)</label>
-                <input type="number" step="0.001" min="0" name="peso_kg" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+            <div class="lg:col-span-2">
+                <input name="peso_kg"
+                       placeholder="Peso kg"
+                       inputmode="decimal"
+                       class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
             </div>
 
-            <div class="sm:col-span-2 flex items-end">
+            <div class="lg:col-span-2">
                 <button type="submit"
-                        {% if not (lineas_disponibles is defined and lineas_disponibles) %}disabled{% endif %}
-                        class="w-full inline-flex items-center justify-center rounded-full px-4 py-2
-                       text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
-                       hover:bg-cyan-300 active:scale-[0.98]
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-transform transition-colors">
-                    + Agregar
+                        class="w-full h-10 inline-flex items-center justify-center rounded-xl px-4 text-[12px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.99]
+                               transition-transform transition-colors">
+                    Agregar
                 </button>
+            </div>
+
+            {# Tip en fila aparte para que no desalineé #}
+            <div class="lg:col-span-12">
+                <p class="mt-1 text-[10px] text-slate-500">
+                    Tip: si el select aparece vacío, normalmente es porque no hay líneas con pendiente disponible (o el backend está filtrando).
+                </p>
             </div>
         </form>
 
-        {% if pallet_items is defined and pallet_items %}
+        {% endif %}
+    </section>
+
+    <!-- Ítems -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Ítems</p>
+            </div>
+            <p class="text-[11px] text-slate-500">{{ pallet_items|length }} asignados.</p>
+        </div>
+
+        {% if pallet_items and pallet_items|length > 0 %}
         <div class="space-y-2">
             {% for it in pallet_items %}
-            <div class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 flex items-start justify-between gap-3">
-                <div class="space-y-1 min-w-0">
-                    <p class="text-xs font-semibold text-slate-100 truncate">
-                        {% if it.linea and it.linea.producto %}
-                        {{ it.linea.producto.nombre }}
-                        {% else %}
-                        Línea #{{ it.linea_id }}
-                        {% endif %}
-                    </p>
+            {% set l = it.linea %}
+            {% set prod_nombre = (l.producto.nombre if l and l.producto and l.producto.nombre else ("Producto #" ~ (l.producto_id if l else "-"))) %}
+            {% set modo = "CANTIDAD" if (l and l.cantidad_documento is not none and l.cantidad_documento > 0) else "PESO" %}
 
-                    <p class="text-[11px] text-slate-500 truncate">
-                        Línea #{{ it.linea_id }}
-                        {% if it.linea and it.linea.lote %} · Lote {{ it.linea.lote }}{% endif %}
-                        {% if it.linea and it.linea.fecha_vencimiento %} · Vence {{ it.linea.fecha_vencimiento.strftime('%d-%m-%Y') }}{% endif %}
-                    </p>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/25 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[12px] font-semibold text-slate-100 truncate">{{ prod_nombre }}</p>
 
-                    <p class="text-[11px] text-slate-400">
-                        Cantidad:
-                        <span class="text-slate-200 font-semibold">{{ it.cantidad if it.cantidad is not none else "—" }}</span>
-                        {% if it.linea and it.linea.unidad %}
-                        <span class="text-slate-400">{{ it.linea.unidad }}</span>
-                        {% endif %}
-                        · Peso:
-                        <span class="text-slate-200 font-semibold">
-                            {% if it.peso_kg is not none %}{{ '%.3f'|format(it.peso_kg) }}{% else %}—{% endif %}
-                        </span>
-                        <span class="text-slate-400">kg</span>
-                    </p>
+                        <!-- REAL (manda) -->
+                        <p class="mt-1 text-[11px] text-slate-300">
+                            <span class="inline-flex items-center rounded-full border border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
+                                REAL
+                            </span>
+                            <span class="ml-2">
+                                {% if it.cantidad is not none %}
+                                Cant: <span class="font-semibold text-slate-100">{{ '%.3f'|format(it.cantidad) }}</span> {{ l.unidad or "u" }}
+                                {% else %}
+                                Cant: <span class="text-slate-500">—</span>
+                                {% endif %}
+                                <span class="text-slate-600">·</span>
+                                {% if it.peso_kg is not none %}
+                                Kg: <span class="font-semibold text-slate-100">{{ '%.3f'|format(it.peso_kg) }}</span>
+                                {% else %}
+                                Kg: <span class="text-slate-500">—</span>
+                                {% endif %}
+                            </span>
+                        </p>
+
+                        <!-- ESTIMADO (solo apoyo, si existe conversión en tu dominio ya guardaste ambos normalmente) -->
+                        <p class="mt-1 text-[10px] text-slate-500">
+                            Modo línea: {{ modo }}
+                            {% if l and l.peso_unitario_kg_override is not none %}
+                            · Conv: override {{ l.peso_unitario_kg_override }} kg/u
+                            {% elif l and l.producto and l.producto.peso_unitario_kg is not none %}
+                            · Conv: {{ l.producto.peso_unitario_kg }} kg/u
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <form method="post"
+                          action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/items/{{ it.id }}/quitar"
+                          onsubmit="return confirm('¿Quitar este ítem del pallet?');">
+                        <button type="submit"
+                                class="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-semibold text-rose-200
+                               hover:border-rose-400 hover:text-rose-100 transition-colors">
+                            Quitar
+                        </button>
+                    </form>
                 </div>
-
-                <form method="post"
-                      action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/items/{{ it.id }}/quitar"
-                      onsubmit="return confirm('¿Quitar esta línea del pallet?');">
-                    <button type="submit"
-                            class="inline-flex items-center rounded-full border border-rose-500/40 px-3 py-1
-                             text-[10px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100 transition-colors">
-                        Quitar
-                    </button>
-                </form>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900 px-4 py-6 text-center space-y-1.5">
-            <p class="text-xs font-semibold text-slate-100">Aún no hay líneas asignadas.</p>
-            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">
-                Agrega al menos una línea para que el pallet tenga trazabilidad operativa.
-            </p>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/25 px-4 py-4">
+            <p class="text-[12px] text-slate-300">Aún no hay ítems asignados a este pallet.</p>
         </div>
         {% endif %}
     </section>
 
+    <!-- Acciones -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Acciones</p>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/cerrar"
+                  onsubmit="return confirm('¿Cerrar este pallet? No podrás modificarlo si queda LISTO.');">
+                <button type="submit"
+                        class="inline-flex items-center rounded-xl px-4 py-2 text-[12px] font-semibold
+                       text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.99]
+                       transition-transform transition-colors">
+                    Cerrar pallet
+                </button>
+            </form>
+
+            <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/eliminar"
+                  onsubmit="return confirm('¿Eliminar este pallet? Esta acción no se puede deshacer.');">
+                <button type="submit"
+                        class="inline-flex items-center rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[12px] font-semibold text-rose-200
+                       hover:border-rose-400 hover:text-rose-100">
+                    Eliminar
+                </button>
+            </form>
+        </div>
+
+        <p class="mt-3 text-[10px] text-slate-500">
+            Tip enterprise: después de cerrar pallets, ejecuta reconciliación para actualizar recibidos reales por línea.
+        </p>
+    </section>
+
 </div>
-
-<script>
-    (function () {
-        const sel = document.querySelector('select[name="linea_id"]');
-        const inpCant = document.querySelector('input[name="cantidad"]');
-        const inpKg = document.querySelector('input[name="peso_kg"]');
-        if (!sel || !inpCant || !inpKg) return;
-
-        function apply() {
-            const opt = sel.options[sel.selectedIndex];
-            if (!opt) {
-                inpKg.disabled = true; inpKg.value = "";
-                inpCant.disabled = true; inpCant.value = "";
-                return;
-            }
-            const okKg = (opt.dataset && opt.dataset.permitePeso === "1");
-            const okCant = (opt.dataset && opt.dataset.permiteCantidad === "1");
-            inpKg.disabled = !okKg; if (!okKg) inpKg.value = "";
-            inpCant.disabled = !okCant; if (!okCant) inpCant.value = "";
-        }
-
-        sel.addEventListener("change", apply);
-        apply();
-    })();
-</script>
 {% endblock %}

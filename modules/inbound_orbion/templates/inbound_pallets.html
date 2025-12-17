@@ -1,457 +1,190 @@
-﻿{# modules/inbound_orbion/templates/inbound_pallets.html #}
-{% extends "base/base_app.html" %}
+﻿{% extends "base/base_app.html" %}
 
-{% block title %}ORBION · Pallets · {{ recepcion.codigo if recepcion is defined else "Inbound" }}{% endblock %}
-
-{% block page_header %}
-{# Header solo tablet/desktop #}
-<div class="hidden sm:flex items-center justify-between gap-4">
-    <div class="space-y-1 min-w-0">
-        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Inbound · Pallets
-        </p>
-
-        {% set prov_nombre = "Sin proveedor" %}
-        {% if recepcion is defined and recepcion.proveedor %}
-        {% if recepcion.proveedor is string %}
-        {% set prov_nombre = recepcion.proveedor %}
-        {% elif recepcion.proveedor.nombre is defined and recepcion.proveedor.nombre %}
-        {% set prov_nombre = recepcion.proveedor.nombre %}
-        {% elif recepcion.proveedor.razon_social is defined and recepcion.proveedor.razon_social %}
-        {% set prov_nombre = recepcion.proveedor.razon_social %}
-        {% elif recepcion.proveedor.nombre_comercial is defined and recepcion.proveedor.nombre_comercial %}
-        {% set prov_nombre = recepcion.proveedor.nombre_comercial %}
-        {% endif %}
-        {% endif %}
-
-        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-            Pallets · {{ recepcion.codigo }} · {{ prov_nombre }}
-        </h1>
-
-        <p class="text-xs text-slate-400 leading-snug max-w-2xl">
-            Virtualiza tu descarga: crea pallets, asigna líneas y controla trazabilidad por unidad/peso.
-        </p>
-    </div>
-
-    <div class="flex items-center gap-2">
-        <a href="/inbound/recepciones/{{ recepcion.id }}"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-              text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-            ← Volver al detalle
-        </a>
-        <a href="/inbound"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-              text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-            Inbound
-        </a>
-    </div>
-</div>
-{% endblock %}
+{% block title %}Inbound · Pallets{% endblock %}
 
 {% block content %}
-<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+{% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else (recepcion.codigo if recepcion and recepcion.codigo else ("Recepción #" ~ recepcion.id)) %}
 
-    {# =========================
-    ALERTAS / MENSAJES
-    ========================= #}
-    {% set qs_error = request.query_params.get("error") if request is defined else None %}
-    {% if qs_error %}
-    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4">
-        <p class="text-[11px] text-rose-100 font-semibold">No se pudo completar la acción</p>
-        <p class="text-[11px] text-rose-200/90 mt-1">{{ qs_error }}</p>
-    </div>
-    {% endif %}
+<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
 
-    {% if flash is defined and flash %}
-    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4">
-        <p class="text-[11px] text-slate-200">{{ flash }}</p>
-    </div>
-    {% endif %}
-
-    {# =========================
-    HEADER MOBILE
-    ========================= #}
-    {% set prov_nombre = "Sin proveedor" %}
-    {% if recepcion is defined and recepcion.proveedor %}
-    {% if recepcion.proveedor is string %}
-    {% set prov_nombre = recepcion.proveedor %}
-    {% elif recepcion.proveedor.nombre is defined and recepcion.proveedor.nombre %}
-    {% set prov_nombre = recepcion.proveedor.nombre %}
-    {% elif recepcion.proveedor.razon_social is defined and recepcion.proveedor.razon_social %}
-    {% set prov_nombre = recepcion.proveedor.razon_social %}
-    {% elif recepcion.proveedor.nombre_comercial is defined and recepcion.proveedor.nombre_comercial %}
-    {% set prov_nombre = recepcion.proveedor.nombre_comercial %}
-    {% endif %}
-    {% endif %}
-
-    <div class="sm:hidden space-y-3">
-        <div class="space-y-1">
-            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Inbound · Pallets
-            </p>
-            <h1 class="text-base font-semibold text-slate-100 tracking-tight">
-                Pallets · {{ recepcion.codigo }}
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Módulo Inbound · Pallets</p>
+            <h1 class="mt-1 text-xl sm:text-2xl font-semibold text-slate-100 truncate">
+                {{ recep_codigo }} · Gestión de pallets
             </h1>
-            <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
-                Crea y gestiona pallets para controlar tu operación.
-            </p>
-            <p class="text-[11px] text-slate-500">
-                {{ prov_nombre }}
+            <p class="mt-1 text-[12px] text-slate-400">
+                Crea pallets, asigna líneas por modo (cantidad/peso) y luego reconcilia.
             </p>
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <div class="shrink-0">
             <a href="/inbound/recepciones/{{ recepcion.id }}"
-               class="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Detalle
-            </a>
-            <a href="/inbound"
-               class="inline-flex items-center justify-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                Inbound
+               class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-[12px] font-semibold text-slate-200
+                hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a recepción
             </a>
         </div>
     </div>
 
-    {# =========================
-    RESUMEN / KPI
-    ========================= #}
+    <!-- Alerts (opcional si tus rutas usan querystring) -->
+    {% set qs_success = request.query_params.get("success") if request and request.query_params else None %}
+    {% set qs_error = request.query_params.get("error") if request and request.query_params else None %}
+
+    {% if qs_success %}
+    <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+        <p class="text-[12px] text-emerald-200 font-medium">{{ qs_success }}</p>
+    </div>
+    {% endif %}
+
+    {% if qs_error %}
+    <div class="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3">
+        <p class="text-[12px] text-rose-200 font-medium">{{ qs_error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Nuevo pallet -->
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div class="space-y-1">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Recepción
-                </p>
-
-                <p class="text-xs sm:text-sm text-slate-100 font-semibold">
-                    {{ recepcion.codigo }} · {{ prov_nombre }}
-                </p>
-
-                <div class="flex flex-wrap items-center gap-2 pt-1">
-                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-0.5
-                       text-[10px] font-semibold text-slate-200 bg-slate-950/30">
-                        {{ (recepcion.estado or "PRE_REGISTRADO")|replace("_", " ") }}
-                    </span>
-
-                    <span class="text-[11px] text-slate-400">
-                        Creado:
-                        {% if recepcion.creado_en %}
-                        <span class="text-slate-200">{{ recepcion.creado_en.strftime('%d-%m-%Y %H:%M') }}</span>
-                        {% else %}
-                        <span class="text-slate-500">—</span>
-                        {% endif %}
-                    </span>
-                </div>
-
-                <p class="text-[11px] text-slate-500 leading-snug pt-2 max-w-2xl">
-                    Tip: Crea pallets “por cámara / por producto / por zona” para que el conteo sea más rápido y la trazabilidad más limpia.
-                </p>
-            </div>
-
-            <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
-                <a href="/inbound/recepciones/{{ recepcion.id }}/checklist"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Checklist
-                </a>
-                <a href="/inbound/recepciones/{{ recepcion.id }}/documentos"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Documentos
-                </a>
-                <a href="/inbound/recepciones/{{ recepcion.id }}/fotos"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Fotos
-                </a>
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Nuevo pallet</p>
+                <p class="text-[11px] text-slate-500">Crea un pallet operativo para comenzar a asignar líneas.</p>
             </div>
         </div>
 
-        {% set total_pallets = kpi_total_pallets if kpi_total_pallets is defined else ((pallets|length) if pallets is defined else 0) %}
-        {% set con_lineas = kpi_con_lineas if kpi_con_lineas is defined else 0 %}
-        {% set en_proceso = kpi_en_proceso if kpi_en_proceso is defined else 0 %}
-        {% set listos = kpi_listos if kpi_listos is defined else 0 %}
-
-        <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide">Pallets</p>
-                <p class="text-lg font-semibold text-slate-100">{{ total_pallets }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">Total creados</p>
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide">Con líneas</p>
-                <p class="text-lg font-semibold text-slate-100">{{ con_lineas }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">Pallets con asignación</p>
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide">En proceso</p>
-                <p class="text-lg font-semibold text-slate-100">{{ en_proceso }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">ABIERTO / EN PROCESO</p>
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/40 px-3 py-3">
-                <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide">Listos</p>
-                <p class="text-lg font-semibold text-slate-100">{{ listos }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">Marcados como LISTO</p>
-            </div>
-        </div>
-    </section>
-
-    {# =========================
-    CREAR PALLET
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
-        <header class="space-y-1">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Crear pallet</p>
-                    <p class="text-[11px] text-slate-400 max-w-2xl">
-                        Crea un pallet virtual para agrupar líneas y luego adjuntar checklist, docs y fotos.
-                    </p>
+        <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/pallets/nuevo" class="mt-3 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div class="sm:col-span-4">
+                    <input name="codigo_pallet"
+                           placeholder="Código (ej: P001)"
+                           class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                        focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400"
+                           required />
                 </div>
-                <span class="hidden sm:inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
-                     text-[11px] font-medium text-slate-400 bg-slate-950/20">
-                    Recomendado: PAL-001, PAL-002…
-                </span>
-            </div>
-        </header>
 
-        <form method="post"
-              action="/inbound/recepciones/{{ recepcion.id }}/pallets/nuevo"
-              class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-slate-800/80">
+                <div class="sm:col-span-2">
+                    <input name="peso_bruto_kg"
+                           placeholder="Bruto kg"
+                           inputmode="decimal"
+                           class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                        focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
+                </div>
 
-            <div class="sm:col-span-4 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">
-                    Código pallet <span class="text-rose-400">*</span>
-                </label>
-                <input type="text" name="codigo_pallet"
-                       required
-                       placeholder="PAL-001"
-                       autocomplete="off"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                <p class="text-[10px] text-slate-500">Se normaliza a MAYÚSCULAS en backend.</p>
-            </div>
+                <div class="sm:col-span-2">
+                    <input name="peso_tara_kg"
+                           placeholder="Tara kg"
+                           inputmode="decimal"
+                           class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                        focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
+                </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Bruto (kg)</label>
-                <input type="number" step="0.01" name="peso_bruto_kg" inputmode="decimal" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-            </div>
+                <div class="sm:col-span-2">
+                    <input name="temperatura_promedio"
+                           placeholder="Temp °C"
+                           inputmode="decimal"
+                           class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                        focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
+                </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Tara (kg)</label>
-                <input type="number" step="0.01" name="peso_tara_kg" inputmode="decimal" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                <div class="sm:col-span-2">
+                    <button type="submit"
+                            class="w-full inline-flex items-center justify-center rounded-xl px-4 py-2 text-[12px] font-semibold
+                         text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.99] transition-transform transition-colors">
+                        Crear
+                    </button>
+                </div>
             </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Bultos</label>
-                <input type="number" step="1" name="bultos" inputmode="numeric" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+            <div>
+                <textarea name="observaciones"
+                          rows="2"
+                          placeholder="Observaciones (recomendado, será obligatorio para cerrar)"
+                          class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                         focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400"></textarea>
             </div>
 
-            <div class="sm:col-span-2 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Temp (°C)</label>
-                <input type="number" step="0.1" name="temperatura_promedio" inputmode="decimal" placeholder="0"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-            </div>
-
-            <div class="sm:col-span-10 space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Observaciones</label>
-                <input type="text" name="observaciones"
-                       placeholder="Notas del pallet (daños, temperatura, etc.)"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-            </div>
-
-            <div class="sm:col-span-2 flex items-end">
-                <button type="submit"
-                        class="w-full inline-flex items-center justify-center rounded-full px-4 py-2
-                       text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
-                       hover:bg-cyan-300 active:scale-[0.98]
-                       transition-transform transition-colors">
-                    + Crear
-                </button>
-            </div>
+            <p class="text-[10px] text-slate-500">
+                Tip enterprise: si ingresas bruto/tara, el neto se valida (tara no puede superar bruto).
+            </p>
         </form>
     </section>
 
-    {# =========================
-    LISTA DE PALLETS
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
-        <header class="flex items-center justify-between gap-3">
-            <div class="space-y-0.5">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Pallets</p>
-                <p class="text-[11px] text-slate-400">Haz click en un pallet para ver su detalle.</p>
+    <!-- Lista -->
+    <section class="space-y-3">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Pallets</p>
             </div>
+            <p class="text-[11px] text-slate-500">
+                {{ pallets|length }} en esta recepción.
+            </p>
+        </div>
 
-            {% if pallets is defined %}
-            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
-                <span class="mr-1 text-slate-500">Total:</span>
-                <span class="font-semibold text-slate-100">{{ pallets|length }}</span>
-            </div>
-            {% endif %}
-        </header>
-
-        {% if pallets is defined and pallets %}
-        <div class="space-y-3">
+        {% if pallets and pallets|length > 0 %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             {% for p in pallets %}
-            {% set nlineas = (lineas_por_pallet.get(p.id, 0) if lineas_por_pallet is defined else 0) %}
-            {% set cant_total = (cant_por_pallet.get(p.id, 0) if cant_por_pallet is defined else 0) %}
-            {% set kg_total = (kg_por_pallet.get(p.id, 0) if kg_por_pallet is defined else 0) %}
-            {% set est = (p.estado or 'ABIERTO')|upper %}
+            {% set r = resumen.get(p.id) if resumen else None %}
+            {% set n_items = (r.get("n_items") if r else 0) %}
+            {% set cant_real = (r.get("cant") if r else 0) %}
+            {% set kg_real = (r.get("kg") if r else 0) %}
 
-            <div class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
-                      hover:border-cyan-400/60 hover:bg-slate-900/80 transition-colors"
-                 role="button" tabindex="0"
-                 onclick="window.location.href='/inbound/recepciones/{{ recepcion.id }}/pallets/{{ p.id }}'"
-                 onkeydown="if(event.key==='Enter'){window.location.href='/inbound/recepciones/{{ recepcion.id }}/pallets/{{ p.id }}'}">
-
+            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ p.id }}"
+               class="group rounded-2xl border border-slate-800 bg-slate-900/60 p-4 hover:border-cyan-500/40 transition-colors">
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-1">
-                        <div class="flex items-center gap-2">
-                            <p class="text-xs sm:text-sm font-semibold text-slate-100 truncate">
-                                {{ p.codigo_pallet or ('PAL-' ~ p.id) }}
-                            </p>
-
-                            {% if nlineas > 0 %}
-                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                                 bg-cyan-500/15 text-cyan-200 border-cyan-500/30">
-                                CON LÍNEAS
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                                 bg-slate-700/30 text-slate-200 border-slate-600">
-                                VACÍO
-                            </span>
-                            {% endif %}
-                        </div>
-
-                        <p class="text-[11px] text-slate-400 truncate">
-                            {{ p.observaciones or "Sin observaciones" }}
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-slate-100 truncate">{{ p.codigo_pallet }}</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">
+                            Estado: <span class="text-slate-300 font-medium">{{ p.estado }}</span>
                         </p>
-
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
-                               text-[10px] font-semibold text-slate-200 bg-slate-950/20">
-                                Líneas: <span class="ml-1 text-slate-100">{{ nlineas }}</span>
-                            </span>
-
-                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
-                               text-[10px] font-semibold text-slate-200 bg-slate-950/20">
-                                Cantidad: <span class="ml-1 text-slate-100">{{ '%.3f'|format(cant_total) }}</span>
-                            </span>
-
-                            <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1
-                               text-[10px] font-semibold text-slate-200 bg-slate-950/20">
-                                Kg: <span class="ml-1 text-slate-100">{{ '%.3f'|format(kg_total) }}</span>
-                            </span>
-                        </div>
-
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ p.id }}"
-                               onclick="event.stopPropagation();"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                            text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Ver detalle
-                            </a>
-
-                            <form method="post"
-                                  action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ p.id }}/eliminar"
-                                  onsubmit="event.stopPropagation(); return confirm('¿Eliminar este pallet?');">
-                                <button type="submit"
-                                        class="inline-flex items-center rounded-full border border-rose-500/40 px-3 py-1
-                                   text-[10px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100 transition-colors">
-                                    Eliminar
-                                </button>
-                            </form>
-                        </div>
                     </div>
 
-                    <div class="flex flex-col items-end gap-1 shrink-0">
-                        <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                  {% if est == 'LISTO' %}
-                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-                  {% elif est == 'EN_PROCESO' %}
-                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-                  {% else %}
-                    bg-slate-700/40 text-slate-100 border-slate-600
-                  {% endif %}">
-                            {{ est.replace('_', ' ') }}
-                        </span>
+                    <span class="shrink-0 inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200">
+                        {{ p.estado }}
+                    </span>
+                </div>
 
-                        <p class="text-[10px] text-slate-400 whitespace-nowrap">
-                            {% if p.creado_en %}
-                            {{ p.creado_en.strftime('%d-%m-%Y %H:%M') }}
-                            {% elif p.created_at %}
-                            {{ p.created_at.strftime('%d-%m-%Y %H:%M') }}
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/30 px-3 py-3">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wide">Ítems</p>
+                        <p class="text-sm font-semibold text-slate-100 mt-0.5">{{ n_items }}</p>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/30 px-3 py-3">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wide">Kg reales</p>
+                        <p class="text-sm font-semibold text-slate-100 mt-0.5">
+                            {% if kg_real and kg_real > 0 %}
+                            {{ '%.3f'|format(kg_real) }}
                             {% else %}
-                            —
+                            0.000
                             {% endif %}
-                        </p>
-
-                        <p class="text-[10px] text-slate-500 whitespace-nowrap">
-                            Neto:
-                            <span class="text-slate-200 font-semibold">
-                                {% if p.peso_neto_kg is not none %}
-                                {{ '%.3f'|format(p.peso_neto_kg) }} kg
-                                {% else %}
-                                —{% endif %}
-                            </span>
                         </p>
                     </div>
                 </div>
 
-                <div class="mt-3">
-                    {% set pct = 0 %}
-                    {% if est == 'LISTO' %}
-                    {% set pct = 100 %}
-                    {% elif est == 'EN_PROCESO' %}
-                    {% set pct = 66 %}
-                    {% else %}
-                    {% if nlineas >= 8 %}{% set pct = 100 %}
-                    {% elif nlineas >= 5 %}{% set pct = 66 %}
-                    {% elif nlineas >= 2 %}{% set pct = 33 %}
-                    {% elif nlineas == 1 %}{% set pct = 18 %}
-                    {% else %}{% set pct = 0 %}
-                    {% endif %}
-                    {% endif %}
-
-                    <div class="h-2 w-full rounded-full bg-slate-950/50 border border-slate-800 overflow-hidden">
-                        <div class="h-full bg-[#00E4FF]" style="width: {{ pct }}%;"></div>
-                    </div>
-
-                    <p class="text-[10px] text-slate-500 mt-1">
-                        Progreso: usa estado real (LISTO/EN PROCESO) y, si está ABIERTO, se estima por líneas.
+                <div class="mt-2 flex items-center justify-between">
+                    <p class="text-[11px] text-slate-500">
+                        {% if cant_real and cant_real > 0 %}
+                        Real: <span class="text-slate-200 font-semibold">{{ '%.3f'|format(cant_real) }}</span> u
+                        <span class="text-slate-600">·</span>
+                        {% endif %}
+                        {% if kg_real and kg_real > 0 %}
+                        <span class="text-slate-200 font-semibold">{{ '%.3f'|format(kg_real) }}</span> kg
+                        {% else %}
+                        <span class="text-slate-600">Sin kg aún</span>
+                        {% endif %}
                     </p>
+
+                    <span class="text-[11px] text-cyan-300 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                        Abrir →
+                    </span>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
         {% else %}
-        <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900 px-4 py-6 text-center space-y-1.5">
-            <p class="text-xs font-semibold text-slate-100">Aún no hay pallets creados.</p>
-            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">
-                Crea tu primer pallet para comenzar a virtualizar líneas y evidencias operativas.
-            </p>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-4">
+            <p class="text-[12px] text-slate-300">Aún no hay pallets creados en esta recepción.</p>
         </div>
         {% endif %}
     </section>

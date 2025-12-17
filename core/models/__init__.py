@@ -344,3 +344,6 @@ from core.models.enums import (  # noqa: E402
 )
 
 from core.models.time import utcnow
+
+from core.models.inbound.lineas import InboundLinea
+from core.models.inbound.pallets import InboundPallet, InboundPalletItem
