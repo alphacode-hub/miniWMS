@@ -104,11 +104,11 @@
 
             {# Debug UX (puedes quitarlo luego) #}
             <span class="hidden sm:inline-flex items-center rounded-full border border-slate-800 bg-slate-950/30 px-3 py-1 text-[11px] text-slate-300">
-                Líneas: {{ lineas|length if lineas is not none else 0 }}
+                Líneas: {{ lineas_ui|length if lineas_ui is not none else 0 }}
             </span>
         </div>
 
-        {% if not lineas or lineas|length == 0 %}
+        {% if not lineas_ui or lineas_ui|length == 0 %}
         <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950/25 px-4 py-4">
             <p class="text-[12px] text-slate-200 font-semibold">No hay líneas disponibles para asignar.</p>
             <p class="mt-1 text-[11px] text-slate-500">
@@ -135,40 +135,24 @@
                                focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400">
                     <option value="">Selecciona línea…</option>
 
-                    {% for l in lineas %}
-                    {% set prod_nombre = (l.producto.nombre if l.producto and l.producto.nombre else ("Producto #" ~ (l.producto_id or "-"))) %}
-                    {% set modo = "CANTIDAD" if (l.cantidad_documento is not none and l.cantidad_documento > 0) else "PESO" %}
-
-                    {# si tienes pendiente calculado en backend, úsalo; si no, al menos muestra el doc #}
-                    {% set pend_cant = (l.pendiente_cantidad if l.pendiente_cantidad is defined else none) %}
-                    {% set pend_kg = (l.pendiente_kg if l.pendiente_kg is defined else none) %}
-
-                    {# enterprise: deshabilita si pendiente = 0 (si viene calculado) #}
-                    {% set disabled = false %}
-                    {% if modo == "CANTIDAD" and pend_cant is not none and pend_cant <= 0 %}{% set disabled = true %}{% endif %}
-                    {% if modo == "PESO" and pend_kg is not none and pend_kg <= 0 %}{% set disabled = true %}{% endif %}
-
-                    <option value="{{ l.id }}" {% if disabled %}disabled{% endif %}>
-                        {{ prod_nombre }} · {{ modo }}
-                        {% if modo == "CANTIDAD" and l.cantidad_documento is not none %}
-                        · Doc: {{ '%.3f'|format(l.cantidad_documento) }} {{ l.unidad or "u" }}
+                    {% for l in lineas_ui %}
+                    <option value="{{ l.id }}" {% if l.pendiente <= 0 %}disabled{% endif %}>
+                        {{ l.nombre }} · {{ l.modo }}
+                        · Pend: {{ '%.3f'|format(l.pendiente) }}
+                        {% if l.modo == "PESO" %}
+                            kg
+                        {% else %}
+                            {{ l.unidad or "u" }}
                         {% endif %}
-                        {% if modo == "PESO" and l.peso_kg is not none %}
-                        · Doc: {{ '%.3f'|format(l.peso_kg) }} kg
+                        {% if l.peso_unitario_kg is not none %}
+                            · Conv: {{ l.peso_unitario_kg }} kg/u
                         {% endif %}
-
-                        {% if modo == "CANTIDAD" and pend_cant is not none %}
-                        · Pend: {{ '%.3f'|format(pend_cant) }} {{ l.unidad or "u" }}
-                        {% endif %}
-                        {% if modo == "PESO" and pend_kg is not none %}
-                        · Pend: {{ '%.3f'|format(pend_kg) }} kg
-                        {% endif %}
-
-                        {% if disabled %}
-                        · (sin pendiente)
+                        {% if l.pendiente <= 0 %}
+                            · (sin pendiente)
                         {% endif %}
                     </option>
                     {% endfor %}
+
                 </select>
             </div>
 

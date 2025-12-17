@@ -281,6 +281,9 @@ def agregar_items_a_pallet(
 
     try:
         for item_data in items:
+            # ----------------------------
+            # Validación de línea seleccionada
+            # ----------------------------
             linea_id_raw = item_data.get("linea_id")
             if linea_id_raw is None:
                 raise InboundDomainError("Cada ítem debe incluir 'linea_id'.")
@@ -308,7 +311,9 @@ def agregar_items_a_pallet(
             ):
                 raise InboundDomainError("Esta línea ya está asignada a este pallet.")
 
-            # ✅ contrato: determina modo y base oficial
+            # ----------------------------
+            # Contrato: determina modo oficial
+            # ----------------------------
             try:
                 view = normalizar_linea(linea, allow_draft=False)
             except InboundLineaContractError as exc:
@@ -316,43 +321,72 @@ def agregar_items_a_pallet(
 
             modo = view.modo
 
+            # ----------------------------
+            # Inputs (desde UI)
+            # ----------------------------
             cantidad_in = item_data.get("cantidad")
             peso_in = item_data.get("peso_kg")
 
-            cantidad = None if cantidad_in is None else float(cantidad_in)
-            peso_kg = None if peso_in is None else float(peso_in)
+            # Parse robusto (vacío/0 => None)
+            cantidad_parsed = _to_float_or_none(cantidad_in)
+            peso_parsed = _to_float_or_none(peso_in)
 
-            # Sanitiza <=0 a None (enterprise)
-            if cantidad is not None and cantidad <= 0:
-                cantidad = None
-            if peso_kg is not None and peso_kg <= 0:
-                peso_kg = None
+            # Resolver conversión (override línea > producto)
+            peso_unitario = _resolver_peso_unitario_kg(linea)
 
+            # ----------------------------
+            # ✅ REGLA ENTERPRISE: fuente oficial única
+            # ----------------------------
+            cantidad: float | None = None
+            peso_kg: float | None = None
+
+            if modo == InboundLineaModo.CANTIDAD:
+                # En CANTIDAD: el usuario NO debe ingresar kg (evita divergencia)
+                if peso_parsed is not None:
+                    raise InboundDomainError(
+                        "Esta línea es por CANTIDAD: no ingreses Kg en el pallet. "
+                        "El sistema calcula el peso automáticamente según kg/u."
+                    )
+
+                if cantidad_parsed is None:
+                    raise InboundDomainError("Esta línea es por CANTIDAD: debes ingresar cantidad (> 0).")
+
+                # Conversión obligatoria para mantener consistencia de peso
+                if peso_unitario is None:
+                    raise InboundDomainError(
+                        "Esta línea es por CANTIDAD pero no tiene conversión configurada (kg/u). "
+                        "Corrige el dato maestro del producto o el override de la línea."
+                    )
+
+                cantidad = float(cantidad_parsed)
+                peso_kg = _calc_kg_desde_cantidad(cantidad, float(peso_unitario))
+
+            else:  # PESO
+                # En PESO: el usuario NO debe ingresar cantidad (evita divergencia)
+                if cantidad_parsed is not None:
+                    raise InboundDomainError(
+                        "Esta línea es por PESO: no ingreses Cantidad en el pallet. "
+                        "El sistema deriva la cantidad si existe kg/u."
+                    )
+
+                if peso_parsed is None:
+                    raise InboundDomainError("Esta línea es por PESO: debes ingresar Kg (> 0).")
+
+                peso_kg = float(peso_parsed)
+
+                # Derivación opcional (informativa / persistida si existe)
+                if peso_unitario is not None:
+                    cantidad = _calc_cantidad_desde_kg(peso_kg, float(peso_unitario))
+                else:
+                    cantidad = None
+
+            # Seguridad extra
             if cantidad is None and peso_kg is None:
                 raise InboundDomainError("Debes ingresar una cantidad o un peso mayor a cero.")
 
-            # ✅ conversión disponible?
-            peso_unitario = _resolver_peso_unitario_kg(linea)
-
-            # Si usuario ingresó ambos, validamos consistencia cuando podemos
-            _check_consistencia_si_ambos(cantidad=cantidad, peso_kg=peso_kg, peso_unitario_kg=peso_unitario)
-
-            # ✅ regla por modo oficial (enterprise)
-            if modo == InboundLineaModo.CANTIDAD:
-                if cantidad is None:
-                    raise InboundDomainError("Esta línea es por CANTIDAD: debes ingresar cantidad.")
-                # Autocompleta kg si falta y hay conversión
-                if peso_kg is None and peso_unitario is not None:
-                    peso_kg = _calc_kg_desde_cantidad(cantidad, peso_unitario)
-
-            else:  # PESO
-                if peso_kg is None:
-                    raise InboundDomainError("Esta línea es por PESO: debes ingresar kg.")
-                # Autocompleta cantidad si falta y hay conversión
-                if cantidad is None and peso_unitario is not None:
-                    cantidad = _calc_cantidad_desde_kg(peso_kg, peso_unitario)
-
-            # ✅ validación de pendientes (según modo oficial)
+            # ----------------------------
+            # ✅ Validación de pendientes (según modo oficial)
+            # ----------------------------
             cant_asig, kg_asig = _sum_asignado_por_linea_en_recepcion(
                 db,
                 negocio_id=negocio_id,
@@ -365,22 +399,30 @@ def agregar_items_a_pallet(
                 if base is None or base <= 0:
                     raise InboundDomainError("La línea no tiene cantidad base válida para asignar.")
                 pend = float(base) - float(cant_asig)
+
                 if cantidad is None:
                     raise InboundDomainError("Debes ingresar cantidad.")
                 if cantidad > pend + _EPS:
-                    raise InboundDomainError(f"Cantidad supera el pendiente. Pendiente: {max(pend, 0):.3f}")
+                    raise InboundDomainError(
+                        f"Cantidad supera el pendiente. Pendiente: {max(pend, 0):.3f}"
+                    )
 
             else:  # PESO
                 base = view.base_peso_kg
                 if base is None or base <= 0:
                     raise InboundDomainError("La línea no tiene peso base válido para asignar.")
                 pend = float(base) - float(kg_asig)
+
                 if peso_kg is None:
                     raise InboundDomainError("Debes ingresar kg.")
                 if peso_kg > pend + _EPS:
-                    raise InboundDomainError(f"Peso supera el pendiente. Pendiente: {max(pend, 0):.3f} kg")
+                    raise InboundDomainError(
+                        f"Peso supera el pendiente. Pendiente: {max(pend, 0):.3f} kg"
+                    )
 
-            # ✅ persistimos AMBOS si están disponibles (esto arregla tu “kg reales en 0”)
+            # ----------------------------
+            # ✅ Persistimos ambos (si están disponibles)
+            # ----------------------------
             item = InboundPalletItem(
                 negocio_id=negocio_id,
                 pallet_id=pallet.id,
@@ -403,6 +445,8 @@ def agregar_items_a_pallet(
     except InboundDomainError:
         db.rollback()
         raise
+
+
 
 def _get_linea_cantidad_base(linea: InboundLinea) -> float | None:
     # ✅ Base oficial por cantidad viene del documento

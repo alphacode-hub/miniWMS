@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from core.database import get_db
 from core.models.inbound.pallets import InboundPallet, InboundPalletItem
-from core.models.inbound.lineas import InboundLinea 
+from core.models.inbound.lineas import InboundLinea
 
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
@@ -40,6 +40,7 @@ router = APIRouter()
 def _qp(msg: str) -> str:
     return quote_plus((msg or "").strip())
 
+
 def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> RedirectResponse:
     if ok:
         sep = "&" if "?" in url else "?"
@@ -49,6 +50,7 @@ def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> R
         url = f"{url}{sep}error={_qp(error)}"
     return RedirectResponse(url=url, status_code=302)
 
+
 def _to_int_or_none(v: Any) -> int | None:
     s = ("" if v is None else str(v)).strip()
     if not s:
@@ -57,8 +59,12 @@ def _to_int_or_none(v: Any) -> int | None:
         raise InboundDomainError("Valor entero inválido.")
     return int(s)
 
+
 def _to_float_or_none(v: Any) -> float | None:
-    # pesos/cantidades: 0 no sirve
+    """
+    Pesos/cantidades: 0 o vacío => None.
+    Acepta coma decimal.
+    """
     if v is None:
         return None
     s = str(v).strip()
@@ -73,7 +79,9 @@ def _to_float_or_none(v: Any) -> float | None:
 
 
 def _to_float_allow_zero_or_none(v: Any) -> float | None:
-    # temperatura: 0 sí es válido
+    """
+    Temperatura: 0 sí es válido.
+    """
     if v is None:
         return None
     s = str(v).strip()
@@ -94,6 +102,35 @@ def _assert_pallet_pertenece(db: Session, negocio_id: int, recepcion_id: int, pa
     if not pallet or pallet.negocio_id != negocio_id or pallet.recepcion_id != recepcion_id:
         raise InboundDomainError("Pallet inválido para esta recepción.")
     return pallet
+
+
+def _resolver_peso_unitario_kg_ui(linea: InboundLinea) -> float | None:
+    """
+    UI helper (misma regla enterprise):
+    1) override en línea
+    2) producto.peso_unitario_kg
+    """
+    v = getattr(linea, "peso_unitario_kg_override", None)
+    if v is not None:
+        try:
+            n = float(v)
+            if n > 0:
+                return n
+        except (TypeError, ValueError):
+            pass
+
+    prod = getattr(linea, "producto", None)
+    if prod is not None:
+        v2 = getattr(prod, "peso_unitario_kg", None)
+        if v2 is not None:
+            try:
+                n2 = float(v2)
+                if n2 > 0:
+                    return n2
+            except (TypeError, ValueError):
+                pass
+
+    return None
 
 
 # ============================================================
@@ -194,7 +231,7 @@ async def inbound_pallet_detalle(
         .order_by(InboundPalletItem.id.asc())
         .all()
     )
-    
+
     lineas = (
         db.query(InboundLinea)
         .options(selectinload(InboundLinea.producto))
@@ -202,10 +239,8 @@ async def inbound_pallet_detalle(
         .order_by(InboundLinea.id.asc())
         .all()
     )
-    
 
-
-    # Construimos una vista UI (modo + pendientes)
+    # Construimos una vista UI (modo + pendientes + kg/u)
     lineas_ui: list[dict[str, Any]] = []
     for l in lineas:
         try:
@@ -216,7 +251,7 @@ async def inbound_pallet_detalle(
             # si alguna línea está mala, la ocultamos del selector para evitar errores operativos
             continue
 
-        # asignado en recepcion
+        # asignado en recepción
         cant_asig = (
             db.query(func.coalesce(func.sum(InboundPalletItem.cantidad), 0))
             .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
@@ -247,11 +282,12 @@ async def inbound_pallet_detalle(
             pend = float(base or 0) - float(kg_asig or 0)
             pend = max(pend, 0.0)
 
-        nombre = None
-        if getattr(l, "producto", None) is not None and getattr(l.producto, "nombre", None):
-            nombre = l.producto.nombre
-        else:
+        prod = getattr(l, "producto", None)
+        nombre = getattr(prod, "nombre", None) if prod is not None else None
+        if not nombre:
             nombre = f"Línea #{l.id}"
+
+        peso_unitario_kg = _resolver_peso_unitario_kg_ui(l)
 
         lineas_ui.append(
             {
@@ -259,7 +295,8 @@ async def inbound_pallet_detalle(
                 "nombre": nombre,
                 "modo": modo,
                 "pendiente": round(pend, 3),
-                "unidad": getattr(l, "unidad", None) or "unidad",
+                "unidad": getattr(l, "unidad", None) or (getattr(prod, "unidad", None) if prod else None) or "unidad",
+                "peso_unitario_kg": peso_unitario_kg,  # <- clave para autocompletar kg/u en UX
             }
         )
 
@@ -354,11 +391,18 @@ async def inbound_pallet_item_agregar(
         obtener_recepcion_editable(db, recepcion_id, negocio_id)
         _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
 
+        linea_id_i = _to_int_or_none(linea_id)
+        if not linea_id_i:
+            raise InboundDomainError("Debes seleccionar una línea válida.")
+
+        cant_f = _to_float_or_none(cantidad)
+        kg_f = _to_float_or_none(peso_kg)
+
         agregar_items_a_pallet(
             db=db,
             negocio_id=negocio_id,
             pallet_id=pallet_id,
-            items=[{"linea_id": _to_int_or_none(linea_id), "cantidad": cantidad, "peso_kg": peso_kg}],
+            items=[{"linea_id": linea_id_i, "cantidad": cant_f, "peso_kg": kg_f}],
         )
 
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Ítem agregado.")
