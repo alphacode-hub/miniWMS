@@ -41,23 +41,22 @@ ESTADO_EN_DESCARGA: Final[str] = RecepcionEstado.EN_DESCARGA.value
 ESTADO_EN_CONTROL_CALIDAD: Final[str] = RecepcionEstado.EN_CONTROL_CALIDAD.value
 ESTADO_CERRADO: Final[str] = RecepcionEstado.CERRADO.value
 
-ESTADOS_RECEPCION_VALIDOS: Final[set[str]] = {e.value for e in RecepcionEstado}
-
+ESTADOS_RECEPCION_VALIDOS = {e.value for e in RecepcionEstado}
+ESTADOS_RECEPCION_VALIDOS_UP = {e.value.upper() for e in RecepcionEstado}
 
 def normalizar_estado_recepcion(estado: str | None) -> str:
-    """
-    Normaliza el estado y valida contra el set permitido.
-
-    Enterprise decision:
-    - Si viene desconocido, NO "adivinamos" (evita mutaciones en estados corruptos).
-    - Lanzamos error de dominio para obligar a corregir data / migración.
-    """
-    est = (estado or "").strip().upper()
-    if not est:
-        return ESTADO_PRE_REGISTRADO
-    if est not in ESTADOS_RECEPCION_VALIDOS:
+    raw = (estado or "").strip()
+    if not raw:
+        return RecepcionEstado.PRE_REGISTRADO.value
+    up = raw.upper()
+    if up not in ESTADOS_RECEPCION_VALIDOS_UP:
         raise InboundDomainError(f"Estado de recepción inválido: '{estado}'.")
-    return est
+    # devolver CANON EXACTO (el value original)
+    for e in RecepcionEstado:
+        if e.value.upper() == up:
+            return e.value
+    return RecepcionEstado.PRE_REGISTRADO.value  # fallback nunca debería ocurrir
+
 
 
 # =========================================================
@@ -143,7 +142,7 @@ def obtener_recepcion_editable(
     Úsalo en servicios que mutan estado/datos (líneas, pallets, incidencias, etc.).
     """
     recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    cfg = InboundConfig.from_negocio(db, negocio_id)
+    cfg = obtener_config_inbound(db, negocio_id)
     validar_recepcion_editable(recepcion, cfg)
     return recepcion
 

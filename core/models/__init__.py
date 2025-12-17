@@ -11,6 +11,7 @@ Modelos ORM – ORBION (SaaS enterprise)
 
 from __future__ import annotations
 
+
 import enum
 from datetime import datetime, timezone, date
 
@@ -30,14 +31,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.types import Enum as SAEnum
 
 from core.database import Base
-
-
-# =========================================================
-# TIME HELPERS
-# =========================================================
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+from core.models.time import utcnow
 
 # =========================================================
 # CORE
@@ -85,8 +79,7 @@ class Negocio(Base):
     proveedores = relationship("Proveedor", back_populates="negocio", cascade="all, delete-orphan")
     plantillas_proveedor = relationship("InboundPlantillaProveedor", back_populates="negocio", cascade="all, delete-orphan")
     prealertas_inbound = relationship("InboundPrealerta", back_populates="negocio", cascade="all, delete-orphan")
-    checklist_items_inbound = relationship("InboundChecklistItem", back_populates="negocio", cascade="all, delete-orphan")
-
+    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio",cascade="all, delete-orphan")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -329,7 +322,9 @@ from core.models.inbound import (  # noqa: E402
     InboundPallet,
     InboundPalletItem,
     InboundPrealerta,
-    InboundChecklistItem,
+    InboundPlantillaChecklist,
+    InboundPlantillaChecklistItem,
+    InboundChecklistRecepcion,
     InboundChecklistRespuesta,
     InboundIncidencia,
     InboundFoto,
@@ -343,7 +338,5 @@ from core.models.enums import (  # noqa: E402
     CitaEstado,
 )
 
-from core.models.time import utcnow
 
-from core.models.inbound.lineas import InboundLinea
-from core.models.inbound.pallets import InboundPallet, InboundPalletItem
+

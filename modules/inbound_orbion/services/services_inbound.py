@@ -63,6 +63,17 @@ from .services_inbound_fotos import (
     eliminar_foto_inbound,
 )
 
+# =========================================================
+# SERVICES CHECKLIST
+# =========================================================
+from .services_inbound_checklist import (
+    obtener_checklist_vm,
+    guardar_respuesta_item,
+    completar_checklist_recepcion,
+    reabrir_checklist_recepcion,
+)
+
+
 __all__ = [
     # Modelo
     "InboundConfig",
@@ -85,4 +96,9 @@ __all__ = [
     #Fotos
      "crear_foto_inbound",
      "eliminar_foto_inbound",
+    # Checklist
+     "obtener_checklist_vm",
+     "guardar_respuesta_item",
+     "completar_checklist_recepcion",
+     "reabrir_checklist_recepcion",
 ]

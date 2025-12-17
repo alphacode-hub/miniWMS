@@ -9,10 +9,11 @@ from .recepciones import InboundRecepcion
 from .lineas import InboundLinea
 from .pallets import InboundPallet, InboundPalletItem
 from .prealertas import InboundPrealerta
-from .checklist import InboundChecklistItem, InboundChecklistRespuesta
+from .checklist import InboundChecklistRecepcion, InboundChecklistRespuesta
 from .incidencias import InboundIncidencia
 from .fotos import InboundFoto
 from .documentos import InboundDocumento
+from .plantillas_checklist import InboundPlantillaChecklist, InboundPlantillaChecklistItem
 
  
 
@@ -23,15 +24,15 @@ __all__ = [
     "InboundConfig",
     "Proveedor",
     "InboundPlantillaProveedor", "InboundPlantillaProveedorLinea",
+    "InboundPlantillaChecklist", "InboundPlantillaChecklistItem",
     "InboundCita",
     "InboundRecepcion",
     "InboundLinea",
     "InboundPallet", "InboundPalletItem",
     "InboundPrealerta",
-    "InboundChecklistItem",
-    "InboundChecklistRespuesta",
+    "InboundChecklistRecepcion", "InboundChecklistRespuesta",
     "InboundIncidencia",
     "InboundFoto",
     "InboundDocumento",
-
 ]
+

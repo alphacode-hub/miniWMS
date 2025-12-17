@@ -1,0 +1,410 @@
+﻿{# templates/checklist_recepcion.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}Inbound · Checklist{% endblock %}
+
+{% block content %}
+{% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else (recepcion.codigo if recepcion and recepcion.codigo else ("Recepción #" ~ recepcion.id if recepcion else "Recepción")) %}
+
+<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg sm:text-xl font-semibold text-slate-100">
+                    Checklist operativo
+                </h1>
+
+                {% if checklist and checklist.estado %}
+                {% set est = checklist.estado|string %}
+                {% if est in ["COMPLETADO","CERRADO","FINALIZADO"] %}
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
+                    {{ est }}
+                </span>
+                {% elif est in ["EN_PROGRESO","EN CURSO","INICIADO"] %}
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">
+                    {{ est }}
+                </span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-200 border border-slate-500/20">
+                    {{ est }}
+                </span>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                Recepción: <span class="font-medium text-slate-100">{{ recep_codigo }}</span>
+                {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                · Proveedor: <span class="font-medium text-slate-100">{{ recepcion.proveedor.nombre }}</span>
+                {% endif %}
+            </p>
+
+            {% if checklist and checklist.plantilla_nombre %}
+            <p class="text-xs text-slate-400 mt-1">
+                Plantilla: <span class="text-slate-200">{{ checklist.plantilla_nombre }}</span>
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <a href="/inbound/recepciones/{{ recepcion.id }}"
+               class="px-3 py-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 text-xs font-medium border border-slate-700/50">
+                ← Volver a recepción
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    {% if error %}
+    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-rose-100">
+        <div class="text-sm font-semibold">Error</div>
+        <div class="text-sm text-rose-100/90 mt-1">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if ok %}
+    <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-100">
+        <div class="text-sm font-semibold">Listo</div>
+        <div class="text-sm text-emerald-100/90 mt-1">{{ ok }}</div>
+    </div>
+    {% endif %}
+
+    {% if checklist %}
+
+    {% set resumen = checklist.resumen or {} %}
+    {% set pct = resumen.get("progreso_pct", 0) %}
+    {% set total = resumen.get("items_total", (checklist.items|length)) %}
+    {% set respondidos = resumen.get("items_respondidos", 0) %}
+    {% set req_total = resumen.get("requeridos_total", 0) %}
+    {% set req_ok = resumen.get("requeridos_ok", 0) %}
+    {% set req_pend = resumen.get("requeridos_pendientes", 0) %}
+
+    <!-- Resumen / progreso -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold text-slate-100">Progreso</div>
+                <div class="text-xs text-slate-300">{{ pct }}%</div>
+            </div>
+            <div class="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div class="h-full bg-cyan-400/80" style="width: {{ pct }}%"></div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="rounded-xl bg-slate-950/30 border border-slate-800/60 p-3">
+                    <div class="text-[11px] text-slate-400">Respondidos</div>
+                    <div class="text-lg font-semibold text-slate-100">
+                        {{ respondidos }}
+                        <span class="text-xs text-slate-400">/ {{ total }}</span>
+                    </div>
+                </div>
+                <div class="rounded-xl bg-slate-950/30 border border-slate-800/60 p-3">
+                    <div class="text-[11px] text-slate-400">Requeridos OK</div>
+                    <div class="text-lg font-semibold text-slate-100">
+                        {{ req_ok }}
+                        <span class="text-xs text-slate-400">/ {{ req_total }}</span>
+                    </div>
+                    {% if req_pend > 0 %}
+                    <div class="mt-1 text-[11px] text-amber-300">
+                        Faltan {{ req_pend }} requeridos
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4 lg:col-span-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <div class="text-sm font-semibold text-slate-100">Acciones</div>
+                    <div class="text-xs text-slate-400 mt-1">
+                        Marca y guarda. Puedes guardar ítem por ítem o usar “Guardar todo”.
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            id="btnGuardarTodo"
+                            class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
+                        Guardar todo
+                    </button>
+
+                    {% set est = checklist.estado|string %}
+                    {% if est in ["COMPLETADO","CERRADO","FINALIZADO"] %}
+                    <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/checklist/reabrir">
+                        <button type="submit"
+                                class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold border border-slate-700/60">
+                            Reabrir checklist
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/checklist/completar">
+                        <button type="submit"
+                                class="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-emerald-950 text-xs font-semibold border border-emerald-400/40">
+                            Completar checklist
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                <div class="text-xs text-slate-300">
+                    <span class="font-semibold text-slate-100">Tip enterprise:</span>
+                    Si hay “No OK”, registra nota; luego adjuntaremos evidencia (fotos/documentos) cuando integremos esos módulos.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60">
+        <div class="p-4 border-b border-slate-800/60">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold text-slate-100">Ítems</div>
+                <div class="text-xs text-slate-400">{{ total }} items</div>
+            </div>
+        </div>
+
+        <div class="divide-y divide-slate-800/60">
+            {% for it in (checklist.items or []) %}
+            {% set resp_ok = it.ok %}
+            {% set resp_valor = it.valor %}
+            {% set resp_nota = it.nota %}
+            {% set resp_user = it.respondido_por %}
+            {% set resp_dt = it.actualizado_en %}
+            {% set tipo = (it.tipo|string) if it.tipo is not none else "BOOL" %}
+            {% set requerido = it.requerido if it.requerido is not none else false %}
+            {% set respondido = (resp_ok is not none) or (resp_valor and (resp_valor|string)|trim != "") or (resp_nota and (resp_nota|string)|trim != "") %}
+
+            <div class="p-4 checklist-item"
+                 data-item-id="{{ it.item_id }}"
+                 data-tipo="{{ tipo }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <div class="text-sm font-semibold text-slate-100 truncate">
+                                {{ it.nombre }}
+                            </div>
+                            {% if requerido %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
+                                REQUERIDO
+                            </span>
+                            {% endif %}
+
+                            {% if it.codigo %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                                {{ it.codigo }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        {% if it.descripcion %}
+                        <div class="text-xs text-slate-400 mt-1">
+                            {{ it.descripcion }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Estado visual -->
+                    <div class="shrink-0">
+                        {% if respondido %}
+                        {% if resp_ok is not none %}
+                        {% if resp_ok %}
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">OK</span>
+                        {% else %}
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-200 border border-rose-500/20">NO OK</span>
+                        {% endif %}
+                        {% elif resp_valor %}
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">
+                            {{ resp_valor }}
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                            Respondido
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                            Pendiente
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Form respuesta -->
+                <form method="post"
+                      action="/inbound/recepciones/{{ recepcion.id }}/checklist/item"
+                      class="mt-4 checklist-form">
+                    <input type="hidden" name="checklist_item_id" value="{{ it.item_id }}" />
+
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                        <div class="md:col-span-8">
+                            {% if tipo == "BOOL" %}
+                            <div class="flex items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <label class="flex items-center gap-2 text-sm text-slate-200">
+                                    <input type="checkbox" name="ok"
+                                           class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-400 focus:ring-cyan-400/40"
+                                           {% if resp_ok %}checked{% endif %} />
+                                    Conforme (OK)
+                                </label>
+                                <span class="text-xs text-slate-500">Desmarca para registrar No OK.</span>
+                            </div>
+
+                            {% elif tipo == "OPCION" %}
+                            {% set opts = (it.opciones or "") %}
+                            {% set lista = opts.split(",") if opts else [] %}
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <label class="block text-xs font-semibold text-slate-300 mb-2">Selección</label>
+                                <select name="valor"
+                                        class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
+                                    <option value="">— Seleccionar —</option>
+                                    {% for op in lista %}
+                                    {% set v = op.strip() %}
+                                    {% if v %}
+                                    <option value="{{ v }}" {% if resp_valor==v %}selected{% endif %}>{{ v }}</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            {% elif tipo in ["NUMERO","NUMBER"] %}
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <label class="block text-xs font-semibold text-slate-300 mb-2">Valor numérico</label>
+                                <input type="number" step="any" name="valor"
+                                       value="{{ resp_valor if resp_valor else '' }}"
+                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                                       placeholder="Ej: 12.5" />
+                            </div>
+
+                            {% elif tipo == "FECHA" %}
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <label class="block text-xs font-semibold text-slate-300 mb-2">Fecha</label>
+                                <input type="date" name="valor"
+                                       value="{{ resp_valor if resp_valor else '' }}"
+                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30" />
+                            </div>
+
+                            {% else %}
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <label class="block text-xs font-semibold text-slate-300 mb-2">Valor / Texto</label>
+                                <input type="text" name="valor"
+                                       value="{{ resp_valor if resp_valor else '' }}"
+                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                                       placeholder="Ej: 2°C, Sellos intactos, OK..." />
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="md:col-span-4">
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3 h-full">
+                                <label class="block text-xs font-semibold text-slate-300 mb-2">Nota (opcional)</label>
+                                <textarea name="nota" rows="3"
+                                          class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                                          placeholder="Observación breve...">{{ resp_nota if resp_nota else '' }}</textarea>
+
+                                <div class="mt-3 flex items-center justify-between gap-2">
+                                    <button type="submit"
+                                            class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
+                                        Guardar
+                                    </button>
+
+                                    {% if resp_user or resp_dt %}
+                                    <div class="text-[11px] text-slate-500 text-right">
+                                        {% if resp_user %}<div>{{ resp_user }}</div>{% endif %}
+                                        {% if resp_dt %}<div>Actualizado</div>{% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            {% endfor %}
+
+            {% if not checklist.items %}
+            <div class="p-6 text-center text-slate-400">
+                No hay ítems de checklist asignados a esta recepción.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <div class="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-6 text-slate-300">
+        No se pudo cargar el checklist.
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById("btnGuardarTodo");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+
+    try {
+      const rows = Array.from(document.querySelectorAll(".checklist-item"));
+
+      const items = rows.map((row) => {
+        const itemId = parseInt(row.getAttribute("data-item-id"), 10);
+        const tipo = (row.getAttribute("data-tipo") || "").toUpperCase();
+
+        const form = row.querySelector("form.checklist-form");
+        const okEl = form ? form.querySelector('input[name="ok"]') : null;
+        const valorEl = form ? form.querySelector('input[name="valor"], select[name="valor"]') : null;
+        const notaEl = form ? form.querySelector('textarea[name="nota"]') : null;
+
+        const valor = valorEl ? (valorEl.value || "") : "";
+        const nota = notaEl ? (notaEl.value || "") : "";
+
+        // MODO SEGURO:
+        // - BOOL: solo true si checked (si no, mandamos null para que el backend lo ignore)
+        let ok = null;
+        if (tipo === "BOOL") {
+          ok = (okEl && okEl.checked) ? true : null;
+        }
+
+        return {
+          checklist_item_id: itemId,
+          tipo: tipo,
+          ok: ok,
+          valor: valor,
+          nota: nota
+        };
+      });
+
+      const res = await fetch(`/inbound/recepciones/{{ recepcion.id }}/checklist/guardar_todo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        alert(data.error || "Error al guardar todo.");
+        return;
+      }
+
+      // recargar para ver estados OK inmediatamente
+      window.location.reload();
+
+    } catch (e) {
+      alert("Error inesperado al guardar todo.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Guardar todo";
+    }
+  });
+})();
+</script>
+
+{% endblock %}

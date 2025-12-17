@@ -76,3 +76,4 @@ class InboundRecepcion(Base):
     fotos = relationship("InboundFoto", back_populates="recepcion", cascade="all, delete-orphan")
     checklist_respuestas = relationship("InboundChecklistRespuesta", back_populates="recepcion", cascade="all, delete-orphan")
     documentos = relationship("InboundDocumento", back_populates="recepcion", cascade="all, delete-orphan")
+    checklist = relationship("InboundChecklistRecepcion",back_populates="recepcion", uselist=False, cascade="all, delete-orphan")

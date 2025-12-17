@@ -1,61 +1,56 @@
-﻿# core/models/inbound/checklist.py
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from core.database import Base
-from core.models import utcnow
+from core.models.time import utcnow
 
 
-class InboundChecklistItem(Base):
-    __tablename__ = "inbound_checklist_items"
+class InboundChecklistRecepcion(Base):
+    __tablename__ = "inbound_checklist_recepcion"
 
     id = Column(Integer, primary_key=True)
     negocio_id = Column(Integer, ForeignKey("negocios.id"), index=True, nullable=False)
+    recepcion_id = Column(Integer, ForeignKey("inbound_recepciones.id"), unique=True, index=True, nullable=False)
 
-    nombre = Column(String, nullable=False)
-    orden = Column(Integer, default=0, nullable=False)
-    activo = Column(Integer, default=1, nullable=False)
+    plantilla_id = Column(Integer, ForeignKey("inbound_plantillas_checklist.id"), index=True, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    estado = Column(String, nullable=False, default="PENDIENTE")
+    iniciado_en = Column(DateTime(timezone=True), nullable=True)
+    completado_en = Column(DateTime(timezone=True), nullable=True)
 
-    negocio = relationship("Negocio", back_populates="checklist_items_inbound")
+    actualizado_en = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-    respuestas = relationship(
-    "InboundChecklistRespuesta",
-    back_populates="item",
-    cascade="all, delete-orphan",
-    )
+    recepcion = relationship("InboundRecepcion", back_populates="checklist")
+    plantilla = relationship("InboundPlantillaChecklist")
 
 
 class InboundChecklistRespuesta(Base):
-    """
-    Respuesta (evidencia) para un ítem de checklist inbound.
-    Baseline v1:
-    - Puede colgar de una recepción (lo normal).
-    - Guarda respuesta booleana / texto / usuario / timestamp.
-    """
     __tablename__ = "inbound_checklist_respuestas"
 
     id = Column(Integer, primary_key=True)
-
     negocio_id = Column(Integer, ForeignKey("negocios.id"), index=True, nullable=False)
 
     recepcion_id = Column(Integer, ForeignKey("inbound_recepciones.id"), index=True, nullable=False)
-    checklist_item_id = Column(Integer, ForeignKey("inbound_checklist_items.id"), index=True, nullable=False)
 
-    # quién respondió (guardamos string para evitar FK a usuarios si tu auth es flexible)
+    plantilla_id = Column(Integer, ForeignKey("inbound_plantillas_checklist.id"), index=True, nullable=True)
+
+    checklist_item_id = Column(Integer, ForeignKey("inbound_plantillas_checklist_items.id"), index=True, nullable=False)
+
     respondido_por = Column(String, nullable=True)
 
-    # respuesta
-    ok = Column(Boolean, nullable=True)   # True/False si aplica
-    valor = Column(String, nullable=True) # valor corto (ej: "12°C", "SI", "NO", "OK")
-    nota = Column(Text, nullable=True)    # comentario libre
+    ok = Column(Boolean, nullable=True)
+    valor = Column(String, nullable=True)
+    nota = Column(Text, nullable=True)
 
     creado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    actualizado_en = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-    # relaciones
+    __table_args__ = (
+        UniqueConstraint("recepcion_id", "checklist_item_id", name="uq_inb_chk_resp_recep_item"),
+    )
+
     recepcion = relationship("InboundRecepcion", back_populates="checklist_respuestas")
-    item = relationship("InboundChecklistItem", back_populates="respuestas")
-
+    item = relationship("InboundPlantillaChecklistItem")
+    plantilla = relationship("InboundPlantillaChecklist")

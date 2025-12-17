@@ -29,3 +29,4 @@ class Proveedor(Base):
     citas = relationship("InboundCita", back_populates="proveedor")
     recepciones = relationship("InboundRecepcion", back_populates="proveedor")
     prealertas = relationship("InboundPrealerta", back_populates="proveedor")
+    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="proveedor")
