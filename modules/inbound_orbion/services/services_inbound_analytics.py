@@ -206,22 +206,48 @@ def obtener_analytics_inbound(
 
 
 def _avg_minutes(db: Session, filtros: list, col_ini, col_fin) -> float:
-    # avg(extract(epoch from (fin - ini)) / 60)
-    # Compatibilidad: SQLite no soporta extract(epoch) igual que Postgres.
-    # Para baseline multi-db, usamos diferencia en segundos si DB soporta; sino devolvemos 0.
-    # (si estás en Postgres, esto funciona perfecto).
+    """
+    Promedio de minutos entre col_fin y col_ini para InboundRecepcion.
+
+    - Postgres: extract(epoch from (fin - ini)) / 60
+    - SQLite: (julianday(fin) - julianday(ini)) * 24 * 60
+
+    Devuelve 0.0 si no hay datos o si falla.
+    """
     try:
+        dialect = getattr(getattr(db, "bind", None), "dialect", None)
+        name = (getattr(dialect, "name", "") or "").lower()
+
         q = (
-            db.query(func.avg(func.extract("epoch", col_fin - col_ini) / 60.0))
+            db.query(
+                func.avg(
+                    # SQLite
+                    ((func.julianday(col_fin) - func.julianday(col_ini)) * 24.0 * 60.0)
+                    if name == "sqlite"
+                    # Postgres / otros con extract(epoch)
+                    else (func.extract("epoch", col_fin - col_ini) / 60.0)
+                )
+            )
             .select_from(InboundRecepcion)
             .filter(*filtros)
             .filter(col_ini.isnot(None))
             .filter(col_fin.isnot(None))
         )
+
         v = q.scalar()
-        return round(float(v or 0.0), 1)
+        if v is None:
+            return 0.0
+
+        # En SLA reales no debería ser negativo; si llega negativo por datos sucios, lo clamp a 0
+        minutes = float(v)
+        if minutes < 0:
+            minutes = 0.0
+
+        return round(minutes, 1)
+
     except Exception:
         return 0.0
+
 
 
 def _tabla_por_proveedor(db: Session, filtros: list, negocio_id: int) -> list[dict[str, Any]]:
