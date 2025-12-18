@@ -1,5 +1,4 @@
-﻿# core/middleware/auth_redirect.py
-"""
+﻿"""
 Middleware de redirección / autorización por rutas – ORBION (SaaS enterprise)
 
 ✔ Public routes (exact + prefixes)
@@ -47,10 +46,10 @@ SUPERADMIN_PREFIXES: tuple[str, ...] = (
     "/superadmin",
 )
 
-# Hub (menú) – lo permitimos a casi todos ya autenticados
-HUB_EXACT_PATHS: set[str] = {
+# ✅ Hub / App shell (permitir subrutas, ej: /app/modules/*)
+APP_PREFIXES: tuple[str, ...] = (
     "/app",
-}
+)
 
 # Rutas de negocio (WMS + inbound)
 ADMIN_PREFIXES: tuple[str, ...] = (
@@ -94,7 +93,6 @@ def _starts_with_any(path: str, prefixes: tuple[str, ...]) -> bool:
 
 
 def _redirect(url: str) -> RedirectResponse:
-    # 302 por defecto es suficiente y compatible
     return RedirectResponse(url=url, status_code=302)
 
 
@@ -126,15 +124,14 @@ async def redirect_middleware(request: Request, call_next) -> Response:
         if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return await call_next(request)
 
+        # ✅ Puede entrar al app shell (/app y subrutas: /app/modules/*)
+        if _starts_with_any(path, APP_PREFIXES):
+            return await call_next(request)
+
         # Puede acceder rutas de negocio completas (incluye inbound)
         if _starts_with_any(path, ADMIN_PREFIXES):
             return await call_next(request)
 
-        # Puede entrar al hub /app
-        if path in HUB_EXACT_PATHS:
-            return await call_next(request)
-
-        # Default seguro
         return _redirect("/dashboard")
 
     # ============================
@@ -145,11 +142,14 @@ async def redirect_middleware(request: Request, call_next) -> Response:
         if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return await call_next(request)
 
+        # ✅ Puede entrar a /app (hub) aunque no tenga negocio (útil para UX)
+        if _starts_with_any(path, APP_PREFIXES):
+            return await call_next(request)
+
         # Si intenta entrar a rutas negocio, lo enviamos al panel global
         if _starts_with_any(path, ADMIN_PREFIXES):
             return _redirect("/superadmin/dashboard")
 
-        # Hub y otras rutas internas (health, etc.) permitidas
         return await call_next(request)
 
     # ============================
@@ -160,7 +160,8 @@ async def redirect_middleware(request: Request, call_next) -> Response:
         if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return _redirect("/app")
 
-        if path in HUB_EXACT_PATHS:
+        # ✅ Permitir todo lo que cuelga de /app (incluye activate/cancel)
+        if _starts_with_any(path, APP_PREFIXES):
             return await call_next(request)
 
         if _starts_with_any(path, ADMIN_PREFIXES):
@@ -176,7 +177,8 @@ async def redirect_middleware(request: Request, call_next) -> Response:
         if _starts_with_any(path, SUPERADMIN_PREFIXES):
             return _redirect("/app")
 
-        if path in HUB_EXACT_PATHS:
+        # ✅ Permitir /app para ver el hub
+        if _starts_with_any(path, APP_PREFIXES):
             return await call_next(request)
 
         # Solo inbound

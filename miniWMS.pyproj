@@ -44,12 +44,18 @@
     <Compile Include="core\models\inbound\proveedores.py" />
     <Compile Include="core\models\inbound\recepciones.py" />
     <Compile Include="core\models\inbound\__init__.py" />
+    <Compile Include="core\models\saas.py" />
     <Compile Include="core\models\time.py" />
     <Compile Include="core\models\__init__.py" />
     <Compile Include="core\routes\routes_app_hub.py" />
     <Compile Include="core\routes\routes_health.py" />
+    <Compile Include="core\services\services_enforcement.py" />
+    <Compile Include="core\services\services_entitlements.py" />
     <Compile Include="core\services\services_modules.py" />
     <Compile Include="core\services\services_observability.py" />
+    <Compile Include="core\services\services_renewal_job.py" />
+    <Compile Include="core\services\services_subscriptions.py" />
+    <Compile Include="core\services\services_usage.py" />
     <Compile Include="core\templates.py" />
     <Compile Include="core\web.py" />
     <Compile Include="main.py" />
@@ -195,6 +201,8 @@
     <Folder Include="core\" />
     <Folder Include="core\models\" />
     <Folder Include="core\models\inbound\" />
+    <Folder Include="core\entitlements\" />
+    <Folder Include="core\subscriptions\" />
     <Folder Include="core\routes\" />
     <Folder Include="modules\" />
     <Folder Include="modules\basic_wms\" />

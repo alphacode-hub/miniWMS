@@ -81,7 +81,9 @@ class Negocio(Base):
     prealertas_inbound = relationship("InboundPrealerta", back_populates="negocio", cascade="all, delete-orphan")
     plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio",cascade="all, delete-orphan")
     inbound_analytics_snapshots = relationship("InboundAnalyticsSnapshot", back_populates="negocio", cascade="all, delete-orphan")
-
+    suscripciones_modulo = relationship("SuscripcionModulo", back_populates="negocio", cascade="all, delete-orphan")
+    # --- SAAS (usage / consumo por módulo y período)
+    usage_counters = relationship("UsageCounter", back_populates="negocio", cascade="all, delete-orphan")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -338,6 +340,11 @@ from core.models.enums import (  # noqa: E402
     PalletEstado,
     IncidenciaEstado,
     CitaEstado,
+)
+
+from core.models.saas import (
+    SuscripcionModulo,
+    UsageCounter,
 )
 
 

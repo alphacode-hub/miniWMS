@@ -28,7 +28,7 @@ class InboundIncidencia(Base):
     titulo = Column(String, nullable=True)
     detalle = Column(Text, nullable=True)
 
-    creado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
 
     # relaciones
     recepcion = relationship("InboundRecepcion", back_populates="incidencias")

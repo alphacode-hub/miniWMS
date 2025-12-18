@@ -26,3 +26,19 @@ class CitaEstado(str, enum.Enum):
     RETRASADO = "RETRASADO"
     CANCELADA = "CANCELADA"
     COMPLETADA = "COMPLETADA"
+
+# =========================================================
+# SaaS – ORBION (módulos + suscripciones)
+# =========================================================
+
+class ModuleKey(enum.Enum):
+    INBOUND = "inbound"
+    WMS = "wms"
+
+
+class SubscriptionStatus(enum.Enum):
+    TRIAL = "trial"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    SUSPENDED = "suspended"
+    CANCELLED = "cancelled"

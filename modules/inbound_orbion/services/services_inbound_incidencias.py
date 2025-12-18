@@ -56,7 +56,7 @@ def crear_incidencia(
         estado=IncidenciaEstado.CREADA.value,
         titulo=(titulo.strip() if titulo else None),
         detalle=(detalle.strip() if detalle else None),
-        creado_en=utcnow(),
+        created_at=utcnow(),
     )
 
     db.add(inc)
@@ -92,7 +92,7 @@ def listar_incidencias_recepcion(
         select(InboundIncidencia)
         .where(InboundIncidencia.negocio_id == negocio_id)
         .where(InboundIncidencia.recepcion_id == recepcion_id)
-        .order_by(InboundIncidencia.creado_en.desc())
+        .order_by(InboundIncidencia.created_at.desc())
     )
 
     return list(db.execute(stmt).scalars().all())

@@ -1,14 +1,13 @@
-﻿# core/routes/routes_superadmin.py
-"""
+﻿"""
 Superadmin Console – ORBION (SaaS enterprise)
 
 ✔ Dashboard global (solo superadmin global)
 ✔ Gestión de negocios (lista + detalle)
-✔ Update plan/estado
+✔ Update plan/estado (legacy)
 ✔ Alertas globales
 ✔ Impersonación ("ver como negocio") + salir modo negocio
 ✔ Auditoría por negocio con filtros + paginación (enterprise)
-✔ Logs consistentes y validaciones de plan
+✔ Job manual tipo cron (renovación de suscripciones SaaS)
 """
 
 from __future__ import annotations
@@ -16,11 +15,10 @@ from __future__ import annotations
 import math
 from datetime import datetime, timedelta
 
-
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 
 from core.database import get_db
 from core.logging_config import logger
@@ -32,6 +30,9 @@ from core.security import (
 )
 from core.plans import PLANES_CORE_WMS, normalize_plan
 from core.web import templates
+
+# 🔑 SaaS
+from core.services.services_renewal_job import run_subscription_renewal_job
 
 
 # ============================
@@ -429,3 +430,42 @@ def clasificar_evento_auditoria(accion: str, detalle: str | None = None) -> str:
         return "info"
 
     return "normal"
+
+
+# ============================
+# JOB: RENOVAR SUSCRIPCIONES (CRON MANUAL)
+# ============================
+
+@router.post("/renew-subscriptions", response_class=HTMLResponse)
+async def superadmin_job_renew_subscriptions(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_superadmin_dep),
+):
+    """
+    Job manual de renovación de suscripciones SaaS.
+    Equivalente a cron mensual.
+    """
+
+    if user.get("impersonando_negocio_id"):
+        raise HTTPException(status_code=403, detail="No permitido en modo negocio")
+
+    res = run_subscription_renewal_job(db)
+
+    logger.info(
+        "[SUPERADMIN][JOB] renew_subscriptions checked=%s renewed=%s cancelled=%s errors=%s",
+        res.checked,
+        res.renewed,
+        res.cancelled,
+        res.errors,
+    )
+
+    return templates.TemplateResponse(
+        "app/superadmin_job_result.html",
+        {
+            "request": request,
+            "user": user,
+            "job_name": "Renovación de suscripciones",
+            "result": res,
+        },
+    )

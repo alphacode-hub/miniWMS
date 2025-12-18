@@ -2,29 +2,34 @@
 """
 ORBION App Hub – SaaS enterprise module launcher
 
-✔ Hub central de módulos
+✔ Hub central de módulos (fuente de verdad: entitlements snapshot)
 ✔ Soporte superadmin (global + impersonado)
-✔ Control por plan y rol
-✔ Flags locked / activo claros para UI
+✔ Control por rol + suscripción por módulo
+✔ Flags locked / activo / estados para UI
 ✔ Preparado para billing, addons y analytics
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from core.web import templates
 
+from core.web import templates
 from core.database import get_db
 from core.security import require_user_dep
 from core.models import Negocio
-from core.services.services_modules import (
-    negocio_tiene_core_wms,
-    negocio_tiene_inbound,
-)
-from core.plans import get_inbound_plan_config
+
+from core.models.enums import ModuleKey
+from core.services.services_entitlements import get_entitlements_snapshot
 from core.logging_config import logger
+from core.services.services_subscriptions import (
+    activate_module,
+    cancel_subscription_at_period_end,
+    unschedule_cancel
+)
+from core.models.saas import SuscripcionModulo
+
 
 
 # ============================
@@ -35,6 +40,54 @@ router = APIRouter(
     prefix="/app",
     tags=["app-hub"],
 )
+
+
+# ============================
+# HELPERS UI (solo Hub)
+# ============================
+
+def _badge_from_status(status: str, enabled: bool) -> str:
+    if not enabled:
+        # no habilitado por suscripción o estado
+        if status in ("past_due", "suspended"):
+            return "Pago pendiente"
+        if status == "cancelled":
+            return "Cancelado"
+        return "No activo"
+    # enabled
+    if status == "trial":
+        return "Trial"
+    if status == "active":
+        return "Activo"
+    return status
+
+
+def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, float | None, float | None]:
+    """
+    Retorna (label, used, limit) con la métrica más representativa del módulo.
+    Esto alimenta la UI del hub (sin acoplarse a módulos internos).
+    """
+    limits = mod.get("limits") or {}
+    usage = mod.get("usage") or {}
+
+    # preferencia por módulo
+    if module_slug == "inbound":
+        key = "recepciones_mes"
+        if key in limits:
+            return ("Recepciones", float(usage.get(key, 0.0)), float(limits.get(key, 0.0)))
+        key = "incidencias_mes"
+        if key in limits:
+            return ("Incidencias", float(usage.get(key, 0.0)), float(limits.get(key, 0.0)))
+
+    if module_slug == "wms":
+        key = "movimientos_mes"
+        if key in limits:
+            return ("Movimientos", float(usage.get(key, 0.0)), float(limits.get(key, 0.0)))
+        key = "productos"
+        if key in limits:
+            return ("Productos", float(usage.get(key, 0.0)), float(limits.get(key, 0.0)))
+
+    return (None, None, None)
 
 
 # ============================
@@ -53,7 +106,7 @@ async def orbion_hub_view(
     Reglas:
     - Superadmin global: ve todo + consola
     - Superadmin impersonando: se comporta como admin
-    - Admin: ve módulos según plan
+    - Admin: ve módulos + locked/estado según suscripción
     - Operador: ve solo módulos habilitados
     """
 
@@ -66,27 +119,30 @@ async def orbion_hub_view(
         negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
 
     # ============================
-    # DEFINICIÓN DE MÓDULOS
+    # CATALOGO DE MÓDULOS (UI)
     # ============================
-
+    # Nota: El catálogo es UI/marketing; la verdad de habilitación viene de entitlements.
     base_modules: list[dict] = [
         {
-            "slug": "core_wms",
+            "slug": "wms",
             "label": "ORBION Core WMS",
             "description": "Inventario, ubicaciones, rotación y auditoría.",
             "url": "/dashboard",
+            "module_key": ModuleKey.WMS,
         },
         {
             "slug": "inbound",
             "label": "ORBION Inbound",
-            "description": "Descarga de contenedores, SLA, incidencias y control.",
+            "description": "Recepciones, pallets, checklist, incidencias, evidencia y analytics.",
             "url": "/inbound",
+            "module_key": ModuleKey.INBOUND,
         },
         {
-            "slug": "analytics",
+            "slug": "analytics_plus",
             "label": "Analytics & IA Operacional",
-            "description": "Métricas avanzadas, modelos predictivos y proyecciones.",
-            "url": "#",  # futuro
+            "description": "Cross-módulo, modelos predictivos y proyecciones (futuro).",
+            "url": "#",
+            "module_key": None,  # no disponible aún
         },
     ]
 
@@ -94,7 +150,7 @@ async def orbion_hub_view(
     show_superadmin_console: bool = False
 
     # ============================
-    # SUPERADMIN GLOBAL
+    # SUPERADMIN GLOBAL (no impersonando)
     # ============================
 
     if rol_real == "superadmin" and not user.get("impersonando_negocio_id"):
@@ -103,44 +159,119 @@ async def orbion_hub_view(
                 {
                     **m,
                     "locked": False,
-                    "badge": "Activo",
+                    "enabled": True,
+                    "badge": "Superadmin",
+                    "status": "superadmin",
+                    "segmento": None,
+                    "metric_label": None,
+                    "metric_used": None,
+                    "metric_limit": None,
+                    "period_end": None,
                 }
             )
-        show_superadmin_console = True
 
+        show_superadmin_console = True
         logger.info("[HUB] superadmin_global email=%s", user.get("email"))
+
+        return templates.TemplateResponse(
+            "app/orbion_hub.html",
+            {
+                "request": request,
+                "user": user,
+                "negocio": negocio,
+                "dashboard_modules": dashboard_modules,
+                "show_superadmin_console": show_superadmin_console,
+                # para la UI SaaS
+                "entitlements": None,
+                "needs_onboarding": False,
+            },
+        )
+
+    # ============================
+    # NEGOCIO REQUERIDO PARA HUB SaaS
+    # ============================
+
+    if negocio is None:
+        # Caso raro: usuario sin negocio_id (no superadmin global)
+        logger.warning("[HUB] usuario sin negocio. email=%s rol=%s", user.get("email"), rol_efectivo)
+        return templates.TemplateResponse(
+            "app/orbion_hub.html",
+            {
+                "request": request,
+                "user": user,
+                "negocio": None,
+                "dashboard_modules": [],
+                "show_superadmin_console": False,
+                "entitlements": None,
+                "needs_onboarding": True,
+            },
+        )
+
+    # ============================
+    # SNAPSHOT ENTITLEMENTS (fuente única)
+    # ============================
+
+    ent = get_entitlements_snapshot(db, negocio.id)
+    ent_modules = ent.get("modules", {}) or {}
+    segmento = (ent.get("negocio", {}) or {}).get("segmento")
+
+    # needs_onboarding: negocio sin módulos contratados
+    # (Si no existen suscripciones aún, ent_modules viene vacío)
+    needs_onboarding = len(ent_modules.keys()) == 0
 
     # ============================
     # ADMIN (o superadmin impersonando)
     # ============================
 
-    elif rol_efectivo == "admin" and negocio is not None:
-        activos: set[str] = set()
-
-        if negocio_tiene_core_wms(negocio):
-            activos.add("core_wms")
-
-        if negocio_tiene_inbound(negocio):
-            activos.add("inbound")
-
-            inbound_cfg = get_inbound_plan_config(negocio.plan_tipo)
-            if inbound_cfg.get("enable_inbound_analytics"):
-                activos.add("analytics")
-
+    if rol_efectivo == "admin":
         for m in base_modules:
+            mk = m.get("module_key")
+            # módulos futuros sin module_key aún
+            if mk is None:
+                dashboard_modules.append(
+                    {
+                        **m,
+                        "locked": True,
+                        "enabled": False,
+                        "badge": "Próximamente",
+                        "status": "coming_soon",
+                        "segmento": segmento,
+                        "metric_label": None,
+                        "metric_used": None,
+                        "metric_limit": None,
+                        "period_end": None,
+                    }
+                )
+                continue
+
+            mod = ent_modules.get(mk.value)  # keys: "inbound", "wms"
+            enabled = bool(mod and mod.get("enabled"))
+            status = (mod or {}).get("status") or "inactive"
+            badge = _badge_from_status(status, enabled)
+
+            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod or {})
+            period_end = (mod or {}).get("period", {}).get("end")
+
             dashboard_modules.append(
                 {
                     **m,
-                    "locked": m["slug"] not in activos,
-                    "badge": "Activo" if m["slug"] in activos else "Mejora tu plan",
+                    "locked": not enabled,
+                    "enabled": enabled,
+                    "badge": badge if enabled else "Activar módulo",
+                    "status": status,
+                    "segmento": segmento,
+                    "metric_label": metric_label,
+                    "metric_used": metric_used,
+                    "metric_limit": metric_limit,
+                    "period_end": period_end,
                 }
             )
 
         logger.info(
-            "[HUB] admin email=%s negocio_id=%s plan=%s",
+            "[HUB] admin email=%s negocio_id=%s segmento=%s",
             user.get("email"),
             negocio.id,
-            negocio.plan_tipo,
+            segmento,
         )
 
     # ============================
@@ -148,29 +279,43 @@ async def orbion_hub_view(
     # ============================
 
     else:
-        if negocio is not None:
-            if negocio_tiene_core_wms(negocio):
-                dashboard_modules.append(
-                    {
-                        **base_modules[0],
-                        "locked": False,
-                        "badge": "Activo",
-                    }
-                )
+        # Operador solo ve módulos habilitados (enabled=True)
+        for m in base_modules:
+            mk = m.get("module_key")
+            if mk is None:
+                continue
 
-            if negocio_tiene_inbound(negocio):
-                dashboard_modules.append(
-                    {
-                        **base_modules[1],
-                        "locked": False,
-                        "badge": "Activo",
-                    }
-                )
+            mod = ent_modules.get(mk.value)
+            enabled = bool(mod and mod.get("enabled"))
+            if not enabled:
+                continue
+
+            status = (mod or {}).get("status") or "inactive"
+            badge = _badge_from_status(status, enabled)
+
+            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod or {})
+            period_end = (mod or {}).get("period", {}).get("end")
+
+            dashboard_modules.append(
+                {
+                    **m,
+                    "locked": False,
+                    "enabled": True,
+                    "badge": badge,
+                    "status": status,
+                    "segmento": segmento,
+                    "metric_label": metric_label,
+                    "metric_used": metric_used,
+                    "metric_limit": metric_limit,
+                    "period_end": period_end,
+                }
+            )
 
         logger.info(
-            "[HUB] operador email=%s negocio_id=%s",
+            "[HUB] operador email=%s negocio_id=%s segmento=%s",
             user.get("email"),
-            negocio.id if negocio else None,
+            negocio.id,
+            segmento,
         )
 
     return templates.TemplateResponse(
@@ -178,7 +323,175 @@ async def orbion_hub_view(
         {
             "request": request,
             "user": user,
+            "negocio": negocio,
             "dashboard_modules": dashboard_modules,
             "show_superadmin_console": show_superadmin_console,
+            # SaaS snapshot para UI (si quieres usarlo directo en template)
+            "entitlements": ent,
+            "needs_onboarding": needs_onboarding,
         },
     )
+
+# ============================
+# ACTIVATE MODULE (POST)
+# ============================
+
+@router.post("/modules/{module_key}/activate")
+async def activate_module_from_hub(
+    module_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_user_dep),
+):
+    """
+    Activa un módulo para el negocio actual (trial por defecto).
+
+    Reglas:
+    - Solo admin (o superadmin impersonando)
+    - El módulo debe existir
+    - Redirige al Hub
+    """
+
+    rol_efectivo = user.get("rol")
+    negocio_id = user.get("negocio_id")
+
+    if rol_efectivo != "admin":
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+
+    if not negocio_id:
+        raise HTTPException(status_code=400, detail="Usuario sin negocio asociado")
+
+    # Validar módulo
+    try:
+        mk = ModuleKey(module_key)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Módulo no válido")
+
+    # Activar módulo (trial por defecto)
+    sub = activate_module(
+        db,
+        negocio_id=negocio_id,
+        module_key=mk,
+        start_trial=True,
+    )
+
+    db.commit()
+
+    logger.info(
+        "[HUB] modulo_activado email=%s negocio_id=%s modulo=%s status=%s",
+        user.get("email"),
+        negocio_id,
+        mk.value,
+        sub.status.value,
+    )
+
+    # Redirigir al hub
+    return RedirectResponse(
+        url="/app",
+        status_code=303,
+    )
+
+
+# ============================
+# CANCEL MODULE (POST)
+# ============================
+
+@router.post("/modules/{module_key}/cancel")
+async def cancel_module_from_hub(
+    module_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_user_dep),
+):
+    """
+    Cancela un módulo para el negocio actual al final del período.
+
+    Reglas:
+    - Solo admin (o superadmin impersonando)
+    - El módulo debe existir
+    - Debe existir suscripción para cancelar
+    - Cancela al fin del período (cancel_at_period_end=1)
+    - Redirige al Hub
+    """
+
+    rol_efectivo = user.get("rol")
+    negocio_id = user.get("negocio_id")
+
+    if rol_efectivo != "admin":
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+
+    if not negocio_id:
+        raise HTTPException(status_code=400, detail="Usuario sin negocio asociado")
+
+    # Validar módulo
+    try:
+        mk = ModuleKey(module_key)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Módulo no válido")
+
+    # Buscar suscripción
+    sub: SuscripcionModulo | None = (
+        db.query(SuscripcionModulo)
+        .filter(SuscripcionModulo.negocio_id == negocio_id)
+        .filter(SuscripcionModulo.module_key == mk)
+        .first()
+    )
+
+    if not sub:
+        raise HTTPException(status_code=404, detail="No existe suscripción para este módulo")
+
+    # Cancelar al fin del período
+    cancel_subscription_at_period_end(db, sub)
+    db.commit()
+
+    logger.info(
+        "[HUB] modulo_cancelado email=%s negocio_id=%s modulo=%s cancel_at_period_end=1 status=%s",
+        user.get("email"),
+        negocio_id,
+        mk.value,
+        sub.status.value,
+    )
+
+    return RedirectResponse(
+        url="/app",
+        status_code=303,
+    )
+
+@router.post("/modules/{module_key}/reactivate")
+async def reactivate_module_from_hub(
+    module_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_user_dep),
+):
+    rol = user.get("rol")
+    negocio_id = user.get("negocio_id")
+
+    if rol != "admin":
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+    if not negocio_id:
+        raise HTTPException(status_code=400, detail="Usuario sin negocio asociado")
+
+    try:
+        mk = ModuleKey(module_key)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Módulo no válido")
+
+    sub: SuscripcionModulo | None = (
+        db.query(SuscripcionModulo)
+        .filter(SuscripcionModulo.negocio_id == negocio_id)
+        .filter(SuscripcionModulo.module_key == mk)
+        .first()
+    )
+    if not sub:
+        raise HTTPException(status_code=404, detail="No existe suscripción para este módulo")
+
+    unschedule_cancel(db, sub)
+    db.commit()
+
+    logger.info(
+        "[HUB] modulo_reactivado email=%s negocio_id=%s modulo=%s",
+        user.get("email"), negocio_id, mk.value
+    )
+
+    return RedirectResponse(url="/app", status_code=303)

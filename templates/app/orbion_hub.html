@@ -1,56 +1,59 @@
-﻿<!-- templates/app/orbion_hub.html-->
+﻿<!-- templates/app/orbion_hub.html -->
 {% extends "base/base_app.html" %}
 
 {% block title %}ORBION · Plataforma{% endblock %}
 
-{% block page_header %}
-{# En mobile ocultamos este header para no recargar la barra superior #}
-<div class="hidden sm:flex items-center justify-between gap-4">
-    <div class="space-y-1 min-w-0">
-        <h1 class="text-sm sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-            Plataforma ORBION
-        </h1>
-        <p class="text-xs text-slate-400 leading-snug max-w-xl">
-            Accede a los módulos activos de tu organización.
-            No todo está habilitado, pero todo está en órbita.
-        </p>
-    </div>
-</div>
-{% endblock %}
-
 {% block content %}
-<div class="space-y-6 sm:space-y-8">
+<div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
     {# =========================
-    HEADER SOLO MOBILE
+    HEADER (mobile-first, 1 solo)
     ========================= #}
-    <div class="sm:hidden space-y-1">
-        <h1 class="text-base font-semibold text-slate-100 tracking-tight">
-            Plataforma ORBION
-        </h1>
-        <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
-            Accede a los módulos activos de tu organización.
-            No todo está habilitado, pero todo está en órbita.
-        </p>
-    </div>
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Hub de módulos
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Plataforma ORBION
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-2xl">
+                Accede a los módulos activos de tu organización. No todo está habilitado, pero todo está en órbita.
+            </p>
+        </div>
+    </header>
 
-    <!-- ========================= -->
-    <!-- GRID DE MÓDULOS ORBION   -->
-    <!-- ========================= -->
+    {# =========================
+    ONBOARDING
+    ========================= #}
+    {% if needs_onboarding %}
+    <section class="rounded-2xl border border-cyan-500/40 bg-cyan-500/5 p-4 sm:p-5">
+        <h2 class="text-sm font-semibold text-cyan-300">
+            Bienvenido a ORBION 🚀
+        </h2>
+        <p class="mt-1 text-[11px] sm:text-xs text-slate-300 max-w-xl">
+            Aún no tienes módulos activos. Activa el módulo que necesitas y comienza a operar sin fricción.
+        </p>
+    </section>
+    {% endif %}
+
+    {# =========================
+    GRID DE MÓDULOS
+    ========================= #}
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
 
         {% for m in dashboard_modules %}
         <article class="
-        relative rounded-2xl
-        border border-slate-800
-        bg-slate-900/50
-        p-4 sm:p-5
-        flex flex-col gap-3 sm:gap-4
-        hover:border-cyan-400/40
-        transition
-      ">
+      relative rounded-2xl
+      border border-slate-800
+      bg-slate-900/50
+      p-4 sm:p-5
+      flex flex-col gap-3 sm:gap-4
+      hover:border-cyan-400/40
+      transition
+    ">
 
-            <!-- Glow sutil -->
+            <!-- Glow -->
             <div class="absolute inset-0 rounded-2xl bg-cyan-500/5 blur-xl pointer-events-none"></div>
 
             <!-- Header -->
@@ -66,47 +69,110 @@
 
                 <!-- Badge -->
                 <span class="
-            shrink-0 text-[10px] px-2 py-1 rounded-full border
-            {% if m.locked %}
-              border-slate-700 text-slate-400
-            {% else %}
-              border-emerald-500/60 text-emerald-300
-            {% endif %}
-          ">
+          shrink-0 text-[10px] px-2 py-1 rounded-full border
+          {% if not m.enabled %}
+            border-slate-700 text-slate-400
+          {% elif m.status == 'trial' %}
+            border-cyan-400/60 text-cyan-300
+          {% elif m.status == 'active' %}
+            border-emerald-500/60 text-emerald-300
+          {% elif m.status in ('past_due', 'suspended') %}
+            border-amber-500/60 text-amber-300
+          {% else %}
+            border-slate-600 text-slate-300
+          {% endif %}
+        ">
                     {{ m.badge }}
                 </span>
             </div>
 
-            <!-- CTA -->
-            <div class="mt-auto flex justify-end pt-3 sm:pt-4 relative">
-                {% if not m.locked %}
+            {# =========================
+            USAGE BAR (solo si enabled)
+            ========================= #}
+            {% if m.enabled and m.metric_label %}
+            <div class="space-y-1">
+                <div class="flex justify-between text-[10px] text-slate-400">
+                    <span>{{ m.metric_label }}</span>
+                    <span>{{ m.metric_used }} / {{ m.metric_limit }}</span>
+                </div>
+
+                <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                    {% set pct = (m.metric_used / m.metric_limit * 100) if m.metric_limit and m.metric_limit > 0 else 0 %}
+                    <div class="
+                         h-full
+                         {% if pct < 80 %}
+              bg-emerald-400
+            {% elif pct < 100 %}
+              bg-amber-400
+            {% else %}
+              bg-red-500
+            {% endif %}
+          " style="width: {{ pct | round(0) }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# =========================
+            FOOTER / CTA
+            - Cliente final: solo Abrir o Activar/Suscribirse.
+            ========================= #}
+            <div class="mt-auto pt-3 sm:pt-4 flex items-center justify-between gap-3 relative">
+
+                {# Periodo hasta (solo si enabled) #}
+                {% if m.enabled and m.period_end %}
+                <span class="text-[10px] text-slate-500">
+                    Período hasta {{ m.period_end[:10] }}
+                </span>
+                {% else %}
+                <span></span>
+                {% endif %}
+
+                {# CTA #}
+                {% if m.enabled %}
                 <a href="{{ m.url }}"
                    class="
-              inline-flex items-center gap-2
-              text-xs font-medium
-              px-4 py-2 rounded-full
-              bg-[#00E4FF]
-              text-slate-900
-              hover:bg-cyan-300
-              transition
-            ">
-                    Abrir módulo
+               inline-flex items-center gap-2
+               text-xs font-medium
+               px-4 py-2 rounded-full
+               bg-[#00E4FF]
+               text-slate-900
+               hover:bg-cyan-300
+               active:scale-[0.97]
+               transition-transform transition-colors
+             ">
+                    Abrir
                 </a>
                 {% else %}
+                {% if m.status == 'coming_soon' %}
+                <button type="button" disabled
+                        class="
+                inline-flex items-center gap-2
+                text-xs font-medium
+                px-4 py-2 rounded-full
+                border border-slate-700
+                text-slate-500
+                cursor-not-allowed
+              ">
+                    Próximamente
+                </button>
+                {% else %}
+                {# Si no está habilitado: el CTA es negocio/billing (suscribirse) #}
                 <a href="/#planes"
-                   title="Este módulo requiere un plan superior"
                    class="
-              inline-flex items-center gap-2
-              text-xs font-medium
-              px-4 py-2 rounded-full
-              border border-cyan-500/50
-              text-cyan-300
-              hover:bg-cyan-500/10
-              transition
-            ">
-                    Incrementar plan
+                 inline-flex items-center gap-2
+                 text-xs font-medium
+                 px-4 py-2 rounded-full
+                 border border-cyan-500/50
+                 text-cyan-300
+                 hover:bg-cyan-500/10
+                 active:scale-[0.98]
+                 transition-transform transition-colors
+               ">
+                    Suscribirse
                 </a>
                 {% endif %}
+                {% endif %}
+
             </div>
 
         </article>
@@ -114,9 +180,9 @@
 
     </div>
 
-    <!-- ========================= -->
-    <!-- CONSOLA SUPERADMIN        -->
-    <!-- ========================= -->
+    {# =========================
+    CONSOLA SUPERADMIN
+    ========================= #}
     {% if show_superadmin_console %}
     <section class="border-t border-slate-800 pt-5 sm:pt-6 space-y-3">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
@@ -130,14 +196,14 @@
 
         <a href="/superadmin/dashboard"
            class="
-          inline-flex items-center gap-2
-          text-xs font-medium
-          px-4 py-2 rounded-full
-          border border-slate-700
-          text-slate-200
-          hover:bg-slate-800/70
-          transition
-        ">
+         inline-flex items-center gap-2
+         text-xs font-medium
+         px-4 py-2 rounded-full
+         border border-slate-700
+         text-slate-200
+         hover:bg-slate-800/70
+         transition
+       ">
             Ir a consola superadmin
         </a>
     </section>
