@@ -29,6 +29,7 @@
     <Compile Include="core\middleware\auth_redirect.py" />
     <Compile Include="core\middleware\__init__.py" />
     <Compile Include="core\models\enums.py" />
+    <Compile Include="core\models\inbound\analytics_snapshots.py" />
     <Compile Include="core\models\inbound\checklist.py" />
     <Compile Include="core\models\inbound\citas.py" />
     <Compile Include="core\models\inbound\config.py" />
@@ -56,6 +57,7 @@
     <Compile Include="modules\basic_wms\services\__init__.py" />
     <Compile Include="modules\inbound_orbion\routes\inbound_common.py" />
     <Compile Include="modules\inbound_orbion\routes\routes_inbound.py" />
+    <Compile Include="modules\inbound_orbion\routes\routes_inbound_analytics.py" />
     <Compile Include="modules\inbound_orbion\routes\routes_inbound_checklist.py" />
     <Compile Include="modules\inbound_orbion\routes\routes_inbound_citas.py" />
     <Compile Include="modules\inbound_orbion\routes\routes_inbound_config.py" />
@@ -70,6 +72,7 @@
     <Compile Include="modules\inbound_orbion\routes\__init__.py" />
     <Compile Include="modules\inbound_orbion\services\inbound_linea_contract.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound.py" />
+    <Compile Include="modules\inbound_orbion\services\services_inbound_analytics.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_checklist.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_citas.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_config.py" />
@@ -131,6 +134,7 @@
     <Content Include=".env.prod" />
     <Content Include=".env.staging" />
     <Content Include="Dockerfile" />
+    <Content Include="modules\inbound_orbion\templates\inbound_analytics.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_checklist_recepcion.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_citas.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_documentos.html" />

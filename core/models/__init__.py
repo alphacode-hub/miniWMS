@@ -80,6 +80,8 @@ class Negocio(Base):
     plantillas_proveedor = relationship("InboundPlantillaProveedor", back_populates="negocio", cascade="all, delete-orphan")
     prealertas_inbound = relationship("InboundPrealerta", back_populates="negocio", cascade="all, delete-orphan")
     plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio",cascade="all, delete-orphan")
+    inbound_analytics_snapshots = relationship("InboundAnalyticsSnapshot", back_populates="negocio", cascade="all, delete-orphan")
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
