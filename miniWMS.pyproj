@@ -23,8 +23,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="core\backup.py" />
+    <Compile Include="core\bootstrap.py" />
     <Compile Include="core\config.py" />
     <Compile Include="core\database.py" />
+    <Compile Include="core\formatting.py" />
     <Compile Include="core\logging_config.py" />
     <Compile Include="core\middleware\auth_redirect.py" />
     <Compile Include="core\middleware\__init__.py" />
@@ -59,7 +61,6 @@
     <Compile Include="core\templates.py" />
     <Compile Include="core\web.py" />
     <Compile Include="main.py" />
-    <Compile Include="core\plans.py" />
     <Compile Include="modules\basic_wms\services\__init__.py" />
     <Compile Include="modules\inbound_orbion\routes\inbound_common.py" />
     <Compile Include="modules\inbound_orbion\routes\routes_inbound.py" />
@@ -158,6 +159,8 @@
     <Content Include="static\img\orbion.png" />
     <Content Include="static\img\orbion.svg" />
     <Content Include="templates\app\orbion_hub.html" />
+    <Content Include="templates\app\superadmin_health.html" />
+    <Content Include="templates\app\superadmin_smoke.html" />
     <Content Include="templates\base\base_app.html" />
     <Content Include="templates\base\base_orbion.html" />
     <Content Include="templates\base\base_public.html" />
@@ -201,8 +204,6 @@
     <Folder Include="core\" />
     <Folder Include="core\models\" />
     <Folder Include="core\models\inbound\" />
-    <Folder Include="core\entitlements\" />
-    <Folder Include="core\subscriptions\" />
     <Folder Include="core\routes\" />
     <Folder Include="modules\" />
     <Folder Include="modules\basic_wms\" />

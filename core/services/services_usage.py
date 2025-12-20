@@ -1,4 +1,5 @@
-﻿"""
+﻿# core/services/services_usage.py
+"""
 services_usage.py – ORBION SaaS (enterprise)
 
 ✔ Usage no acumulativo por período (period_start/end)
@@ -12,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Tuple
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -44,7 +44,7 @@ def _ensure_tz(dt: datetime) -> datetime:
     Asegura timezone-aware. En ORBION usamos UTC tz-aware.
     """
     if dt.tzinfo is None:
-        # Evita errores silenciosos: asumimos UTC
+        # asumimos UTC si viene naive
         return dt.replace(tzinfo=utcnow().tzinfo)
     return dt
 
@@ -64,7 +64,9 @@ def _get_subscription_window_or_raise(
         .first()
     )
     if not sub:
-        raise ValueError(f"No existe suscripción para módulo={module_key.value} en negocio_id={negocio_id}")
+        raise ValueError(
+            f"No existe suscripción para módulo={module_key.value} en negocio_id={negocio_id}"
+        )
 
     if not sub.current_period_start or not sub.current_period_end:
         raise ValueError(f"Suscripción sin periodo válido: id={sub.id}")
@@ -84,47 +86,57 @@ def _get_or_create_counter(
 ) -> UsageCounter:
     """
     Obtiene el contador de uso del periodo; si no existe, lo crea.
-    Resiliente ante concurrencia: si otra transacción lo crea primero,
-    capturamos IntegrityError y re-consultamos.
+
+    ✅ Enterprise: usamos SAVEPOINT (begin_nested) para que una colisión de unique
+    NO haga rollback de toda la transacción del caller.
     """
     metric = (metric_key or "").strip()
     if not metric:
         raise ValueError("metric_key vacío no es válido")
 
-    q = (
-        db.query(UsageCounter)
-        .filter(UsageCounter.negocio_id == negocio_id)
-        .filter(UsageCounter.module_key == module_key)
-        .filter(UsageCounter.metric_key == metric)
-        .filter(UsageCounter.period_start == window.period_start)
-        .filter(UsageCounter.period_end == window.period_end)
-    )
-    row = q.first()
+    def _query():
+        return (
+            db.query(UsageCounter)
+            .filter(UsageCounter.negocio_id == negocio_id)
+            .filter(UsageCounter.module_key == module_key)
+            .filter(UsageCounter.metric_key == metric)
+            .filter(UsageCounter.period_start == window.period_start)
+            .filter(UsageCounter.period_end == window.period_end)
+        )
+
+    row = _query().first()
     if row:
         return row
 
-    # Crear nuevo
-    row = UsageCounter(
-        negocio_id=negocio_id,
-        module_key=module_key,
-        metric_key=metric,
-        period_start=window.period_start,
-        period_end=window.period_end,
-        value=0.0,
+    # Crear nuevo con retry defensivo (concurrencia real)
+    for _ in range(2):
+        try:
+            with db.begin_nested():  # SAVEPOINT
+                row_new = UsageCounter(
+                    negocio_id=negocio_id,
+                    module_key=module_key,
+                    metric_key=metric,
+                    period_start=window.period_start,
+                    period_end=window.period_end,
+                    value=0.0,
+                )
+                db.add(row_new)
+                db.flush()  # detecta UniqueConstraint sin commit
+                return row_new
+        except IntegrityError:
+            # Otra transacción lo creó entre el first() y el insert.
+            row2 = _query().first()
+            if row2:
+                return row2
+            # si aún no aparece, repetimos 1 vez más
+            continue
+
+    # Último intento: si sigue sin aparecer, propagamos error (algo raro pasa)
+    raise IntegrityError(
+        statement=None,
+        params=None,
+        orig=Exception("No se pudo crear/obtener UsageCounter tras colisión."),
     )
-    db.add(row)
-    try:
-        # flush para obtener id y detectar unique collisions sin commit
-        db.flush()
-        return row
-    except IntegrityError:
-        db.rollback()
-        # otra transacción lo creó; re-consultamos
-        row2 = q.first()
-        if row2:
-            return row2
-        # si igual no aparece, propagamos
-        raise
 
 
 # =========================================================
@@ -184,11 +196,9 @@ def increment_usage(
     _, window = _get_subscription_window_or_raise(db, negocio_id, module_key)
     row = _get_or_create_counter(db, negocio_id, module_key, metric_key, window)
 
-    # incremento
     row.value = float(row.value or 0.0) + d
     row.updated_at = utcnow()
 
-    # flush para persistir sin commit
     db.flush()
     return float(row.value)
 
@@ -225,6 +235,7 @@ def list_usage_for_module_current_period(
         .filter(UsageCounter.period_end == window.period_end)
         .all()
     )
+
     out: dict[str, float] = {}
     for k, v in rows:
         out[str(k)] = float(v or 0.0)

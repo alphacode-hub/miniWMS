@@ -26,9 +26,11 @@ from sqlalchemy import (
     Text,
     CheckConstraint,
     UniqueConstraint,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import Enum as SAEnum
+from core.models.enums import NegocioEstado
 
 from core.database import Base
 from core.models.time import utcnow
@@ -50,6 +52,21 @@ class Auditoria(Base):
 
     negocio = relationship("Negocio", back_populates="auditorias")
 
+def _default_entitlements() -> dict:
+    # Baseline v1 (simple, estable, sin límites hardcodeados aquí)
+    return {
+        "segment": "emprendedor",
+        "modules": {
+            "core": {"enabled": True, "status": "active"},
+            # si ya manejas estos keys en tu sistema:
+            "wms": {"enabled": True, "status": "active"},
+            "inbound": {"enabled": False, "status": "inactive"},
+        },
+        # los límites se completan en services_entitlements (source of truth)
+        "limits": {},
+        "billing": {"source": "baseline"},
+    }
+
 
 class Negocio(Base):
     __tablename__ = "negocios"
@@ -57,12 +74,14 @@ class Negocio(Base):
     id = Column(Integer, primary_key=True)
     nombre_fantasia = Column(String, unique=True, nullable=False, index=True)
     whatsapp_notificaciones = Column(String, nullable=True)
-    estado = Column(String, default="activo", nullable=False)
 
-    plan_tipo = Column(String, default="demo", nullable=False)
+    plan_tipo = Column(String, default="legacy", nullable=False)
     plan_fecha_inicio = Column(Date, nullable=True)
     plan_fecha_fin = Column(Date, nullable=True)
     plan_renovacion_cada_meses = Column(Integer, default=1, nullable=False)
+
+    entitlements = Column(JSON, nullable=False, default=_default_entitlements)
+
     ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
 
     usuarios = relationship("Usuario", back_populates="negocio", cascade="all, delete-orphan")
@@ -71,6 +90,10 @@ class Negocio(Base):
     movimientos = relationship("Movimiento", back_populates="negocio", cascade="all, delete-orphan")
     alertas = relationship("Alerta", back_populates="negocio", cascade="all, delete-orphan")
     auditorias = relationship("Auditoria", back_populates="negocio", cascade="all, delete-orphan")
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
 
     # --- INBOUND (strings resuelven cuando importamos modelos inbound al final)
     inbound_config = relationship("InboundConfig", back_populates="negocio", uselist=False)
@@ -84,6 +107,7 @@ class Negocio(Base):
     suscripciones_modulo = relationship("SuscripcionModulo", back_populates="negocio", cascade="all, delete-orphan")
     # --- SAAS (usage / consumo por módulo y período)
     usage_counters = relationship("UsageCounter", back_populates="negocio", cascade="all, delete-orphan")
+    estado = Column(SAEnum(NegocioEstado, name="negocio_estado"), default=NegocioEstado.ACTIVO, nullable=False,)
 
 class Usuario(Base):
     __tablename__ = "usuarios"

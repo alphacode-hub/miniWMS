@@ -13,7 +13,6 @@ from sqlalchemy import select
 from core.database import get_db
 from core.models.inbound.proveedores import Proveedor
 from core.models.inbound.recepciones import InboundRecepcion
-from core.plans import get_inbound_plan_config
 
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,

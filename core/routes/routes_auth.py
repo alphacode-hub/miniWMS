@@ -16,13 +16,14 @@ import json
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from itsdangerous import BadSignature
+
 from core.web import templates
-
-
 from core.config import settings
 from core.database import get_db
 from core.models import Usuario, SesionUsuario
+from core.models.enums import NegocioEstado
 from core.security import (
     get_current_user,
     verify_password,
@@ -32,7 +33,6 @@ from core.security import (
     SESSION_INACTIVITY_SECONDS,
 )
 from core.logging_config import logger
-
 
 
 # ============================
@@ -64,6 +64,7 @@ async def login_page(request: Request):
             "request": request,
             "error": None,
             "user": None,
+            "email": "",
         },
     )
 
@@ -82,7 +83,7 @@ async def login_submit(
 
     usuario = (
         db.query(Usuario)
-        .filter(Usuario.email == email_norm)
+        .filter(func.lower(Usuario.email) == email_norm)  # ✅ case-insensitive
         .first()
     )
 
@@ -107,22 +108,25 @@ async def login_submit(
                 "request": request,
                 "error": "Correo o contraseña incorrectos.",
                 "user": None,
-                "email": email_norm
+                "email": email_norm,
             },
             status_code=401,
         )
 
-    # Estado del negocio (si aplica)
-    if usuario.negocio and usuario.negocio.estado != "activo":
-        return templates.TemplateResponse(
-            "app/login.html",
-            {
-                "request": request,
-                "error": "El negocio asociado está suspendido.",
-                "user": None,
-            },
-            status_code=403,
-        )
+    # Estado del negocio (solo si tiene negocio asociado)
+    # Superadmin global puede no tener negocio_id por constraint ck_usuario_negocio_por_rol
+    if usuario.rol != "superadmin":
+        if usuario.negocio and usuario.negocio.estado != "activo":
+            return templates.TemplateResponse(
+                "app/login.html",
+                {
+                    "request": request,
+                    "error": "El negocio asociado está suspendido.",
+                    "user": None,
+                },
+                status_code=403,
+            )
+
 
     # Crear sesión
     token_sesion = crear_sesion_db(db, usuario)
@@ -157,11 +161,15 @@ async def logout(request: Request, db: Session = Depends(get_db)):
             token_sesion = payload.get("token_sesion")
 
             if user_id and token_sesion:
-                db.query(SesionUsuario).filter(
-                    SesionUsuario.usuario_id == user_id,
-                    SesionUsuario.token_sesion == token_sesion,
-                    SesionUsuario.activo == 1,
-                ).update({SesionUsuario.activo: 0})
+                (
+                    db.query(SesionUsuario)
+                    .filter(
+                        SesionUsuario.usuario_id == user_id,
+                        SesionUsuario.token_sesion == token_sesion,
+                        SesionUsuario.activo == 1,
+                    )
+                    .update({SesionUsuario.activo: 0})
+                )
                 db.commit()
 
                 logger.info("[AUTH] Logout user_id=%s", user_id)
@@ -169,6 +177,7 @@ async def logout(request: Request, db: Session = Depends(get_db)):
         except BadSignature:
             logger.debug("[AUTH] Cookie inválida en logout")
         except Exception as exc:
+            db.rollback()
             logger.warning("[AUTH] Error en logout: %s", exc)
 
     response = RedirectResponse(url="/app/login", status_code=302)

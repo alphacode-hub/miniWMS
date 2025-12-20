@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import json
 import secrets
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 import bcrypt
 from fastapi import Request, HTTPException, status
@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import SessionLocal
 from core.models import Usuario, SesionUsuario
+from core.models.time import utcnow
 
 # bcrypt solo usa los primeros 72 bytes
 BCRYPT_MAX_LENGTH = 72
@@ -41,9 +42,35 @@ signer = TimestampSigner(settings.APP_SECRET_KEY)
 SESSION_INACTIVITY_SECONDS = int(settings.SESSION_EXPIRATION_MINUTES) * 60
 
 
-# ============================
+# =========================================================
+# DATETIME NORMALIZATION (UTC tz-aware)
+# =========================================================
+
+def _ensure_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Normaliza datetime a UTC tz-aware.
+    - SQLite puede devolver naive.
+    - Si dt es naive, asumimos UTC.
+    - Si dt es aware, lo convertimos a UTC.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _utcnow_aware() -> datetime:
+    """
+    Wrapper defensivo: utcnow() del proyecto debería ser tz-aware.
+    Aseguramos UTC tz-aware igual.
+    """
+    return _ensure_utc_aware(utcnow())  # type: ignore[arg-type]
+
+
+# =========================================================
 # PASSWORDS
-# ============================
+# =========================================================
 
 def _to_bytes(value: str | bytes) -> bytes:
     return value.encode("utf-8") if isinstance(value, str) else value
@@ -64,9 +91,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-# ============================
+# =========================================================
 # SESSION DB
-# ============================
+# =========================================================
 
 def crear_sesion_db(db: Session, usuario: Usuario) -> str:
     """
@@ -80,7 +107,8 @@ def crear_sesion_db(db: Session, usuario: Usuario) -> str:
 
     token_sesion = secrets.token_urlsafe(int(settings.SESSION_TOKEN_BYTES))
 
-    ahora = datetime.utcnow()
+    ahora = _utcnow_aware()
+
     nueva_sesion = SesionUsuario(
         usuario_id=usuario.id,
         token_sesion=token_sesion,
@@ -106,9 +134,9 @@ def invalidar_sesion_db(db: Session, user_id: int, token_sesion: str) -> None:
     db.commit()
 
 
-# ============================
+# =========================================================
 # COOKIE PAYLOAD
-# ============================
+# =========================================================
 
 def _default_payload(usuario: Usuario, token_sesion: str) -> dict[str, Any]:
     """
@@ -117,8 +145,8 @@ def _default_payload(usuario: Usuario, token_sesion: str) -> dict[str, Any]:
     return {
         "user_id": usuario.id,
         "token_sesion": token_sesion,
-        # Timestamp de auditoría (no es el que valida expiración; eso lo hace TimestampSigner)
-        "ts": datetime.utcnow().isoformat(),
+        # Timestamp de auditoría (informativo)
+        "ts": _utcnow_aware().isoformat(),
         # Impersonación (opcionales)
         "acting_negocio_id": None,
         "acting_negocio_nombre": None,
@@ -173,9 +201,9 @@ def _get_session_payload_from_request(request: Request) -> dict | None:
     return _decode_cookie_payload(cookie)
 
 
-# ============================
+# =========================================================
 # CURRENT USER (AUTH)
-# ============================
+# =========================================================
 
 def get_current_user(request: Request) -> dict | None:
     """
@@ -201,7 +229,7 @@ def get_current_user(request: Request) -> dict | None:
 
     db: Session = SessionLocal()
     try:
-        sesion = (
+        sesion: SesionUsuario | None = (
             db.query(SesionUsuario)
             .filter(
                 SesionUsuario.usuario_id == user_id,
@@ -213,17 +241,20 @@ def get_current_user(request: Request) -> dict | None:
         if not sesion:
             return None
 
-        ahora = datetime.utcnow()
+        ahora = _utcnow_aware()
+
+        # Normalizar last_seen_at (SQLite puede ser naive)
+        last_seen = _ensure_utc_aware(getattr(sesion, "last_seen_at", None))
 
         # Idle timeout por last_seen_at (revoca)
-        if sesion.last_seen_at:
-            delta = ahora - sesion.last_seen_at
+        if last_seen:
+            delta = ahora - last_seen
             if delta.total_seconds() > SESSION_INACTIVITY_SECONDS:
                 sesion.activo = 0
                 db.commit()
                 return None
 
-        usuario = (
+        usuario: Usuario | None = (
             db.query(Usuario)
             .filter(Usuario.id == user_id, Usuario.activo == 1)
             .first()
@@ -231,7 +262,8 @@ def get_current_user(request: Request) -> dict | None:
         if not usuario:
             return None
 
-        # touch
+        # touch last_seen_at (guardamos tz-aware; si tu columna no soporta tz en SQLite,
+        # SQLAlchemy puede almacenar como naive. Igual lo normalizamos al leer.)
         sesion.last_seen_at = ahora
         db.commit()
 
@@ -266,9 +298,9 @@ def get_current_user(request: Request) -> dict | None:
         db.close()
 
 
-# ============================
+# =========================================================
 # ROLE HELPERS
-# ============================
+# =========================================================
 
 def is_superadmin(user: dict) -> bool:
     return (user.get("rol_real") or user.get("rol")) == "superadmin"
@@ -286,9 +318,9 @@ def is_operator(user: dict) -> bool:
     return user.get("rol") == "operador"
 
 
-# ============================
+# =========================================================
 # DEPENDENCIES (FASTAPI)
-# ============================
+# =========================================================
 
 def require_user_dep(request: Request) -> dict:
     user = get_current_user(request)
@@ -337,11 +369,16 @@ def require_superadmin_dep(request: Request) -> dict:
     return user
 
 
-# ============================
+# =========================================================
 # IMPERSONACIÓN (MODO NEGOCIO)
-# ============================
+# =========================================================
 
-def activar_modo_negocio(response: RedirectResponse, request: Request, negocio_id: int, negocio_nombre: str) -> bool:
+def activar_modo_negocio(
+    response: RedirectResponse,
+    request: Request,
+    negocio_id: int,
+    negocio_nombre: str,
+) -> bool:
     """
     Activa impersonación en cookie firmada.
     Retorna True si se aplicó, False si no había sesión válida.
@@ -352,7 +389,7 @@ def activar_modo_negocio(response: RedirectResponse, request: Request, negocio_i
 
     payload["acting_negocio_id"] = negocio_id
     payload["acting_negocio_nombre"] = negocio_nombre
-    payload["ts"] = datetime.utcnow().isoformat()
+    payload["ts"] = _utcnow_aware().isoformat()
 
     _set_session_cookie_from_payload(response, payload)
     return True
@@ -368,7 +405,7 @@ def desactivar_modo_negocio(response: RedirectResponse, request: Request) -> boo
 
     payload["acting_negocio_id"] = None
     payload["acting_negocio_nombre"] = None
-    payload["ts"] = datetime.utcnow().isoformat()
+    payload["ts"] = _utcnow_aware().isoformat()
 
     _set_session_cookie_from_payload(response, payload)
     return True

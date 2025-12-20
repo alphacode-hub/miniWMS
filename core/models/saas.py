@@ -75,7 +75,7 @@ class SuscripcionModulo(Base):
     current_period_end = Column(DateTime(timezone=True), nullable=False, index=True)
 
     # Para jobs futuros de renovación (puede ser igual a current_period_end)
-    next_renewal_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    next_renewal_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Pago (futuro billing)
     last_payment_at = Column(DateTime(timezone=True), nullable=True)

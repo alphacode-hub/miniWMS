@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import InboundConfig
-from core.plans import get_inbound_plan_config
 
 from modules.inbound_orbion.services.services_inbound_config import (
     get_or_create_inbound_config,

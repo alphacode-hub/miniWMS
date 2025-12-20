@@ -35,6 +35,9 @@ from modules.basic_wms.routes.routes_export import router as export_router
 from core.middleware.auth_redirect import redirect_middleware
 from modules.inbound_orbion.routes import routes_inbound
 
+from core.bootstrap import ensure_superadmin
+
+
 
 # ============================
 #   APP, STATIC, TEMPLATES
@@ -43,6 +46,14 @@ from modules.inbound_orbion.routes import routes_inbound
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+
+    ensure_superadmin(
+        email=settings.SUPERADMIN_EMAIL,
+        password=settings.SUPERADMIN_PASSWORD,
+        negocio_nombre=settings.SUPERADMIN_BUSINESS_NAME,  
+        user_display_name=settings.SUPERADMIN_DISPLAY_NAME,  
+    )
+
     yield
 
 

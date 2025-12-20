@@ -10,7 +10,6 @@ import json
 from sqlalchemy.orm import Session
 
 from core.logging_config import logger
-from core.plans import get_inbound_plan_config
 from core.models import Negocio, Alerta
 from core.models.inbound import InboundConfig, InboundRecepcion
 

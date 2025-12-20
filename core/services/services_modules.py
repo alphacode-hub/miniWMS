@@ -2,71 +2,36 @@
 """
 Servicios de habilitación de módulos – ORBION (SaaS enterprise)
 
-✔ Lógica centralizada de features por negocio
-✔ Basado en planes (core + inbound)
-✔ API estable y legible
-✔ Preparado para:
-  - flags por negocio
-  - overrides manuales
-  - addons futuros
+✅ Fuente única: Negocio.entitlements
+✅ Legacy plan_tipo: solo fallback interno (lo resuelve services_entitlements)
+✅ API estable:
+   - negocio_tiene_core_wms
+   - negocio_tiene_wms
+   - negocio_tiene_inbound
 """
 
 from __future__ import annotations
 
 from core.models import Negocio
-from core.plans import (
-    PLANES_CORE_WMS,
-    PLANES_INBOUND,
-    normalize_plan,
-)
+from core.services.services_entitlements import has_module
 
 
-# ============================
-# CORE WMS
-# ============================
+def negocio_tiene_wms(negocio: Negocio) -> bool:
+    """
+    Acceso al módulo WMS (trial + active).
+    """
+    return has_module(negocio, "wms", require_active=False)
+
 
 def negocio_tiene_core_wms(negocio: Negocio) -> bool:
     """
-    Indica si el negocio tiene habilitado el Core WMS.
-
-    Regla actual:
-    - Si el plan existe en PLANES_CORE_WMS → habilitado
-
-    Futuro:
-    - flags por negocio (negocio.core_wms_enabled)
-    - addons o contratos personalizados
+    Backward compatible alias (histórico).
     """
-    plan = normalize_plan(negocio.plan_tipo)
-    return plan in PLANES_CORE_WMS
+    return negocio_tiene_wms(negocio)
 
-
-# ============================
-# INBOUND
-# ============================
 
 def negocio_tiene_inbound(negocio: Negocio) -> bool:
     """
-    Indica si el negocio tiene habilitado el módulo Inbound.
-
-    Regla actual:
-    - Si el plan existe en PLANES_INBOUND → habilitado
-
-    Futuro:
-    - flags por negocio (negocio.inbound_enabled)
-    - control por fecha / trial / consumo
+    Acceso al módulo Inbound (trial + active).
     """
-    plan = normalize_plan(negocio.plan_tipo)
-    return plan in PLANES_INBOUND
-
-
-# ============================
-# HELPERS FUTUROS (DOCUMENTADOS)
-# ============================
-# def negocio_tiene_modulo(negocio: Negocio, modulo: str) -> bool:
-#     ...
-#
-# def negocio_feature_habilitada(negocio: Negocio, feature: str) -> bool:
-#     ...
-#
-# Este archivo queda como punto único de decisión
-# para habilitación de módulos en todo Orbion.
+    return has_module(negocio, "inbound", require_active=False)

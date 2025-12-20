@@ -39,15 +39,17 @@ class Settings(BaseSettings):
     # ============================
     APP_SECRET_KEY: str
 
-    SUPERADMIN_EMAIL: str = "super@admin.cl"
-    SUPERADMIN_PASSWORD: str = "changeme"
-    SUPERADMIN_BUSINESS_NAME: str = "Global"
+    SUPERADMIN_EMAIL: str = "super@orbion.cl"
+    SUPERADMIN_PASSWORD: str = "VeuoeH6L"
+    SUPERADMIN_BUSINESS_NAME: str = "Orbion"
+    SUPERADMIN_DISPLAY_NAME: str = "Superadmin"
+
 
     SESSION_TOKEN_BYTES: int = 32
     SESSION_EXPIRATION_MINUTES: int = 480  # 8 horas
 
     SESSION_COOKIE_NAME: str = "session"
-    SESSION_MAX_AGE_SECONDS: int = 60 * 60 * 4  # 4 horas
+    SESSION_MAX_AGE_SECONDS: int = 60 * 60 * 8  # 8 horas
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     SESSION_COOKIE_SECURE: bool = False  # Forzado en production
 

@@ -1,4 +1,5 @@
-﻿"""
+﻿# core/services/services_renewal_job.py
+"""
 services_renewal_job.py – ORBION SaaS (enterprise)
 
 ✔ Job de renovación de suscripciones por módulo
@@ -48,8 +49,10 @@ def run_subscription_renewal_job(
     """
     ts = now or utcnow()
 
+    # ✅ defensivo: next_renewal_at NULL no entra al job
     subs: List[SuscripcionModulo] = (
         db.query(SuscripcionModulo)
+        .filter(SuscripcionModulo.next_renewal_at.isnot(None))
         .filter(SuscripcionModulo.next_renewal_at <= ts)
         .filter(SuscripcionModulo.status != SubscriptionStatus.CANCELLED)
         .order_by(SuscripcionModulo.next_renewal_at.asc())
@@ -74,11 +77,22 @@ def run_subscription_renewal_job(
         ids.append(int(sub.id))
         try:
             before_status = sub.status
+            before_period_end = getattr(sub, "current_period_end", None)
 
+            # renew_subscription debe:
+            # - mover período si corresponde
+            # - setear next_renewal_at
+            # - aplicar cancel_at_period_end
             renew_subscription(db, sub)
 
+            after_status = sub.status
+            after_period_end = getattr(sub, "current_period_end", None)
+
+            # commit por suscripción (aislamos fallos)
+            db.commit()
+
             # renew_subscription puede setear CANCELLED si cancel_at_period_end=1
-            if sub.status == SubscriptionStatus.CANCELLED and before_status != SubscriptionStatus.CANCELLED:
+            if after_status == SubscriptionStatus.CANCELLED and before_status != SubscriptionStatus.CANCELLED:
                 cancelled += 1
                 logger.info(
                     "[JOB] subscription cancelled id=%s negocio_id=%s module=%s",
@@ -86,23 +100,33 @@ def run_subscription_renewal_job(
                     sub.negocio_id,
                     getattr(sub.module_key, "value", str(sub.module_key)),
                 )
-            else:
+                continue
+
+            # Si no fue cancelada, consideramos “renewed” cuando hubo avance real de período
+            if after_period_end and before_period_end and after_period_end != before_period_end:
                 renewed += 1
                 logger.info(
                     "[JOB] subscription renewed id=%s negocio_id=%s module=%s status=%s",
                     sub.id,
                     sub.negocio_id,
                     getattr(sub.module_key, "value", str(sub.module_key)),
-                    getattr(sub.status, "value", str(sub.status)),
+                    getattr(after_status, "value", str(after_status)),
                 )
-
-            db.commit()
+            else:
+                # No necesariamente es error: podría ser que renew_subscription no movió período por política.
+                logger.info(
+                    "[JOB] subscription processed (no period change) id=%s negocio_id=%s module=%s status=%s",
+                    sub.id,
+                    sub.negocio_id,
+                    getattr(sub.module_key, "value", str(sub.module_key)),
+                    getattr(after_status, "value", str(after_status)),
+                )
 
         except Exception as e:
             db.rollback()
             errors += 1
 
-            # ✅ Observability real: dejamos trazabilidad por suscripción
+            # ✅ Observability real: trazabilidad por suscripción
             logger.exception(
                 "[JOB] renew_subscriptions error id=%s negocio_id=%s module=%s err=%s",
                 getattr(sub, "id", None),

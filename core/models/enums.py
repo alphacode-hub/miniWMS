@@ -31,14 +31,20 @@ class CitaEstado(str, enum.Enum):
 # SaaS – ORBION (módulos + suscripciones)
 # =========================================================
 
-class ModuleKey(enum.Enum):
+class ModuleKey(str, enum.Enum):
     INBOUND = "inbound"
     WMS = "wms"
 
 
-class SubscriptionStatus(enum.Enum):
+class SubscriptionStatus(str, enum.Enum):
     TRIAL = "trial"
     ACTIVE = "active"
     PAST_DUE = "past_due"
     SUSPENDED = "suspended"
     CANCELLED = "cancelled"
+
+
+class NegocioEstado(str, enum.Enum):
+    ACTIVO = "activo"
+    SUSPENDIDO = "suspendido"
+    BLOQUEADO = "bloqueado"

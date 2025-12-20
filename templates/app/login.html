@@ -43,8 +43,8 @@
         <div class="w-full max-w-md mx-auto">
 
             <div class="relative overflow-hidden rounded-2xl bg-slate-950/70 border border-slate-800
-                        shadow-[0_18px_60px_rgba(0,0,0,0.75)] backdrop-blur-xl
-                        px-5 py-6 sm:px-7 sm:py-8 space-y-5">
+                  shadow-[0_18px_60px_rgba(0,0,0,0.75)] backdrop-blur-xl
+                  px-5 py-6 sm:px-7 sm:py-8 space-y-5">
 
                 {# Glow superior #}
                 <div class="pointer-events-none absolute -top-32 -right-24 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl"></div>
@@ -64,7 +64,8 @@
 
                 {# Mensaje de error #}
                 {% if error %}
-                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2" role="alert" aria-live="polite">
+                <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2"
+                     role="alert" aria-live="assertive">
                     <p class="text-[11px] font-semibold text-rose-200">
                         Error al iniciar sesión
                     </p>
@@ -75,7 +76,12 @@
                 {% endif %}
 
                 {# Formulario login #}
-                <form method="post" action="/app/login" class="relative space-y-4" novalidate>
+                <form id="login-form" method="post" action="/app/login" class="relative space-y-4" novalidate>
+
+                    {# CSRF opcional (solo si existe en tu contexto) #}
+                    {% if csrf_token %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% endif %}
 
                     {# Correo #}
                     <div class="space-y-1">
@@ -86,19 +92,17 @@
                                name="email"
                                type="email"
                                required
-                               autofocus
                                autocomplete="email"
                                inputmode="email"
                                value="{{ email or '' }}"
-                               aria-invalid="{{ 'true' if error else 'false' }}"
-                               aria-describedby="{{ 'login-error' if error else '' }}"
+                               {% if error %}aria-invalid="true" aria-describedby="login-error" {% endif %}
                                class="w-full block rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
+                          px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-500
+                          focus:outline-none focus:ring-0
+                          focus:border-[#00E4FF]
+                          focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                          transition"
                                placeholder="usuario@tunegocio.cl" />
                     </div>
 
@@ -113,33 +117,45 @@
                             </span>
                         </div>
 
-                        <input id="password"
-                               name="password"
-                               type="password"
-                               required
-                               autocomplete="current-password"
-                               aria-invalid="{{ 'true' if error else 'false' }}"
-                               aria-describedby="{{ 'login-error' if error else '' }}"
-                               class="w-full block rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
-                               placeholder="••••••••" />
+                        <div class="relative">
+                            <input id="password"
+                                   name="password"
+                                   type="password"
+                                   required
+                                   autocomplete="current-password"
+                                   {% if error %}aria-invalid="true" aria-describedby="login-error" {% endif %}
+                                   class="w-full block rounded-xl border border-slate-700 bg-slate-950/70
+                            px-3 py-2 pr-11 text-sm text-slate-100
+                            placeholder:text-slate-500
+                            focus:outline-none focus:ring-0
+                            focus:border-[#00E4FF]
+                            focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                            transition"
+                                   placeholder="••••••••" />
+
+                            {# Toggle mostrar/ocultar (solo UX, no cambia backend) #}
+                            <button type="button"
+                                    id="toggle-password"
+                                    class="absolute inset-y-0 right-2 my-auto h-8 px-2
+                             rounded-lg border border-slate-700/80 bg-slate-950/40
+                             text-[11px] font-semibold text-slate-300
+                             hover:border-slate-500 hover:text-slate-100 transition
+                             focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-slate-950">
+                                Ver
+                            </button>
+                        </div>
                     </div>
 
                     {# CTA principal #}
-                    <button type="submit"
+                    <button id="submit-btn" type="submit"
                             class="w-full inline-flex items-center justify-center gap-2
-                                   rounded-xl px-3 py-2.5 text-sm font-semibold
-                                   bg-[#00E4FF] text-slate-950
-                                   shadow-[0_10px_40px_rgba(0,228,255,0.45)]
-                                   hover:bg-cyan-300
-                                   hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
-                                   active:scale-[0.98]
-                                   transition">
+                         rounded-xl px-3 py-2.5 text-sm font-semibold
+                         bg-[#00E4FF] text-slate-950
+                         shadow-[0_10px_40px_rgba(0,228,255,0.45)]
+                         hover:bg-cyan-300
+                         hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
+                         active:scale-[0.98]
+                         transition">
                         Entrar a ORBION
                     </button>
                 </form>
@@ -179,15 +195,52 @@
 
 {% block scripts %}
 <script>
-(function () {
-  const pwd = document.getElementById("password");
-  const hint = document.getElementById("caps-hint");
-  if (!pwd || !hint) return;
+    (function () {
+        const form = document.getElementById("login-form");
+        const email = document.getElementById("email");
+        const pwd = document.getElementById("password");
+        const hint = document.getElementById("caps-hint");
+        const toggle = document.getElementById("toggle-password");
+        const submitBtn = document.getElementById("submit-btn");
 
-  pwd.addEventListener("keyup", function (e) {
-    const caps = e.getModifierState && e.getModifierState("CapsLock");
-    hint.classList.toggle("hidden", !caps);
-  });
-})();
+        // Autofocus inteligente
+        // - si hay error y email ya viene: enfocar password
+        // - si no hay email: enfocar email
+        try {
+            const hasEmail = !!(email && email.value && email.value.trim());
+            const hasError = !!document.getElementById("login-error");
+            if (hasError && hasEmail && pwd) pwd.focus();
+            else if (email) email.focus();
+        } catch (_) { }
+
+        // CapsLock hint (más confiable que solo keyup)
+        if (pwd && hint) {
+            const updateCaps = (e) => {
+                const caps = e && e.getModifierState && e.getModifierState("CapsLock");
+                hint.classList.toggle("hidden", !caps);
+            };
+            pwd.addEventListener("keydown", updateCaps);
+            pwd.addEventListener("keyup", updateCaps);
+            pwd.addEventListener("focus", updateCaps);
+        }
+
+        // Toggle ver/ocultar password
+        if (pwd && toggle) {
+            toggle.addEventListener("click", function () {
+                const isPw = pwd.type === "password";
+                pwd.type = isPw ? "text" : "password";
+                toggle.textContent = isPw ? "Ocultar" : "Ver";
+                pwd.focus();
+            });
+        }
+
+        // Evitar doble submit
+        if (form && submitBtn) {
+            form.addEventListener("submit", function () {
+                submitBtn.disabled = true;
+                submitBtn.classList.add("opacity-80", "cursor-not-allowed");
+            });
+        }
+    })();
 </script>
 {% endblock %}

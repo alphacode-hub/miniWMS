@@ -17,14 +17,19 @@
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 Plataforma ORBION
             </h1>
-            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-2xl">
-                Accede a los módulos activos de tu organización. No todo está habilitado, pero todo está en órbita.
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Accede a los módulos de tu organización. Activa lo que necesitas hoy y escala cuando tu operación lo pida.
             </p>
+        </div>
+
+        {# Slot derecho (si quieres algo futuro). De momento limpio. #}
+        <div class="shrink-0 flex items-center gap-2">
+            
         </div>
     </header>
 
     {# =========================
-    ONBOARDING
+    ONBOARDING (sin módulos)
     ========================= #}
     {% if needs_onboarding %}
     <section class="rounded-2xl border border-cyan-500/40 bg-cyan-500/5 p-4 sm:p-5">
@@ -32,10 +37,132 @@
             Bienvenido a ORBION 🚀
         </h2>
         <p class="mt-1 text-[11px] sm:text-xs text-slate-300 max-w-xl">
-            Aún no tienes módulos activos. Activa el módulo que necesitas y comienza a operar sin fricción.
+            Aún no tienes módulos activos. Activa el módulo que necesitas y comienza a operar en minutos.
         </p>
     </section>
     {% endif %}
+
+    {# =========================
+    PANEL PLAN & ESTADO (solo admin negocio)
+    ========================= #}
+    {% set is_admin = user and (user.get("rol") == "admin") %}
+    {% set has_entitlements = entitlements and entitlements.get("negocio") %}
+
+    {% if is_admin and has_entitlements %}
+    {% set seg = entitlements.get("negocio", {}).get("segmento") or "emprendedor" %}
+
+    {# Jinja: para contar dentro de loops, usa namespace() #}
+    {% set ns = namespace(enabled_count=0, blocked_count=0, next_period_end=None) %}
+
+    {# Fuente única: dashboard_modules (coincide con lo que ve el usuario) #}
+    {% for m in (dashboard_modules or []) %}
+    {# Ignorar módulos informativos / próximamente #}
+    {% if m and (m.status != "coming_soon") %}
+
+    {% if m.enabled %}
+    {% set ns.enabled_count = ns.enabled_count + 1 %}
+
+    {# m.period_end es ISO string: "YYYY-MM-DD" o "YYYY-MM-DDTHH:MM:SS..." #}
+    {% if m.period_end %}
+    {% if ns.next_period_end is none %}
+    {% set ns.next_period_end = m.period_end %}
+    {% else %}
+    {# ISO string compare funciona (YYYY-MM-DD...) #}
+    {% if m.period_end < ns.next_period_end %}
+    {% set ns.next_period_end = m.period_end %}
+    {% endif %}
+    {% endif %}
+    {% endif %}
+
+    {% else %}
+    {% set ns.blocked_count = ns.blocked_count + 1 %}
+    {% endif %}
+
+    {% endif %}
+    {% endfor %}
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="min-w-0 space-y-1">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Cuenta & plan
+                </p>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-100">
+                        {{ entitlements.get("negocio", {}).get("nombre") or "Tu negocio" }}
+                    </h2>
+
+                    <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
+                        Segmento: {{ seg }}
+                    </span>
+
+                    {% if ns.enabled_count > 0 %}
+                    <span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/50 text-emerald-300">
+                        Módulos activos: {{ ns.enabled_count }}
+                    </span>
+                    {% else %}
+                    <span class="text-[10px] px-2 py-1 rounded-full border border-cyan-500/50 text-cyan-300">
+                        Sin módulos activos
+                    </span>
+                    {% endif %}
+
+                    {% if ns.next_period_end %}
+                    <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
+                        Próximo corte: {{ ns.next_period_end[:10] }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <p class="text-[11px] sm:text-xs text-slate-400 max-w-3xl">
+                    Tu acceso a módulos y límites se administra por períodos. Revisa tu plan y habilita nuevos módulos cuando lo necesites.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 justify-start lg:justify-end">
+                <a href="/app/planes"
+                   class="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
+                  text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                  active:scale-[0.97] transition-transform transition-colors">
+                    Administrar suscripción
+                </a>
+
+                <a href="/app/planes"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
+                  text-[11px] font-medium text-slate-200 bg-slate-900
+                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Ver detalle
+                </a>
+            </div>
+        </div>
+    </section>
+
+    {# UPGRADE BANNER (si hay bloqueados) #}
+    {% if ns.blocked_count > 0 %}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-3 sm:px-5 sm:py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="space-y-0.5">
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                    Desbloquea más capacidad
+                </p>
+                <p class="text-[11px] sm:text-xs text-slate-300">
+                    Tienes {{ ns.blocked_count }} módulo(s) disponible(s) para habilitar. Mejora tu plan o activa lo que necesitas.
+                </p>
+            </div>
+
+            <div class="flex gap-2">
+                <a href="/app/planes"
+                   class="inline-flex items-center rounded-full border border-cyan-500/50 px-4 py-2
+                    text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/10 transition-colors">
+                    Ver planes
+                </a>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+
 
     {# =========================
     GRID DE MÓDULOS
@@ -52,7 +179,6 @@
       hover:border-cyan-400/40
       transition
     ">
-
             <!-- Glow -->
             <div class="absolute inset-0 rounded-2xl bg-cyan-500/5 blur-xl pointer-events-none"></div>
 
@@ -101,24 +227,25 @@
                     <div class="
                          h-full
                          {% if pct < 80 %}
-              bg-emerald-400
-            {% elif pct < 100 %}
-              bg-amber-400
-            {% else %}
-              bg-red-500
-            {% endif %}
-          " style="width: {{ pct | round(0) }}%"></div>
+                bg-emerald-400
+              {% elif pct < 100 %}
+                bg-amber-400
+              {% else %}
+                bg-red-500
+              {% endif %}
+            "
+            style="width: {{ pct|round(0) }}%">
+          </div>
                 </div>
             </div>
             {% endif %}
 
             {# =========================
-            FOOTER / CTA
-            - Cliente final: solo Abrir o Activar/Suscribirse.
+            FOOTER / CTA (sin cancelar/reactivar)
             ========================= #}
             <div class="mt-auto pt-3 sm:pt-4 flex items-center justify-between gap-3 relative">
 
-                {# Periodo hasta (solo si enabled) #}
+                {# Periodo (solo si enabled) #}
                 {% if m.enabled and m.period_end %}
                 <span class="text-[10px] text-slate-500">
                     Período hasta {{ m.period_end[:10] }}
@@ -127,7 +254,7 @@
                 <span></span>
                 {% endif %}
 
-                {# CTA #}
+                {# CTA único por estado #}
                 {% if m.enabled %}
                 <a href="{{ m.url }}"
                    class="
@@ -143,45 +270,26 @@
                     Abrir
                 </a>
                 {% else %}
-                {% if m.status == 'coming_soon' %}
-                <button type="button" disabled
-                        class="
-                inline-flex items-center gap-2
-                text-xs font-medium
-                px-4 py-2 rounded-full
-                border border-slate-700
-                text-slate-500
-                cursor-not-allowed
-              ">
-                    Próximamente
-                </button>
-                {% else %}
-                {# Si no está habilitado: el CTA es negocio/billing (suscribirse) #}
-                <a href="/#planes"
+                <a href="/app/planes"
                    class="
-                 inline-flex items-center gap-2
-                 text-xs font-medium
-                 px-4 py-2 rounded-full
-                 border border-cyan-500/50
-                 text-cyan-300
-                 hover:bg-cyan-500/10
-                 active:scale-[0.98]
-                 transition-transform transition-colors
-               ">
+               inline-flex items-center gap-2
+               text-xs font-medium
+               px-4 py-2 rounded-full
+               border border-cyan-500/50
+               text-cyan-300
+               hover:bg-cyan-500/10
+               transition
+             ">
                     Suscribirse
                 </a>
                 {% endif %}
-                {% endif %}
-
             </div>
-
         </article>
         {% endfor %}
-
     </div>
 
     {# =========================
-    CONSOLA SUPERADMIN
+    CONSOLA SUPERADMIN (si corresponde)
     ========================= #}
     {% if show_superadmin_console %}
     <section class="border-t border-slate-800 pt-5 sm:pt-6 space-y-3">

@@ -7,10 +7,10 @@ Registro de negocio (signup) – ORBION (SaaS enterprise)
 ✔ Unicidad case-insensitive
 ✔ Manejo seguro de errores (sin print)
 ✔ Auto-login post-registro
-✔ Preparado para:
-  - verificación email
-  - captcha/antibots
-  - políticas de password avanzadas
+✔ Baseline aligned:
+  - Negocio.entitlements default (fuente única)
+  - Negocio.estado como Enum (NegocioEstado)
+  - plan_tipo legacy (fallback interno, entitlements manda)
 """
 
 from __future__ import annotations
@@ -19,18 +19,18 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from core.web import templates
 
+from core.web import templates
 from core.database import get_db
 from core.logging_config import logger
 from core.models import Negocio, Usuario
+from core.models.enums import NegocioEstado
 from core.security import (
     get_current_user,
     hash_password,
     crear_sesion_db,
     crear_cookie_sesion,
 )
-
 
 
 # ============================
@@ -99,7 +99,15 @@ async def registrar_negocio_post(
     if len(nombre_admin) < 3:
         errores.append("El nombre del administrador es muy corto (mínimo 3 caracteres).")
 
-    if " " in email_norm or "@" not in email_norm or "." not in email_norm:
+    # Validación simple de email (sin dependencias)
+    if (
+        " " in email_norm
+        or "@" not in email_norm
+        or "." not in email_norm
+        or email_norm.startswith("@")
+        or email_norm.endswith("@")
+        or email_norm.endswith(".")
+    ):
         errores.append("Debes ingresar un correo válido.")
 
     if len(password) < 8:
@@ -108,13 +116,19 @@ async def registrar_negocio_post(
     if password != password2:
         errores.append("Las contraseñas no coinciden.")
 
-    # Unicidad email
+    # ----------------------------
+    # Unicidad (case-insensitive)
+    # ----------------------------
+
     if email_norm:
-        existing_user = db.query(Usuario).filter(Usuario.email == email_norm).first()
+        existing_user = (
+            db.query(Usuario)
+            .filter(func.lower(Usuario.email) == email_norm)
+            .first()
+        )
         if existing_user:
             errores.append("Ya existe un usuario registrado con ese correo.")
 
-    # Unicidad negocio (case-insensitive)
     if nombre_negocio:
         existing_neg = (
             db.query(Negocio)
@@ -145,11 +159,11 @@ async def registrar_negocio_post(
         negocio = Negocio(
             nombre_fantasia=nombre_negocio,
             whatsapp_notificaciones=whatsapp or None,
-            estado="activo",
-            plan_tipo="demo",  # default (luego: billing)
+            estado=NegocioEstado.ACTIVO,  # ✅ enum aligned
+            plan_tipo="legacy",           # ✅ entitlements manda; plan_tipo solo fallback interno
         )
         db.add(negocio)
-        db.flush()
+        db.flush()  # obtiene negocio.id
 
         usuario_admin = Usuario(
             negocio_id=negocio.id,
@@ -162,7 +176,16 @@ async def registrar_negocio_post(
         db.add(usuario_admin)
         db.commit()
 
-        logger.info("[SIGNUP] Negocio creado id=%s nombre=%s admin=%s", negocio.id, nombre_negocio, email_norm)
+        # defensivo: asegura ids/attrs refrescados
+        db.refresh(negocio)
+        db.refresh(usuario_admin)
+
+        logger.info(
+            "[SIGNUP] Negocio creado id=%s nombre=%s admin=%s",
+            negocio.id,
+            nombre_negocio,
+            email_norm,
+        )
 
     except Exception as exc:
         db.rollback()

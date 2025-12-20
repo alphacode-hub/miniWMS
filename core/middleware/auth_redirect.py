@@ -1,4 +1,5 @@
 ﻿"""
+core/middleware/auth_redirect.py
 Middleware de redirección / autorización por rutas – ORBION (SaaS enterprise)
 
 ✔ Public routes (exact + prefixes)

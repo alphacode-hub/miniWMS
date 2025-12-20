@@ -42,8 +42,8 @@
         ========================= #}
         <div class="w-full max-w-md mx-auto">
             <div class="relative overflow-hidden rounded-2xl bg-slate-950/70 border border-slate-800
-                        shadow-[0_18px_60px_rgba(0,0,0,0.75)] backdrop-blur-xl
-                        px-5 py-6 sm:px-7 sm:py-8 space-y-5">
+                  shadow-[0_18px_60px_rgba(0,0,0,0.75)] backdrop-blur-xl
+                  px-5 py-6 sm:px-7 sm:py-8 space-y-5">
 
                 {# Glow superior #}
                 <div class="pointer-events-none absolute -top-32 -left-24 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl"></div>
@@ -64,16 +64,18 @@
 
                     <a href="/app/login"
                        class="shrink-0 text-[11px] inline-flex items-center px-3 py-1.5 rounded-full
-                              border border-slate-700 bg-slate-900/70 text-slate-200
-                              hover:bg-slate-800 transition">
+                    border border-slate-700 bg-slate-900/70 text-slate-200
+                    hover:bg-slate-800 transition
+                    focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-[#0A0F24]">
                         Ya tengo cuenta
                     </a>
                 </div>
 
                 {# Errores #}
-                {% if errores and errores|length > 0 %}
+                {% set has_errors = (errores and errores|length > 0) %}
+                {% if has_errors %}
                 <div class="relative rounded-xl border border-rose-400/30 bg-rose-950/60 px-3 py-2"
-                     role="alert" aria-live="polite" id="form-errors">
+                     role="alert" aria-live="assertive" id="form-errors">
                     <p class="text-[11px] font-semibold text-rose-200">
                         Revisa los siguientes puntos:
                     </p>
@@ -86,7 +88,12 @@
                 {% endif %}
 
                 {# Formulario #}
-                <form method="post" action="/app/registrar-negocio" class="relative space-y-4" novalidate>
+                <form id="signup-form" method="post" action="/app/registrar-negocio" class="relative space-y-4" novalidate>
+
+                    {# CSRF opcional #}
+                    {% if csrf_token %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% endif %}
 
                     {# Nombre negocio #}
                     <div class="space-y-1">
@@ -98,16 +105,15 @@
                                name="nombre_negocio"
                                value="{{ nombre_negocio or '' }}"
                                required
-                               autofocus
                                autocomplete="organization"
-                               aria-describedby="help-negocio {{ 'form-errors' if errores and errores|length > 0 else '' }}"
+                               {% if has_errors %}aria-describedby="help-negocio form-errors" {% else %}aria-describedby="help-negocio" {% endif %}
                                class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
+                          px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-500
+                          focus:outline-none focus:ring-0
+                          focus:border-[#00E4FF]
+                          focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                          transition"
                                placeholder="Ej: Bodega Central Norte" />
                         <p id="help-negocio" class="text-[10px] text-slate-500">
                             Este nombre aparecerá en el hub ORBION y en tus paneles.
@@ -126,12 +132,12 @@
                                required
                                autocomplete="name"
                                class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
+                          px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-500
+                          focus:outline-none focus:ring-0
+                          focus:border-[#00E4FF]
+                          focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                          transition"
                                placeholder="Ej: Bruce Wayne" />
                         <p class="text-[10px] text-slate-500">
                             Este nombre se usará en auditorías, alertas y paneles como identificador humano.
@@ -150,12 +156,12 @@
                                inputmode="tel"
                                autocomplete="tel"
                                class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
+                          px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-500
+                          focus:outline-none focus:ring-0
+                          focus:border-[#00E4FF]
+                          focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                          transition"
                                placeholder="+56 9 1234 5678" />
                         <p class="text-[10px] text-slate-500">
                             Más adelante podrás recibir alertas de stock, vencimientos y eventos clave.
@@ -175,12 +181,12 @@
                                autocomplete="email"
                                inputmode="email"
                                class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
+                          px-3 py-2 text-sm text-slate-100
+                          placeholder:text-slate-500
+                          focus:outline-none focus:ring-0
+                          focus:border-[#00E4FF]
+                          focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                          transition"
                                placeholder="admin@tunegocio.cl" />
                         <p class="text-[10px] text-slate-500">
                             Con este correo iniciarás sesión como administrador del negocio.
@@ -192,20 +198,31 @@
                         <label for="password" class="block text-[11px] font-medium text-slate-200">
                             Contraseña
                         </label>
-                        <input id="password"
-                               type="password"
-                               name="password"
-                               required
-                               minlength="8"
-                               autocomplete="new-password"
-                               class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
-                               placeholder="Mínimo 8 caracteres" />
+                        <div class="relative">
+                            <input id="password"
+                                   type="password"
+                                   name="password"
+                                   required
+                                   minlength="8"
+                                   autocomplete="new-password"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-950/70
+                            px-3 py-2 pr-11 text-sm text-slate-100
+                            placeholder:text-slate-500
+                            focus:outline-none focus:ring-0
+                            focus:border-[#00E4FF]
+                            focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                            transition"
+                                   placeholder="Mínimo 8 caracteres" />
+                            <button type="button"
+                                    data-toggle="password"
+                                    class="absolute inset-y-0 right-2 my-auto h-8 px-2
+                             rounded-lg border border-slate-700/80 bg-slate-950/40
+                             text-[11px] font-semibold text-slate-300
+                             hover:border-slate-500 hover:text-slate-100 transition
+                             focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-slate-950">
+                                Ver
+                            </button>
+                        </div>
                     </div>
 
                     {# Repetir password #}
@@ -213,32 +230,45 @@
                         <label for="password2" class="block text-[11px] font-medium text-slate-200">
                             Repetir contraseña
                         </label>
-                        <input id="password2"
-                               type="password"
-                               name="password2"
-                               required
-                               minlength="8"
-                               autocomplete="new-password"
-                               class="w-full rounded-xl border border-slate-700 bg-slate-950/70
-                                      px-3 py-2 text-sm text-slate-100
-                                      placeholder:text-slate-500
-                                      focus:outline-none focus:ring-0
-                                      focus:border-[#00E4FF]
-                                      focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
-                                      transition"
-                               placeholder="Debe coincidir" />
-                        <p class="text-[10px] text-slate-500">
+                        <div class="relative">
+                            <input id="password2"
+                                   type="password"
+                                   name="password2"
+                                   required
+                                   minlength="8"
+                                   autocomplete="new-password"
+                                   aria-describedby="pw-match"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-950/70
+                            px-3 py-2 pr-11 text-sm text-slate-100
+                            placeholder:text-slate-500
+                            focus:outline-none focus:ring-0
+                            focus:border-[#00E4FF]
+                            focus:shadow-[0_0_0_1px_rgba(0,228,255,0.65)]
+                            transition"
+                                   placeholder="Debe coincidir" />
+                            <button type="button"
+                                    data-toggle="password2"
+                                    class="absolute inset-y-0 right-2 my-auto h-8 px-2
+                             rounded-lg border border-slate-700/80 bg-slate-950/40
+                             text-[11px] font-semibold text-slate-300
+                             hover:border-slate-500 hover:text-slate-100 transition
+                             focus:outline-none focus:ring-2 focus:ring-[#00E4FF]/60 focus:ring-offset-2 focus:ring-offset-slate-950">
+                                Ver
+                            </button>
+                        </div>
+                        <p id="pw-match" class="text-[10px] text-slate-500">
                             Usa una contraseña robusta. Podrás crear operadores luego desde tu panel.
+                            <span id="pw-match-state" class="ml-1"></span>
                         </p>
                     </div>
 
                     {# Botón submit #}
-                    <button type="submit"
+                    <button id="submit-btn" type="submit"
                             class="w-full inline-flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold
-                                   bg-[#00E4FF] text-slate-950
-                                   shadow-[0_10px_40px_rgba(0,228,255,0.45)]
-                                   hover:bg-cyan-300 hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
-                                   active:scale-[0.98] transition">
+                         bg-[#00E4FF] text-slate-950
+                         shadow-[0_10px_40px_rgba(0,228,255,0.45)]
+                         hover:bg-cyan-300 hover:shadow-[0_12px_45px_rgba(0,228,255,0.6)]
+                         active:scale-[0.98] transition">
                         Crear negocio y entrar a ORBION
                     </button>
                 </form>
@@ -257,4 +287,77 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById("signup-form");
+  const submitBtn = document.getElementById("submit-btn");
+
+  const nombreNegocio = document.getElementById("nombre_negocio");
+  const nombreAdmin = document.getElementById("nombre_admin");
+  const email = document.getElementById("email");
+  const pw1 = document.getElementById("password");
+  const pw2 = document.getElementById("password2");
+  const pwState = document.getElementById("pw-match-state");
+
+  // Autofocus inteligente: si hay errores, enfoca el primer campo vacío
+  try {
+    const hasErrors = !!document.getElementById("form-errors");
+    if (hasErrors) {
+      const fields = [nombreNegocio, nombreAdmin, email, pw1, pw2].filter(Boolean);
+      const firstEmpty = fields.find(el => !String(el.value || "").trim());
+      (firstEmpty || nombreNegocio || email || pw1)?.focus();
+    } else {
+      (nombreNegocio || email || nombreAdmin)?.focus();
+    }
+  } catch (_) {}
+
+  // Toggle ver/ocultar password (pw1 y pw2)
+  document.querySelectorAll("button[data-toggle]").forEach((btn) => {
+    const targetId = btn.getAttribute("data-toggle");
+    const input = document.getElementById(targetId);
+    if (!input) return;
+
+    btn.addEventListener("click", function () {
+      const isPw = input.type === "password";
+      input.type = isPw ? "text" : "password";
+      btn.textContent = isPw ? "Ocultar" : "Ver";
+      input.focus();
+    });
+  });
+
+  // Indicador simple "coinciden"
+  function updateMatch() {
+    if (!pw1 || !pw2 || !pwState) return;
+    const a = String(pw1.value || "");
+    const b = String(pw2.value || "");
+    if (!a && !b) {
+      pwState.textContent = "";
+      return;
+    }
+    if (b.length === 0) {
+      pwState.textContent = "";
+      return;
+    }
+    const ok = a === b;
+    pwState.textContent = ok ? "✓ Coinciden" : "✕ No coinciden";
+    pwState.className = ok ? "text-[10px] text-emerald-300" : "text-[10px] text-rose-300";
+  }
+  if (pw1 && pw2) {
+    pw1.addEventListener("input", updateMatch);
+    pw2.addEventListener("input", updateMatch);
+    updateMatch();
+  }
+
+  // Evitar doble submit
+  if (form && submitBtn) {
+    form.addEventListener("submit", function () {
+      submitBtn.disabled = true;
+      submitBtn.classList.add("opacity-80", "cursor-not-allowed");
+    });
+  }
+})();
+</script>
 {% endblock %}

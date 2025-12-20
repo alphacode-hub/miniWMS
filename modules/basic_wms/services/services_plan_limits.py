@@ -11,7 +11,6 @@ from core.models import (
     Ubicacion,
     Slot,
 )
-from core.plans import get_core_plan_config
 
 
 def check_plan_limit(db: Session, negocio_id: int, recurso: str) -> None:

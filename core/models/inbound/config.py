@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, Text, Boolean
 from sqlalchemy.orm import relationship, Session
 
 from core.database import Base
-from core.models import utcnow
+from core.models.time import utcnow
 
 
 class InboundConfig(Base):
