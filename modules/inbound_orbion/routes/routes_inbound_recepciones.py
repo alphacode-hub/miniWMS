@@ -14,6 +14,9 @@ from core.database import get_db
 from core.models.inbound.proveedores import Proveedor
 from core.models.inbound.recepciones import InboundRecepcion
 
+# ✅ Baseline enterprise: entitlements snapshot (source of truth SaaS)
+from core.services.services_entitlements import get_entitlements_snapshot
+
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
     log_inbound_error,
@@ -65,7 +68,8 @@ def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> R
 
 
 def _negocio_id_from_user(user: dict) -> int:
-    negocio_id = user.get("negocio_id")
+    # Soporta negocio directo o modo impersonación (si aplica)
+    negocio_id = user.get("negocio_id") or user.get("acting_negocio_id")
     if not negocio_id:
         raise InboundDomainError("No se encontró negocio_id en la sesión.")
     return int(negocio_id)
@@ -98,6 +102,49 @@ def _safe_str(v: str | None) -> str | None:
     return s or None
 
 
+def _get_inbound_from_snapshot(snapshot: dict) -> dict:
+    """
+    Normaliza el bloque inbound desde snapshot (baseline SaaS).
+    snapshot.modules.inbound:
+      - enabled (bool)
+      - status (str)
+      - limits (dict)
+      - remaining (dict)
+      - flags (dict)  (feature gates)
+    """
+    mods = (snapshot or {}).get("modules") or {}
+    inbound = mods.get("inbound") or {}
+
+    if not isinstance(inbound, dict):
+        inbound = {}
+
+    limits = inbound.get("limits") if isinstance(inbound.get("limits"), dict) else {}
+    remaining = inbound.get("remaining") if isinstance(inbound.get("remaining"), dict) else {}
+    flags = inbound.get("flags") if isinstance(inbound.get("flags"), dict) else {}
+
+    return {
+        "enabled": bool(inbound.get("enabled", False)),
+        "status": (inbound.get("status") or "unknown"),
+        "limits": limits,
+        "remaining": remaining,
+        "flags": flags,
+    }
+
+
+def _flag(inbound_cfg: dict, key: str, default: bool = False) -> bool:
+    """
+    Lee feature-flag desde inbound_cfg["flags"][key] (preferido),
+    o fallback inbound_cfg[key] si algún snapshot viejo lo deja plano.
+    """
+    flags = inbound_cfg.get("flags") or {}
+    if isinstance(flags, dict) and key in flags:
+        return bool(flags.get(key))
+    v = inbound_cfg.get(key)
+    if v is None:
+        return default
+    return bool(v)
+
+
 # ============================================================
 # LISTA / DASHBOARD
 # ============================================================
@@ -114,9 +161,12 @@ async def inbound_recepciones_lista(
 ):
     negocio_id = _negocio_id_from_user(user)
 
-    # Plan flags (UI)
-    inbound_plan = get_inbound_plan_config(user.get("plan_tipo"))
-    inbound_analytics_enabled = bool(inbound_plan.get("enable_inbound_analytics", False))
+    # ✅ Baseline SaaS: flags/límites desde snapshot (NO plan_tipo)
+    snapshot = get_entitlements_snapshot(db, negocio_id)
+    inbound_cfg = _get_inbound_from_snapshot(snapshot)
+
+    # Flag UI
+    inbound_analytics_enabled = _flag(inbound_cfg, "enable_inbound_analytics", default=False)
 
     d_desde = _parse_date_iso(desde)
     d_hasta = _parse_date_iso(hasta)
@@ -164,6 +214,14 @@ async def inbound_recepciones_lista(
                 "desde": desde or "",
                 "hasta": hasta or "",
             },
+
+            # ✅ Baseline: disponibilidad para UI (si quieres mostrar límites)
+            "inbound_enabled": inbound_cfg.get("enabled", False),
+            "inbound_status": inbound_cfg.get("status", "unknown"),
+            "inbound_limits": inbound_cfg.get("limits", {}),
+            "inbound_remaining": inbound_cfg.get("remaining", {}),
+            "snapshot": snapshot,
+
             "inbound_analytics_enabled": inbound_analytics_enabled,
             "modulo_nombre": "Orbion Inbound",
             "ok": request.query_params.get("ok"),

@@ -82,28 +82,71 @@ def _period_end_from_mod(mod: dict) -> str | None:
 
     return None
 
-
-def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, float | None, float | None]:
+def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int | None, int | None]:
+    """
+    Muestra métricas "de conteo" en formato entero (sin decimales).
+    Soporta snapshots viejos y nuevos:
+    - limits: dict
+    - usage: dict (si existe)
+    - remaining: dict (si existe)  -> used = limit - remaining
+    """
     limits = mod.get("limits") if isinstance(mod.get("limits"), dict) else {}
     usage = mod.get("usage") if isinstance(mod.get("usage"), dict) else {}
+    remaining = mod.get("remaining") if isinstance(mod.get("remaining"), dict) else {}
+
+    def _to_int(x) -> int:
+        """
+        Convierte seguro a int (0 si falla).
+        - Si viene float tipo 200.0 -> 200
+        - Si viene string "200" -> 200
+        """
+        try:
+            return int(float(x))
+        except Exception:
+            return 0
+
+    def _get_used_limit_int(key: str) -> tuple[int | None, int | None]:
+        if key not in limits:
+            return (None, None)
+
+        lim = _to_int(limits.get(key, 0))
+
+        used: int | None = None
+
+        # Preferimos usage si existe
+        if key in usage:
+            try:
+                used = _to_int(usage.get(key, 0))
+            except Exception:
+                used = None
+
+        # Fallback: remaining -> used = limit - remaining
+        if used is None and key in remaining:
+            try:
+                rem = _to_int(remaining.get(key, 0))
+                used = max(lim - rem, 0)
+            except Exception:
+                used = None
+
+        if used is None:
+            used = 0
+
+        return (used, lim)
 
     if module_slug == "inbound":
         for key, label in (("recepciones_mes", "Recepciones"), ("incidencias_mes", "Incidencias")):
             if key in limits:
-                try:
-                    return (label, float(usage.get(key, 0.0) or 0.0), float(limits.get(key, 0.0) or 0.0))
-                except Exception:
-                    return (label, None, None)
+                used, lim = _get_used_limit_int(key)
+                return (label, used, lim)
 
     if module_slug == "wms":
         for key, label in (("movimientos_mes", "Movimientos"), ("productos", "Productos")):
             if key in limits:
-                try:
-                    return (label, float(usage.get(key, 0.0) or 0.0), float(limits.get(key, 0.0) or 0.0))
-                except Exception:
-                    return (label, None, None)
+                used, lim = _get_used_limit_int(key)
+                return (label, used, lim)
 
     return (None, None, None)
+
 
 
 def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
@@ -121,11 +164,9 @@ def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
         if not isinstance(mod, dict):
             continue
         if bool(mod.get("enabled")):
-            # enabled y status operativo cuenta como "ya onboarded"
             st = (mod.get("status") or "").strip().lower()
             if st in ("trial", "active"):
                 return False
-            # incluso si status raro pero enabled=True, igual no es onboarding vacío
             return False
 
     return True
@@ -205,6 +246,7 @@ async def orbion_hub_view(
                 "show_superadmin_console": False,
                 "snapshot": None,
                 "entitlements": None,
+                "negocio_ctx": None,
                 "needs_onboarding": True,
             },
         )
@@ -222,6 +264,7 @@ async def orbion_hub_view(
                 "show_superadmin_console": False,
                 "snapshot": None,
                 "entitlements": None,
+                "negocio_ctx": None,
                 "needs_onboarding": True,
             },
         )
@@ -256,8 +299,11 @@ async def orbion_hub_view(
     snapshot_modules = (snapshot.get("modules") or {}) if isinstance(snapshot, dict) else {}
     entitlements = (snapshot.get("entitlements") or {}) if isinstance(snapshot, dict) else {}
 
+    # ✅ IMPORTANTE: negocio_ctx viene desde snapshot["negocio"], NO desde entitlements
+    negocio_ctx = (snapshot.get("negocio") or {}) if isinstance(snapshot, dict) else {}
+
     segmento = (
-        (snapshot.get("negocio") or {}).get("segment")
+        (negocio_ctx.get("segment") if isinstance(negocio_ctx, dict) else None)
         or entitlements.get("segment")
         or "emprendedor"
     )
@@ -382,6 +428,7 @@ async def orbion_hub_view(
             "show_superadmin_console": show_superadmin_console,
             "snapshot": snapshot,
             "entitlements": entitlements,
+            "negocio_ctx": negocio_ctx,  # ✅ ahora el template tiene el negocio real del snapshot
             "needs_onboarding": needs_onboarding,
         },
     )
@@ -389,7 +436,6 @@ async def orbion_hub_view(
 
 # =========================================================
 # ACTIONS DESDE HUB (ADMIN)
-# - Auditoría debe vivir en services_subscriptions (source of truth)
 # =========================================================
 
 @router.post("/modules/{module_key}/activate")
@@ -409,7 +455,6 @@ async def activate_module_from_hub(
 
     mk = _mk_from_str(module_key)
 
-    # (Opcional) best-effort antes para logs
     before_status: str | None = None
     try:
         sub_before = (

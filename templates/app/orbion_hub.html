@@ -10,8 +10,9 @@
 {% set is_superadmin = (u.get("rol") == "superadmin") %}
 {% set is_superadmin_global = is_superadmin and not acting_id %}
 
-{% set ent = entitlements or {} %}
-{% set neg = ent.get("negocio", {}) if ent is mapping else {} %}
+{# ✅ negocio real desde snapshot #}
+{% set neg = negocio_ctx or {} %}
+{% set has_negocio_ctx = (neg is mapping) and (neg|length > 0) %}
 
 <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
@@ -111,10 +112,9 @@
     PANEL PLAN & ESTADO (solo admin negocio)
     ========================= #}
     {% set is_admin = (u and (u.get("rol") == "admin")) %}
-    {% set has_entitlements = (neg is mapping) and (neg|length > 0) %}
 
-    {% if is_admin and has_entitlements %}
-    {% set seg = (neg.get("segmento") or neg.get("segment") or "emprendedor") %}
+    {% if is_admin and has_negocio_ctx %}
+    {% set seg = (neg.get("segment") or neg.get("segmento") or "emprendedor") %}
     {% set seg = (seg|string)|lower %}
 
     {% set ns = namespace(enabled_count=0, blocked_count=0, next_period_end=None) %}
@@ -147,11 +147,11 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <h2 class="text-sm sm:text-base font-semibold text-slate-100">
-                        {{ neg.get("nombre") or "Tu negocio" }}
+                        {{ neg.get("name") or neg.get("nombre") or "Tu negocio" }}
                     </h2>
 
                     <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
-                        Segmento: {{ seg }}
+                        Segmento: {{ (seg)|capitalize }}
                     </span>
 
                     {% if ns.enabled_count > 0 %}
@@ -256,7 +256,7 @@
             <div class="space-y-1">
                 <div class="flex justify-between text-[10px] text-slate-400">
                     <span>{{ m.metric_label }}</span>
-                    <span>{{ m.metric_used }} / {{ m.metric_limit }}</span>
+                    <span>{{ cl_num(m.metric_used, 0) }} / {{ cl_num(m.metric_limit, 0) }}</span>
                 </div>
 
                 <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
@@ -301,28 +301,6 @@
         </article>
         {% endfor %}
     </div>
-
-    {# =========================
-    CONSOLA SUPERADMIN (si corresponde)
-    ========================= #}
-    {% if show_superadmin_console %}
-    <section class="border-t border-slate-800 pt-5 sm:pt-6 space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-            <h3 class="text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Consola Global ORBION
-            </h3>
-            <span class="text-[10px] text-slate-500">
-                Visible solo para superadmin
-            </span>
-        </div>
-
-        <a href="/superadmin/dashboard"
-           class="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-full
-                  border border-slate-700 text-slate-200 hover:bg-slate-800/70 transition">
-            Ir a consola superadmin
-        </a>
-    </section>
-    {% endif %}
 
     {% endif %} {# /endif superadmin_global #}
 

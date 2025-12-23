@@ -1,5 +1,4 @@
-﻿# core/services/services_entitlements.py
-"""
+﻿"""
 services_entitlements.py – ORBION SaaS (enterprise, baseline aligned)
 
 ✅ Fuente única: Negocio.entitlements (verdad funcional)
@@ -54,7 +53,7 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
             "exportaciones_mes": 30,
         },
         "inbound": {
-            "recepciones_mes": 200,
+            "recepciones_mes": 30,
             "incidencias_mes": 1_000,
             "citas_mes": 300,
             "proveedores": 50,
@@ -125,7 +124,11 @@ def default_entitlements() -> dict:
             "analytics_plus": {"enabled": False, "status": "inactive"},
             "ml_ia": {"enabled": False, "status": "inactive"},
         },
+        # Nota: históricamente esto se persistió como snapshot completo.
+        # Hoy lo tratamos como "puede ser overrides" y aplicamos heurística para evitar congelar límites.
         "limits": base_limits,
+        # Nuevo (opcional): si en el futuro quieres overrides limpios, puedes usar esto en vez de "limits".
+        # "limits_overrides": {},
         "billing": {"source": "baseline"},
     }
 
@@ -169,25 +172,102 @@ def _module_alias(mk: str) -> str:
     return aliases.get(mk, mk)
 
 
-def _merge_limits_for_segment(segment: str, limits_in: Any) -> dict[str, dict[str, Any]]:
+def _looks_like_full_segment_limits(limits_in: dict) -> str | None:
+    """
+    Heurística clave (fix del "se queda pegado en 200"):
+
+    Si limits_in es un snapshot completo que coincide con los defaults de ALGÚN segmento,
+    significa que fue persistido como "defaults" (no overrides reales).
+
+    Retorna el segmento que coincide, o None si no coincide.
+    """
+    if not isinstance(limits_in, dict) or not limits_in:
+        return None
+
+    # Solo aplica si es por módulo (dict de dict)
+    if not any(isinstance(v, dict) for v in limits_in.values()):
+        return None
+
+    # normalizamos keys de módulos por si venían con aliases
+    norm_in: dict[str, dict[str, Any]] = {}
+    for mk, lim in limits_in.items():
+        mk_norm = _module_alias(mk)
+        if isinstance(lim, dict):
+            norm_in[mk_norm] = dict(lim)
+
+    # Comparamos contra defaults por segmento
+    for seg, defaults in DEFAULT_LIMITS_BY_SEGMENT.items():
+        if not isinstance(defaults, dict):
+            continue
+
+        ok = True
+        for mk, dlim in defaults.items():
+            if not isinstance(dlim, dict):
+                continue
+            in_lim = norm_in.get(mk)
+            if in_lim is None:
+                ok = False
+                break
+
+            # Debe contener al menos las mismas claves y mismos valores (snapshot completo típico)
+            for k, v in dlim.items():
+                if k not in in_lim:
+                    ok = False
+                    break
+                if in_lim.get(k) != v:
+                    ok = False
+                    break
+            if not ok:
+                break
+
+        if ok:
+            return seg
+
+    return None
+
+
+def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides: Any = None) -> dict[str, dict[str, Any]]:
     """
     Resuelve limits por módulo:
     - Defaults por segmento
-    - Overrides por negocio en entitlements["limits"] (si vienen)
+    - Overrides por negocio
 
     Soporta:
       A) Por módulo: {"inbound": {...}, "wms": {...}}
       B) Legacy plano: {"usuarios_totales": 3, ...} -> se asigna a "wms"
+
+    Fix enterprise:
+      - Si limits_in parece snapshot completo de un segmento (heurística),
+        NO lo aplicamos como override cuando el segmento actual es distinto.
+        (evita que se "congele" emprendedor=200 al pasar a enterprise)
     """
     base = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(segment, {}))
 
-    if not isinstance(limits_in, dict) or not limits_in:
+    # 1) Overrides explícitos (nuevo) ganan prioridad si vienen
+    effective_overrides = limits_overrides if isinstance(limits_overrides, dict) else None
+
+    # 2) Si no hay overrides explícitos, usamos limits_in como posible override (legacy)
+    if effective_overrides is None:
+        effective_overrides = limits_in if isinstance(limits_in, dict) else None
+
+    if not isinstance(effective_overrides, dict) or not effective_overrides:
+        return base
+
+    # Heurística: ¿esto es un snapshot completo de un segmento?
+    seg_match = _looks_like_full_segment_limits(effective_overrides)
+    if seg_match is not None and seg_match != segment:
+        # Esto era un snapshot persistido del segmento anterior -> NO lo uses como override
+        logger.info(
+            "[ENTITLEMENTS] limits snapshot detectado (seg=%s) pero segmento actual=%s -> ignorando snapshot para evitar límites congelados",
+            seg_match,
+            segment,
+        )
         return base
 
     # Caso A: por módulo
-    any_module_dict = any(isinstance(v, dict) for v in limits_in.values())
+    any_module_dict = any(isinstance(v, dict) for v in effective_overrides.values())
     if any_module_dict:
-        for mk, lim in limits_in.items():
+        for mk, lim in effective_overrides.items():
             mk_norm = _module_alias(mk)
             if not isinstance(lim, dict):
                 continue
@@ -197,7 +277,7 @@ def _merge_limits_for_segment(segment: str, limits_in: Any) -> dict[str, dict[st
 
     # Caso B: plano -> asumir WMS
     base.setdefault("wms", {})
-    base["wms"].update(limits_in)
+    base["wms"].update(effective_overrides)
     return base
 
 
@@ -224,7 +304,6 @@ def _map_legacy_plan_tipo(plan_tipo: str) -> dict:
     ent["segment"] = seg
     ent["limits"] = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(seg, {}))
 
-    # Mantener wms como base activa; inbound por defecto no.
     ent["modules"]["wms"] = {"enabled": True, "status": "active"}
     ent["modules"]["inbound"] = {"enabled": False, "status": "inactive"}
 
@@ -285,8 +364,9 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
     out["modules"]["core"]["enabled"] = True
     out["modules"]["core"]["status"] = "active"
 
-    # limits: defaults por segmento + overrides
-    out["limits"] = _merge_limits_for_segment(out["segment"], ent.get("limits"))
+    # limits: defaults por segmento + overrides (con fix anti-freeze)
+    limits_overrides = ent.get("limits_overrides")  # opcional (nuevo)
+    out["limits"] = _merge_limits_for_segment(out["segment"], ent.get("limits"), limits_overrides=limits_overrides)
 
     return out
 
