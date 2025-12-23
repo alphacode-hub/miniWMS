@@ -1,0 +1,119 @@
+﻿{# templates/app/superadmin_job_result.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}Resultado Job · Consola Superadmin · ORBION{% endblock %}
+
+{% block content %}
+{% set r = result %}
+{% set checked = (r.checked if r is not none and r.checked is defined else (r.get("checked") if r is mapping else none)) %}
+{% set renewed = (r.renewed if r is not none and r.renewed is defined else (r.get("renewed") if r is mapping else none)) %}
+{% set cancelled = (r.cancelled if r is not none and r.cancelled is defined else (r.get("cancelled") if r is mapping else none)) %}
+{% set errors = (r.errors if r is not none and r.errors is defined else (r.get("errors") if r is mapping else none)) %}
+{% set details = (r.details if r is not none and r.details is defined else (r.get("details") if r is mapping else none)) %}
+{% set items = (r.items if r is not none and r.items is defined else (r.get("items") if r is mapping else none)) %}
+
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Consola superadmin
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Resultado · {{ job_name or "Job" }}
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Resumen de ejecución. Auditoría se registra por negocio afectado dentro de services_*.
+            </p>
+        </div>
+
+        <div class="shrink-0 flex items-center gap-2">
+            <a href="/superadmin/jobs"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Job Center
+            </a>
+            <a href="/superadmin/dashboard"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Consola
+            </a>
+        </div>
+    </header>
+
+    {# =========================
+    SUMMARY CARDS
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Resumen
+            </p>
+            <p class="text-[11px] text-slate-500">
+                Métricas principales reportadas por el job.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Checked</p>
+                <p class="text-2xl font-semibold text-slate-50">{{ checked if checked is not none else "—" }}</p>
+                <p class="text-[11px] text-slate-500">Suscripciones evaluadas.</p>
+            </div>
+
+            <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-emerald-300 uppercase tracking-wide">Renewed</p>
+                <p class="text-2xl font-semibold text-emerald-50">{{ renewed if renewed is not none else "—" }}</p>
+                <p class="text-[11px] text-emerald-200/80">Renovaciones aplicadas.</p>
+            </div>
+
+            <div class="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-cyan-200 uppercase tracking-wide">Cancelled</p>
+                <p class="text-2xl font-semibold text-cyan-50">{{ cancelled if cancelled is not none else "—" }}</p>
+                <p class="text-[11px] text-cyan-100/80">Cancelaciones efectivas.</p>
+            </div>
+
+            <div class="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 space-y-1.5">
+                <p class="text-[11px] font-medium text-rose-200 uppercase tracking-wide">Errors</p>
+                <p class="text-2xl font-semibold text-rose-50">{{ errors if errors is not none else 0 }}</p>
+                <p class="text-[11px] text-rose-100/80">Errores reportados.</p>
+            </div>
+        </div>
+    </section>
+
+    {# =========================
+    DETAILS (optional)
+    ========================= #}
+    {% if details or items %}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+        <header class="space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Detalle
+            </p>
+            <p class="text-[11px] text-slate-500">
+                Listado resumido de resultados (si el job lo entrega).
+            </p>
+        </header>
+
+        {% set rows = details or items %}
+        {% if rows and rows is iterable %}
+        <div class="space-y-2">
+            {% for it in rows %}
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-[11px] text-slate-200">
+                {{ it }}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
+            El job no entregó un detalle iterable.
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+</div>
+{% endblock %}

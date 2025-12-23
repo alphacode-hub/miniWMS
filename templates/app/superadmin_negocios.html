@@ -7,7 +7,7 @@
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     {# =========================
-    HEADER (mobile-first, 1 solo)
+    HEADER (mobile-first)
     ========================= #}
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
@@ -22,14 +22,46 @@
             </p>
         </div>
 
-        <div class="shrink-0 flex items-center gap-2">
+        <div class="shrink-0 flex flex-wrap items-center justify-end gap-2">
             <a href="/superadmin/dashboard"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Consola superadmin
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors
+                      focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                ← Consola
+            </a>
+            <a href="/superadmin/jobs"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors
+                      focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                Jobs
             </a>
         </div>
     </header>
+
+    {# =========================
+    HELPERS (jinja)
+    ========================= #}
+    {% macro estado_badge(estado) -%}
+    {% set s = (estado|string)|lower %}
+    {% if s == "activo" or s == "activa" or s == "activo " or s == "active" or s == "negocioestado.activo" %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                         bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+        Activo
+    </span>
+    {% else %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                         bg-rose-500/10 text-rose-200 border border-rose-500/40">
+        {{ (estado or "desconocido")|string|capitalize }}
+    </span>
+    {% endif %}
+    {%- endmacro %}
+
+    {% macro segmento_badge(segmento) -%}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                     bg-slate-800 text-slate-200 border border-slate-700">
+        Segmento: {{ (segmento or "emprendedor")|capitalize }}
+    </span>
+    {%- endmacro %}
 
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
 
@@ -42,13 +74,13 @@
                     Negocios y suscripciones
                 </h2>
                 <p class="text-[11px] text-slate-400 max-w-md">
-                    La verdad del sistema es SaaS modular: segmento + módulos + periodos.
+                    Fuente de verdad: SaaS modular (segmento + módulos + períodos).
                 </p>
             </div>
 
             {% if negocios and negocios|length > 0 %}
             <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
-                <span class="mr-1 text-slate-500">Negocios:</span>
+                <span class="mr-1 text-slate-500">Mostrando:</span>
                 <span class="font-semibold text-slate-100">{{ negocios|length }}</span>
             </div>
             {% endif %}
@@ -56,13 +88,15 @@
 
         {% if negocios and negocios|length > 0 %}
 
-        {# MOBILE: CARDS #}
+        {# =========================
+        MOBILE: CARDS
+        ========================= #}
         <div class="space-y-3 md:hidden">
             {% for n in negocios %}
             <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
                 <div class="flex items-start justify-between gap-2">
-                    <div class="space-y-0.5">
-                        <h3 class="text-sm font-semibold text-slate-100">
+                    <div class="space-y-0.5 min-w-0">
+                        <h3 class="text-sm font-semibold text-slate-100 truncate">
                             {{ n.nombre }}
                         </h3>
                         <p class="text-[10px] text-slate-500">
@@ -71,22 +105,8 @@
                     </div>
 
                     <div class="flex flex-col items-end gap-1">
-                        {% if n.estado == "activo" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                         bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
-                            Activo
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                         bg-rose-500/10 text-rose-200 border border-rose-500/40">
-                            {{ (n.estado or "desconocido")|capitalize }}
-                        </span>
-                        {% endif %}
-
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                         bg-slate-800 text-slate-200 border border-slate-700">
-                            Segmento: {{ (n.segmento or "emprendedor")|capitalize }}
-                        </span>
+                        {{ estado_badge(n.estado) }}
+                        {{ segmento_badge(n.segmento) }}
                     </div>
                 </div>
 
@@ -97,11 +117,11 @@
                     </div>
                     <div>
                         <dt class="text-[10px] text-slate-500">Usuarios</dt>
-                        <dd class="font-semibold">{{ n.usuarios }}</dd>
+                        <dd class="font-semibold">{{ n.usuarios or 0 }}</dd>
                     </div>
                     <div>
                         <dt class="text-[10px] text-slate-500">Mov. 30 días</dt>
-                        <dd class="font-semibold">{{ n.movimientos_30d }}</dd>
+                        <dd class="font-semibold">{{ n.movimientos_30d or 0 }}</dd>
                     </div>
                 </dl>
 
@@ -110,18 +130,33 @@
                         Próximo corte:
                         <span class="text-slate-300">{{ n.next_period_end_cl or "—" }}</span>
                     </p>
-                    <a href="/superadmin/negocios/{{ n.id }}"
-                       class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-medium
-                    border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
-                    transition-colors">
-                        Detalle
-                    </a>
+
+                    <div class="flex items-center gap-2">
+                        <a href="/superadmin/negocios/{{ n.id }}"
+                           class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-medium
+                                  border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
+                                  transition-colors">
+                            Detalle
+                        </a>
+
+                        {# opcional (solo si backend lo soporta): n.impersonate_url o n.can_impersonate #}
+                        {% if n.impersonate_url %}
+                        <a href="{{ n.impersonate_url }}"
+                           class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-medium
+                                  border border-slate-700 text-slate-200 hover:border-emerald-400 hover:text-emerald-200
+                                  transition-colors">
+                            Ver como
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
             </article>
             {% endfor %}
         </div>
 
-        {# DESKTOP/TABLET: TABLA #}
+        {# =========================
+        DESKTOP/TABLET: TABLE
+        ========================= #}
         <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto bg-slate-900/80">
             <table class="min-w-full text-[11px] sm:text-xs">
                 <thead class="bg-slate-900/90">
@@ -149,17 +184,7 @@
                         </td>
 
                         <td class="px-4 py-2 align-middle">
-                            {% if n.estado == "activo" %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                           bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
-                                Activo
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                           bg-rose-500/10 text-rose-200 border border-rose-500/40">
-                                {{ (n.estado or "desconocido")|capitalize }}
-                            </span>
-                            {% endif %}
+                            {{ estado_badge(n.estado) }}
                         </td>
 
                         <td class="px-4 py-2 align-middle text-slate-200">
@@ -175,11 +200,11 @@
                         </td>
 
                         <td class="px-4 py-2 text-right align-middle text-slate-200">
-                            {{ n.usuarios }}
+                            {{ n.usuarios or 0 }}
                         </td>
 
                         <td class="px-4 py-2 text-right align-middle text-slate-200">
-                            {{ n.movimientos_30d }}
+                            {{ n.movimientos_30d or 0 }}
                         </td>
 
                         <td class="px-4 py-2 align-middle text-[11px] sm:text-xs text-slate-400 whitespace-nowrap">
@@ -187,12 +212,23 @@
                         </td>
 
                         <td class="px-4 py-2 text-right align-middle">
-                            <a href="/superadmin/negocios/{{ n.id }}"
-                               class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium
-                        border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
-                        transition-colors">
-                                Detalle
-                            </a>
+                            <div class="inline-flex items-center gap-2 justify-end">
+                                <a href="/superadmin/negocios/{{ n.id }}"
+                                   class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium
+                                          border border-slate-600 text-slate-100 hover:border-cyan-400 hover:text-cyan-300
+                                          transition-colors">
+                                    Detalle
+                                </a>
+
+                                {% if n.impersonate_url %}
+                                <a href="{{ n.impersonate_url }}"
+                                   class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium
+                                          border border-slate-700 text-slate-200 hover:border-emerald-400 hover:text-emerald-200
+                                          transition-colors">
+                                    Ver como
+                                </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

@@ -1,6 +1,6 @@
 ﻿# core/security.py
 """
-Seguridad / Sesiones – ORBION (SaaS enterprise)
+Seguridad / Sesiones – ORBION (SaaS enterprise, baseline aligned)
 
 ✔ Hash/verify password con bcrypt (límite 72 bytes)
 ✔ Sesiones persistidas en BD (revocables)
@@ -9,9 +9,15 @@ Seguridad / Sesiones – ORBION (SaaS enterprise)
 ✔ Impersonación (superadmin -> modo negocio) vía payload firmado
 ✔ Dependencias FastAPI: require_user_dep / require_roles_dep / require_superadmin_dep
 
-NOTA:
-- El token real se valida SIEMPRE contra BD (cookie solo lleva datos mínimos firmados).
-- En enterprise, la cookie NO contiene el rol definitivo (se calcula desde BD).
+Baseline:
+- La cookie guarda un payload mínimo (user_id + token_sesion + acting_negocio_id opcional).
+- El rol efectivo se calcula desde BD (superadmin impersonando => admin).
+- Contrato de impersonación:
+    - Cookie: acting_negocio_id / acting_negocio_nombre
+    - User dict expone:
+        acting_negocio_id (source of truth)
+        acting_negocio_nombre
+        impersonando_negocio_id (alias compat)
 """
 
 from __future__ import annotations
@@ -106,7 +112,6 @@ def crear_sesion_db(db: Session, usuario: Usuario) -> str:
     ).update({SesionUsuario.activo: 0})
 
     token_sesion = secrets.token_urlsafe(int(settings.SESSION_TOKEN_BYTES))
-
     ahora = _utcnow_aware()
 
     nueva_sesion = SesionUsuario(
@@ -143,11 +148,11 @@ def _default_payload(usuario: Usuario, token_sesion: str) -> dict[str, Any]:
     Payload mínimo de cookie (firmado).
     """
     return {
-        "user_id": usuario.id,
+        "user_id": int(usuario.id),
         "token_sesion": token_sesion,
-        # Timestamp de auditoría (informativo)
+        # Timestamp informativo
         "ts": _utcnow_aware().isoformat(),
-        # Impersonación (opcionales)
+        # Impersonación (source of truth)
         "acting_negocio_id": None,
         "acting_negocio_nombre": None,
     }
@@ -165,7 +170,8 @@ def _decode_cookie_payload(cookie_value: str) -> dict | None:
     try:
         raw = signer.unsign(cookie_value, max_age=SESSION_INACTIVITY_SECONDS)
         data = raw.decode("utf-8", errors="strict")
-        return json.loads(data)
+        parsed = json.loads(data)
+        return parsed if isinstance(parsed, dict) else None
     except (BadSignature, json.JSONDecodeError, UnicodeDecodeError):
         return None
     except Exception:
@@ -180,8 +186,11 @@ def _encode_cookie_payload(payload: dict) -> str:
 def _set_session_cookie_from_payload(response: RedirectResponse, payload: dict) -> None:
     signed = _encode_cookie_payload(payload)
 
-    # Max age de cookie (puede ser distinto al idle timeout interno)
-    max_age = int(settings.SESSION_MAX_AGE_SECONDS) if settings.SESSION_MAX_AGE_SECONDS else SESSION_INACTIVITY_SECONDS
+    max_age = (
+        int(settings.SESSION_MAX_AGE_SECONDS)
+        if settings.SESSION_MAX_AGE_SECONDS
+        else SESSION_INACTIVITY_SECONDS
+    )
 
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
@@ -221,10 +230,17 @@ def get_current_user(request: Request) -> dict | None:
 
     user_id = payload.get("user_id")
     token_sesion = payload.get("token_sesion")
+
     acting_negocio_id = payload.get("acting_negocio_id")
     acting_negocio_nombre = payload.get("acting_negocio_nombre")
 
     if not user_id or not token_sesion:
+        return None
+
+    # defensivo
+    try:
+        user_id_int = int(user_id)
+    except Exception:
         return None
 
     db: Session = SessionLocal()
@@ -232,7 +248,7 @@ def get_current_user(request: Request) -> dict | None:
         sesion: SesionUsuario | None = (
             db.query(SesionUsuario)
             .filter(
-                SesionUsuario.usuario_id == user_id,
+                SesionUsuario.usuario_id == user_id_int,
                 SesionUsuario.token_sesion == token_sesion,
                 SesionUsuario.activo == 1,
             )
@@ -243,10 +259,7 @@ def get_current_user(request: Request) -> dict | None:
 
         ahora = _utcnow_aware()
 
-        # Normalizar last_seen_at (SQLite puede ser naive)
         last_seen = _ensure_utc_aware(getattr(sesion, "last_seen_at", None))
-
-        # Idle timeout por last_seen_at (revoca)
         if last_seen:
             delta = ahora - last_seen
             if delta.total_seconds() > SESSION_INACTIVITY_SECONDS:
@@ -256,18 +269,17 @@ def get_current_user(request: Request) -> dict | None:
 
         usuario: Usuario | None = (
             db.query(Usuario)
-            .filter(Usuario.id == user_id, Usuario.activo == 1)
+            .filter(Usuario.id == user_id_int, Usuario.activo == 1)
             .first()
         )
         if not usuario:
             return None
 
-        # touch last_seen_at (guardamos tz-aware; si tu columna no soporta tz en SQLite,
-        # SQLAlchemy puede almacenar como naive. Igual lo normalizamos al leer.)
+        # touch last_seen_at
         sesion.last_seen_at = ahora
         db.commit()
 
-        rol_real = usuario.rol
+        rol_real = (usuario.rol or "").strip()
         rol_efectivo = rol_real
 
         negocio_id = usuario.negocio_id
@@ -277,21 +289,34 @@ def get_current_user(request: Request) -> dict | None:
             else settings.SUPERADMIN_BUSINESS_NAME
         )
 
+        acting_id_int: int | None = None
+        if acting_negocio_id:
+            try:
+                acting_id_int = int(acting_negocio_id)
+            except Exception:
+                acting_id_int = None
+
         # Impersonación (superadmin -> admin en contexto negocio)
-        if rol_real == "superadmin" and acting_negocio_id:
-            negocio_id = acting_negocio_id
+        if rol_real == "superadmin" and acting_id_int:
+            negocio_id = acting_id_int
             if acting_negocio_nombre:
-                negocio_nombre = acting_negocio_nombre
+                negocio_nombre = str(acting_negocio_nombre)
             rol_efectivo = "admin"
 
         return {
-            "id": usuario.id,
+            "id": int(usuario.id),
             "email": usuario.email,
             "negocio": negocio_nombre,
             "negocio_id": negocio_id,
             "rol": rol_efectivo,
             "rol_real": rol_real,
-            "impersonando_negocio_id": acting_negocio_id,
+
+            # ✅ Source of truth
+            "acting_negocio_id": acting_id_int,
+            "acting_negocio_nombre": str(acting_negocio_nombre) if acting_negocio_nombre else None,
+
+            # ✅ Alias compat (muchas rutas viejas lo miran)
+            "impersonando_negocio_id": acting_id_int,
         }
 
     finally:
@@ -302,20 +327,28 @@ def get_current_user(request: Request) -> dict | None:
 # ROLE HELPERS
 # =========================================================
 
+def _norm_role(x: Any) -> str:
+    try:
+        return str(x or "").strip().lower()
+    except Exception:
+        return ""
+
+
 def is_superadmin(user: dict) -> bool:
-    return (user.get("rol_real") or user.get("rol")) == "superadmin"
+    return _norm_role(user.get("rol_real") or user.get("rol")) == "superadmin"
 
 
 def is_superadmin_global(user: dict) -> bool:
-    return is_superadmin(user) and not user.get("impersonando_negocio_id")
+    # Global => no está impersonando
+    return is_superadmin(user) and not user.get("acting_negocio_id")
 
 
 def is_admin(user: dict) -> bool:
-    return user.get("rol") == "admin"
+    return _norm_role(user.get("rol")) == "admin"
 
 
 def is_operator(user: dict) -> bool:
-    return user.get("rol") == "operador"
+    return _norm_role(user.get("rol")) == "operador"
 
 
 # =========================================================
@@ -333,6 +366,8 @@ def require_user_dep(request: Request) -> dict:
 
 
 def require_roles_dep(*allowed_roles: str):
+    allowed = {str(r).strip().lower() for r in allowed_roles}
+
     def dependency(request: Request) -> dict:
         user = get_current_user(request)
         if not user:
@@ -341,8 +376,8 @@ def require_roles_dep(*allowed_roles: str):
                 detail="No autenticado.",
             )
 
-        rol = user.get("rol")
-        if rol not in allowed_roles:
+        rol = _norm_role(user.get("rol"))
+        if rol not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permisos para acceder a este recurso.",
@@ -360,7 +395,7 @@ def require_superadmin_dep(request: Request) -> dict:
             detail="No autenticado.",
         )
 
-    if (user.get("rol_real") or user.get("rol")) != "superadmin":
+    if _norm_role(user.get("rol_real") or user.get("rol")) != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo superadmin puede acceder a esta sección.",
@@ -387,8 +422,8 @@ def activar_modo_negocio(
     if not payload:
         return False
 
-    payload["acting_negocio_id"] = negocio_id
-    payload["acting_negocio_nombre"] = negocio_nombre
+    payload["acting_negocio_id"] = int(negocio_id)
+    payload["acting_negocio_nombre"] = str(negocio_nombre)
     payload["ts"] = _utcnow_aware().isoformat()
 
     _set_session_cookie_from_payload(response, payload)

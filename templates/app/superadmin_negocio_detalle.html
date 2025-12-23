@@ -3,21 +3,81 @@
 
 {% block title %}Negocio {{ negocio.nombre_fantasia }} · Consola Superadmin · ORBION{% endblock %}
 
-{# En este template NO usamos page_header; el baseline actual es header único dentro de content #}
 {% block page_header %}{% endblock %}
 
 {% block content %}
-{# Normaliza estado para Enum o string #}
-{% set estado_val = (negocio.estado.value if negocio.estado is not none and negocio.estado.value is defined else negocio.estado) %}
-{% set estado_val = (estado_val or "")|string|lower %}
 
-{# Normaliza segmento (para chips + select) #}
-{% set seg_val = (segmento or "emprendedor")|string|lower %}
+{# =========================
+HELPERS / NORMALIZACIÓN
+========================= #}
+
+{% macro norm_str(v) -%}
+{{ (v or "")|string|trim|lower }}
+{%- endmacro %}
+
+{% macro fmt_date(v) -%}
+  {# Acepta str (ISO) o datetime. Si no podemos, mostramos "—" #}
+  {% if not v %}
+    —
+  {% else %}
+    {% set s = v|string %}
+    {# si viene tipo "2025-12-23 10:00:00+00:00" o ISO, con esto basta para UI #}
+{{ s[:10] }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro chip(texto) -%}
+<span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
+               text-[10px] sm:text-[11px] font-medium text-slate-300">
+    {{ texto }}
+</span>
+{%- endmacro %}
+
+{% macro badge_estado(estado) -%}
+  {% set s = norm_str(estado) %}
+  {% if s == "activo" or s == "negocioestado.activo" or s == "active" %}
+<span class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1
+                 text-[10px] sm:text-[11px] font-medium text-emerald-200">
+    Estado: Activo
+</span>
+  {% else %}
+<span class="inline-flex items-center rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1
+                 text-[10px] sm:text-[11px] font-medium text-rose-200">
+    Estado: {{ (estado or "desconocido")|string|capitalize }}
+</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro badge_enabled(enabled) -%}
+  {% if enabled %}
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                 bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
+    Enabled
+</span>
+  {% else %}
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                 bg-slate-800 text-slate-200 border border-slate-700">
+    Bloqueado
+</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro badge_status(status) -%}
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+               bg-cyan-500/10 text-cyan-200 border border-cyan-500/40">
+    {{ status or "unknown" }}
+</span>
+{%- endmacro %}
+
+{% set estado_val = (negocio.estado.value if negocio.estado is not none and negocio.estado.value is defined else negocio.estado) %}
+{% set estado_val = norm_str(estado_val) %}
+
+{% set seg_val = norm_str(segmento or "emprendedor") %}
 
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     {# =========================
-    HEADER (mobile-first, 1 solo) — alineado al baseline del dashboard
+    HEADER (mobile-first, único)
     ========================= #}
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
@@ -33,54 +93,29 @@
                 Estado del negocio + segmento + suscripciones por módulo (SaaS modular).
             </p>
 
-            {# Chips: contexto #}
             <div class="flex flex-wrap gap-2 pt-1">
-                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-slate-300">
-                    <span class="text-slate-500 mr-1">ID</span>
-                    <span class="text-slate-100">{{ negocio.id }}</span>
-                </span>
-
-                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-slate-300">
-                    
-                    <span class="text-slate-100">{{ (seg_val or "emprendedor")|capitalize }}</span>
-                </span>
-
-                {% if estado_val == "activo" %}
-                <span class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-emerald-200">
-                    Estado: Activo
-                </span>
-                {% else %}
-                <span class="inline-flex items-center rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-rose-200">
-                    Estado: {{ (estado_val or "desconocido")|capitalize }}
-                </span>
-                {% endif %}
-
-                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-slate-300">
-                    <span class="text-slate-500 mr-1">Módulos</span>
-                    <span class="text-slate-100">{{ modulos_activos or 0 }}</span>
-                </span>
-
+                {{ chip("ID " ~ negocio.id) }}
+                {{ chip((seg_val or "emprendedor")|capitalize) }}
+                {{ badge_estado(estado_val) }}
+                {{ chip("Módulos " ~ (modulos_activos or 0)) }}
                 {% if next_period_end %}
-                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
-              text-[10px] sm:text-[11px] font-medium text-slate-300">
-                    <span class="text-slate-500 mr-1">Próximo corte</span>
-                    <span class="text-slate-100">{{ next_period_end[:10] }}</span>
-                </span>
+                {{ chip("Próximo corte " ~ fmt_date(next_period_end)) }}
                 {% endif %}
             </div>
         </div>
 
-        <div class="shrink-0 pt-0.5">
+        <div class="shrink-0 pt-0.5 flex items-center gap-2">
             <a href="/superadmin/negocios"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-            text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-            transition-colors">
-                ← Volver a negocios
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                ← Volver
+            </a>
+            <a href="/superadmin/jobs"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                Jobs
             </a>
         </div>
     </header>
@@ -106,18 +141,25 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    <a href="/superadmin/negocios/{{ negocio.id }}/ver-como"
+                    <a href="/superadmin/negocios/{{ negocio.id }}/auditoria"
                        class="inline-flex justify-center items-center px-4 h-10 rounded-full text-[11px] sm:text-xs font-semibold
-            text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 transition-transform transition-colors active:scale-[0.97]">
-                        Ver como este negocio
+                    border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300
+                    transition-colors active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                        Ver auditoría
                     </a>
 
+                    <a href="/superadmin/negocios/{{ negocio.id }}/ver-como"
+                       class="inline-flex justify-center items-center px-4 h-10 rounded-full text-[11px] sm:text-xs font-semibold
+                    text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 transition-transform transition-colors active:scale-[0.97]
+                    focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
+                        Ver como este negocio
+                    </a>
                 </div>
             </div>
         </header>
 
         {# =========================
-        FORM: Estado + Segmento (2-up en desktop, stacked en mobile)
+        FORM: Segmento + Estado
         ========================= #}
         <div class="border-t border-slate-800 pt-4 space-y-4">
 
@@ -135,7 +177,7 @@
                         <select id="segmento"
                                 name="segmento"
                                 class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
-                   focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
                             <option value="emprendedor" {% if seg_val=="emprendedor" %}selected{% endif %}>Emprendedor</option>
                             <option value="pyme" {% if seg_val=="pyme" %}selected{% endif %}>Pyme</option>
                             <option value="enterprise" {% if seg_val=="enterprise" %}selected{% endif %}>Enterprise</option>
@@ -145,16 +187,16 @@
                     <div class="sm:col-span-4">
                         <button type="submit"
                                 class="w-full h-10 inline-flex justify-center items-center px-4 rounded-full text-[11px] sm:text-xs font-semibold
-                   text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 shadow-sm active:scale-[0.97]
-                   transition-transform transition-colors">
+                           text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 shadow-sm active:scale-[0.97]
+                           transition-transform transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
                             Guardar segmento
                         </button>
                     </div>
                 </div>
 
                 <p class="text-[11px] text-slate-400">
-                    El segmento modifica el <span class="text-slate-200 font-medium">entitlements snapshot</span> (feature gates / límites)
-                    y es la base para pricing y elegibilidad de módulos.
+                    El segmento modifica el <span class="text-slate-200 font-medium">entitlements snapshot</span>
+                    (feature gates / límites) y es base para pricing y elegibilidad de módulos.
                 </p>
             </form>
 
@@ -172,7 +214,7 @@
                         <select id="estado"
                                 name="estado"
                                 class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
-                   focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
                             <option value="activo" {% if estado_val=="activo" %}selected{% endif %}>Activo</option>
                             <option value="suspendido" {% if estado_val=="suspendido" %}selected{% endif %}>Suspendido</option>
                         </select>
@@ -181,8 +223,8 @@
                     <div class="sm:col-span-4">
                         <button type="submit"
                                 class="w-full h-10 inline-flex justify-center items-center px-4 rounded-full text-[11px] sm:text-xs font-semibold
-                   text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 shadow-sm active:scale-[0.97]
-                   transition-transform transition-colors">
+                           text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 shadow-sm active:scale-[0.97]
+                           transition-transform transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
                             Guardar estado
                         </button>
                     </div>
@@ -209,7 +251,7 @@
                 Suscripciones por módulo
             </h3>
             <p class="text-[11px] text-slate-400 max-w-2xl">
-                Esta vista refleja la verdad del sistema: enabled/status/period/cancel_at_period_end por módulo.
+                Refleja la verdad: enabled/status/period/cancel_at_period_end por módulo.
             </p>
         </header>
 
@@ -226,29 +268,15 @@
                     </div>
 
                     <div class="flex flex-col items-end gap-1">
-                        {% if m.enabled %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-               bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
-                            Enabled
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-               bg-slate-800 text-slate-200 border border-slate-700">
-                            Bloqueado
-                        </span>
-                        {% endif %}
-
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-               bg-cyan-500/10 text-cyan-200 border border-cyan-500/40">
-                            {{ m.status or "unknown" }}
-                        </span>
+                        {{ badge_enabled(m.enabled) }}
+                        {{ badge_status(m.status) }}
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
                     <div>
                         <p class="text-[10px] text-slate-500">Período hasta</p>
-                        <p class="font-medium">{{ m.period_end[:10] if m.period_end else "—" }}</p>
+                        <p class="font-medium">{{ fmt_date(m.period_end) }}</p>
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-500">Cancelación programada</p>
@@ -256,12 +284,12 @@
                     </div>
                 </div>
 
-                {# Acciones (mobile-first): se muestran solo si el módulo está enabled o si está bloqueado para activar #}
                 <div class="pt-1 flex flex-wrap gap-2">
                     {% if not m.enabled %}
                     <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/activate" method="post">
                         <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
-                             text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97] transition">
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97] transition
+                               focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
                             Activar (trial)
                         </button>
                     </form>
@@ -269,14 +297,16 @@
                     {% if m.cancel_at_period_end %}
                     <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/reactivate" method="post">
                         <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                               border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                                 border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                             Reactivar
                         </button>
                     </form>
                     {% else %}
                     <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/cancel" method="post">
                         <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                               border border-rose-500/40 text-rose-200 bg-rose-500/10 hover:bg-rose-500/15 transition">
+                                 border border-rose-500/40 text-rose-200 bg-rose-500/10 hover:bg-rose-500/15 transition
+                                 focus:outline-none focus:ring-2 focus:ring-rose-400/50">
                             Cancelar fin período
                         </button>
                     </form>
@@ -284,15 +314,18 @@
 
                     <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/renew-now" method="post">
                         <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                             border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                               border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                               focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                             Forzar renovación
                         </button>
                     </form>
 
-                    {% if m.status != "suspended" %}
+                    {% set st = norm_str(m.status) %}
+                    {% if st != "suspended" and st != "suspenDido"|lower %}
                     <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/suspend" method="post">
                         <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                               border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                                 border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                             Suspender
                         </button>
                     </form>
@@ -303,7 +336,7 @@
             {% endfor %}
         </div>
 
-        {# DESKTOP/TABLET: table + acciones #}
+        {# DESKTOP/TABLET: table #}
         <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto bg-slate-900/80">
             <table class="min-w-full text-[11px] sm:text-xs">
                 <thead class="bg-slate-900/90">
@@ -313,7 +346,7 @@
                         <th class="px-4 py-2 text-left">Status</th>
                         <th class="px-4 py-2 text-left">Enabled</th>
                         <th class="px-4 py-2 text-left whitespace-nowrap">Período hasta</th>
-                        <th class="px-4 py-2 text-left whitespace-nowrap">Cancelación programada</th>
+                        <th class="px-4 py-2 text-left whitespace-nowrap">Cancelación</th>
                         <th class="px-4 py-2 text-left">Acciones</th>
                     </tr>
                 </thead>
@@ -323,37 +356,17 @@
                     <tr class="hover:bg-slate-900 align-top">
                         <td class="px-4 py-2 text-slate-100 font-medium">{{ m.label }}</td>
                         <td class="px-4 py-2 text-slate-300">{{ m.slug }}</td>
-                        <td class="px-4 py-2">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
-                           bg-cyan-500/10 text-cyan-200 border-cyan-500/40">
-                                {{ m.status or "unknown" }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-2">
-                            {% if m.enabled %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
-                           bg-emerald-500/10 text-emerald-200 border-emerald-500/40">
-                                Sí
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium
-                           bg-slate-800 text-slate-200 border-slate-700">
-                                No
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-2 text-slate-300 whitespace-nowrap">
-                            {{ m.period_end[:10] if m.period_end else "—" }}
-                        </td>
-                        <td class="px-4 py-2 text-slate-300 whitespace-nowrap">
-                            {{ "Sí" if m.cancel_at_period_end else "No" }}
-                        </td>
+                        <td class="px-4 py-2">{{ badge_status(m.status) }}</td>
+                        <td class="px-4 py-2">{{ badge_enabled(m.enabled) }}</td>
+                        <td class="px-4 py-2 text-slate-300 whitespace-nowrap">{{ fmt_date(m.period_end) }}</td>
+                        <td class="px-4 py-2 text-slate-300 whitespace-nowrap">{{ "Sí" if m.cancel_at_period_end else "No" }}</td>
                         <td class="px-4 py-2">
                             <div class="flex flex-wrap gap-2">
                                 {% if not m.enabled %}
                                 <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/activate" method="post">
                                     <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
-                                   text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97] transition">
+                                     text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97] transition
+                                     focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
                                         Activar
                                     </button>
                                 </form>
@@ -361,14 +374,16 @@
                                 {% if m.cancel_at_period_end %}
                                 <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/reactivate" method="post">
                                     <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                                     border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                                       border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                                       focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                                         Reactivar
                                     </button>
                                 </form>
                                 {% else %}
                                 <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/cancel" method="post">
                                     <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                                     border border-rose-500/40 text-rose-200 bg-rose-500/10 hover:bg-rose-500/15 transition">
+                                       border border-rose-500/40 text-rose-200 bg-rose-500/10 hover:bg-rose-500/15 transition
+                                       focus:outline-none focus:ring-2 focus:ring-rose-400/50">
                                         Cancelar
                                     </button>
                                 </form>
@@ -376,15 +391,18 @@
 
                                 <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/renew-now" method="post">
                                     <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                                   border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                                     border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                                     focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                                         Renovar ahora
                                     </button>
                                 </form>
 
-                                {% if m.status != "suspended" %}
+                                {% set st = norm_str(m.status) %}
+                                {% if st != "suspended" %}
                                 <form action="/superadmin/negocios/{{ negocio.id }}/modules/{{ m.slug }}/suspend" method="post">
                                     <button class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-medium
-                                     border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition">
+                                       border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition
+                                       focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
                                         Suspender
                                     </button>
                                 </form>
@@ -405,8 +423,6 @@
         {% endif %}
 
     </section>
-
-  
 
 </div>
 {% endblock %}

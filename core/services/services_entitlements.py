@@ -1,16 +1,16 @@
 ﻿# core/services/services_entitlements.py
 """
-services_entitlements.py – ORBION SaaS (enterprise)
+services_entitlements.py – ORBION SaaS (enterprise, baseline aligned)
 
 ✅ Fuente única: Negocio.entitlements (verdad funcional)
 ✅ Segmentos oficiales: emprendedor / pyme / enterprise
-✅ Límites por módulo, basados en defaults por segmento (con overrides por negocio)
-✅ Legacy: plan_tipo solo como fallback interno -> se mapea al contrato nuevo
+✅ Límites por módulo (defaults por segmento + overrides por negocio)
+✅ Legacy: plan_tipo solo como fallback -> se mapea al contrato nuevo
 ✅ Snapshot para Hub/Superadmin/Enforcement:
-   - modules: enabled/status/period
-   - limits por módulo (ya resueltos por segmento + overrides)
-   - usage real por período (desde UsageCounter, solo módulos conocidos)
-   - overlay de SuscripcionModulo si existe (trial_ends, cancel_at_period_end, current_period_*)
+   - modules: enabled/status/period (desde entitlements)
+   - limits por módulo (resueltos)
+   - usage real por período (UsageCounter; solo módulos conocidos)
+   - overlay SuscripcionModulo si existe (trial_ends, cancel_at_period_end, period*)
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
+from core.logging_config import logger
 from core.models import Negocio
 from core.models.enums import ModuleKey
 from core.models.saas import SuscripcionModulo
@@ -33,13 +34,13 @@ _ALLOWED_SEGMENTS = {"emprendedor", "pyme", "enterprise"}
 
 # =========================================================
 # STATUSES (canon)
+# Nota: incluye "inactive" para módulos apagados funcionalmente.
 # =========================================================
 _ALLOWED_STATUSES = {"trial", "active", "past_due", "suspended", "cancelled", "inactive"}
 
 
 # =========================================================
 # DEFAULT LIMITS POR SEGMENTO (BASELINE)
-# Puedes ajustar números cuando quieras, pero el CONTRATO queda estable.
 # =========================================================
 DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
     "emprendedor": {
@@ -59,7 +60,6 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
             "proveedores": 50,
             "evidencias_mb": 1_024,
         },
-        # futuros módulos (si los activas)
         "analytics_plus": {},
         "ml_ia": {},
     },
@@ -108,10 +108,9 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
 
 # =========================================================
 # DEFAULT ENTITLEMENTS (baseline)
-# - core: SIEMPRE enabled/active (plataforma)
-# - wms: base product (miniWMS) -> enabled/active por defecto
-# - inbound: depende del negocio (por defecto disabled)
-# - limits: se resuelven por segmento + overrides
+# core: SIEMPRE enabled/active (plataforma)
+# wms: base product -> enabled/active por defecto
+# inbound: por defecto disabled (se activa por provisioning explícito)
 # =========================================================
 def default_entitlements() -> dict:
     segment = "emprendedor"
@@ -121,43 +120,14 @@ def default_entitlements() -> dict:
         "segment": segment,
         "modules": {
             "core": {"enabled": True, "status": "active"},
-            "wms": {"enabled": False, "status": "inactive"},
-            "inbound": {"enabled": True, "status": "inactive"},
+            "wms": {"enabled": True, "status": "active"},
+            "inbound": {"enabled": False, "status": "inactive"},
             "analytics_plus": {"enabled": False, "status": "inactive"},
             "ml_ia": {"enabled": False, "status": "inactive"},
         },
-        # limits por módulo (formato recomendado)
         "limits": base_limits,
         "billing": {"source": "baseline"},
     }
-
-
-# =========================================================
-# LEGACY FALLBACK (opcional, interno)
-# Mapea tu plan_tipo legacy -> contrato nuevo
-# =========================================================
-LEGACY_PLAN_MAP: dict[str, dict] = {
-    "demo": {
-        "segment": "emprendedor",
-        "modules": {
-            "core": {"enabled": True, "status": "active"},
-            "wms": {"enabled": True, "status": "active"},
-            "inbound": {"enabled": True, "status": "trial"},
-        },
-        "limits": {},  # si vacío => se rellena por defaults del segmento
-        "billing": {"source": "legacy"},
-    },
-    "full": {
-        "segment": "pyme",
-        "modules": {
-            "core": {"enabled": True, "status": "active"},
-            "wms": {"enabled": True, "status": "active"},
-            "inbound": {"enabled": True, "status": "active"},
-        },
-        "limits": {},
-        "billing": {"source": "legacy"},
-    },
-}
 
 
 # =========================================================
@@ -186,6 +156,7 @@ def _module_alias(mk: str) -> str:
     Normaliza nombres históricos a claves canónicas.
     - wms_core -> wms
     - core_wms -> wms
+    - basic_wms -> wms
     - inbound_orbion -> inbound
     """
     mk = _safe_str(mk).lower()
@@ -203,9 +174,10 @@ def _merge_limits_for_segment(segment: str, limits_in: Any) -> dict[str, dict[st
     Resuelve limits por módulo:
     - Defaults por segmento
     - Overrides por negocio en entitlements["limits"] (si vienen)
-      Soporta:
-        A) limits por módulo: {"inbound": {...}, "wms": {...}}
-        B) (legacy) limits planos: {"usuarios_totales": 3, ...} -> se asignan a "wms"
+
+    Soporta:
+      A) Por módulo: {"inbound": {...}, "wms": {...}}
+      B) Legacy plano: {"usuarios_totales": 3, ...} -> se asigna a "wms"
     """
     base = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(segment, {}))
 
@@ -230,17 +202,48 @@ def _merge_limits_for_segment(segment: str, limits_in: Any) -> dict[str, dict[st
 
 
 # =========================================================
+# LEGACY PLAN -> CONTRATO NUEVO (fallback)
+# =========================================================
+def _map_legacy_plan_tipo(plan_tipo: str) -> dict:
+    """
+    Mapeo conservador (no rompe baseline):
+    - demo/free -> emprendedor (wms activo, inbound inactivo)
+    - pyme -> pyme (wms activo, inbound inactivo)
+    - enterprise -> enterprise (wms activo, inbound inactivo)
+    Nota: inbound se activa por provisioning explícito (SuscripcionModulo + update entitlements).
+    """
+    p = _safe_str(plan_tipo, "demo").lower()
+    if p in {"enterprise", "ent"}:
+        seg = "enterprise"
+    elif p in {"pyme", "pro"}:
+        seg = "pyme"
+    else:
+        seg = "emprendedor"
+
+    ent = default_entitlements()
+    ent["segment"] = seg
+    ent["limits"] = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(seg, {}))
+
+    # Mantener wms como base activa; inbound por defecto no.
+    ent["modules"]["wms"] = {"enabled": True, "status": "active"}
+    ent["modules"]["inbound"] = {"enabled": False, "status": "inactive"}
+
+    ent["billing"] = {"source": "legacy", "plan_tipo": p}
+    return ent
+
+
+# =========================================================
 # NORMALIZACIÓN (contrato estable)
 # =========================================================
 def normalize_entitlements(ent: Optional[dict]) -> dict:
     """
     Garantiza estructura estándar mínima:
       segment, modules, limits, billing
-    Y fuerza core enabled/active.
-    Además:
+
     - segment en {emprendedor, pyme, enterprise}
     - module keys normalizadas (aliases)
     - limits siempre quedan por módulo (dict de dict)
+    - core siempre enabled/active
     """
     base = default_entitlements()
 
@@ -275,7 +278,6 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
 
             out_modules[mk] = mod_out
 
-        # overlay sobre defaults
         out["modules"].update(out_modules)
 
     # core obligatorio
@@ -283,7 +285,7 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
     out["modules"]["core"]["enabled"] = True
     out["modules"]["core"]["status"] = "active"
 
-    # limits: resolver defaults por segmento + overrides
+    # limits: defaults por segmento + overrides
     out["limits"] = _merge_limits_for_segment(out["segment"], ent.get("limits"))
 
     return out
@@ -297,15 +299,11 @@ def resolve_entitlements(negocio: Negocio) -> dict:
     if isinstance(ent, dict) and ent:
         return normalize_entitlements(ent)
 
-    # DEBUG opcional
-    logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos", negocio.id)
-
+    # fallback legacy (solo si no hay entitlements persistidos)
     plan = _safe_str(getattr(negocio, "plan_tipo", "demo"), "demo").lower()
-    legacy = LEGACY_PLAN_MAP.get(plan)
-    if legacy:
-        return normalize_entitlements(legacy)
+    logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos (fallback plan_tipo=%s)", negocio.id, plan)
+    return normalize_entitlements(_map_legacy_plan_tipo(plan))
 
-    return normalize_entitlements(None)
 
 # =========================================================
 # HELPERS PUBLICOS
@@ -321,7 +319,8 @@ def has_module(negocio: Negocio, module_key: str, *, require_active: bool = True
     if not require_active:
         return True
 
-    return _safe_str(mod.get("status"), "").lower() == "active"
+    st = _safe_str(mod.get("status"), "").lower()
+    return st in {"active", "trial"}  # trial cuenta como acceso
 
 
 def get_module(ent: dict, module_key: str) -> dict:
@@ -361,11 +360,6 @@ def _sub_to_overlay(sub: SuscripcionModulo | None) -> dict[str, Any]:
 
 
 def _as_modulekey_or_none(mk_norm: str) -> ModuleKey | None:
-    """
-    Convierte a ModuleKey SOLO si corresponde a enums actuales (usage).
-    - "wms" -> ModuleKey.WMS
-    - "inbound" -> ModuleKey.INBOUND
-    """
     mk_norm = _module_alias(mk_norm)
     if mk_norm == ModuleKey.INBOUND.value:
         return ModuleKey.INBOUND
@@ -375,24 +369,12 @@ def _as_modulekey_or_none(mk_norm: str) -> ModuleKey | None:
 
 
 def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
-    """
-    Snapshot canónico:
-      negocio: {id, nombre, segment}
-      entitlements: (normalizado)
-      modules: dict por módulo con:
-        - enabled/status/period (desde entitlements)
-        - limits (desde entitlements.limits[módulo])
-        - usage (desde UsageCounter si hay suscripción y module_key conocido)
-        - overlay subscription (si existe)
-        - remaining (si limits y usage están)
-    """
     n = db.query(Negocio).filter(Negocio.id == negocio_id).first()
     if not n:
         ent0 = normalize_entitlements(None)
         return {"negocio": {"id": negocio_id}, "entitlements": ent0, "modules": {}}
 
     ent = resolve_entitlements(n)
-
     limits_all = ent.get("limits") if isinstance(ent.get("limits"), dict) else {}
 
     subs = (
@@ -415,7 +397,7 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
         sub = subs_by_key.get(mk_norm)
         overlay = _sub_to_overlay(sub)
 
-        # usage real: solo si hay suscripción + module_key conocido (wms/inbound)
+        # usage real: solo si hay sub + module_key conocido (wms/inbound)
         usage: dict[str, float] = {}
         if sub:
             mk_enum = _as_modulekey_or_none(mk_norm)
@@ -425,12 +407,10 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
                 except Exception:
                     usage = {}
 
-        # limits por módulo
         limits: dict[str, Any] = {}
         if isinstance(limits_all, dict) and isinstance(limits_all.get(mk_norm), dict):
             limits = limits_all.get(mk_norm) or {}
 
-        # remaining
         remaining: dict[str, float] = {}
         if limits and usage:
             for k, lim in limits.items():

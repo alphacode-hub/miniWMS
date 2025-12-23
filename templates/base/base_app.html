@@ -82,7 +82,7 @@
                     {# Info usuario (si existe en el dict) #}
                     <div class="hidden sm:flex flex-col items-end leading-tight">
                         <span class="text-xs font-medium text-slate-100 truncate max-w-[180px]">
-                            {{ user.nombre_mostrado or user.email or "Usuario" }}
+                            {{ user.get("nombre_mostrado") or user.get("email") or "Usuario" }}
                         </span>
                         <span class="text-[11px] text-slate-500">
                             {{ user.rol or "Sesión activa" }}

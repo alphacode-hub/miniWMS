@@ -1,16 +1,17 @@
 ﻿# core/routes/routes_business.py
 """
-Registro de negocio (signup) – ORBION (SaaS enterprise)
+Registro de negocio (signup) – ORBION (SaaS enterprise, baseline aligned)
 
 ✔ Registro de negocio + usuario admin
 ✔ Validaciones robustas
 ✔ Unicidad case-insensitive
-✔ Manejo seguro de errores (sin print)
+✔ Manejo seguro de errores
 ✔ Auto-login post-registro
-✔ Baseline aligned:
-  - Negocio.entitlements default (fuente única)
-  - Negocio.estado como Enum (NegocioEstado)
-  - plan_tipo legacy (fallback interno, entitlements manda)
+
+Baseline:
+- Negocio.entitlements default (fuente única)
+- Negocio.estado como Enum (NegocioEstado)
+- plan_tipo legacy: solo fallback interno (entitlements manda)
 """
 
 from __future__ import annotations
@@ -24,29 +25,20 @@ from core.web import templates
 from core.database import get_db
 from core.logging_config import logger
 from core.models import Negocio, Usuario
-from core.models.enums import NegocioEstado
 from core.security import (
     get_current_user,
-    hash_password,
     crear_sesion_db,
     crear_cookie_sesion,
 )
+from core.services.services_business import crear_negocio_con_admin
 
 
-# ============================
-# ROUTER
-# ============================
-
-router = APIRouter(
-    prefix="/app",
-    tags=["registro_negocio"],
-)
+router = APIRouter(prefix="/app", tags=["registro_negocio"])
 
 
-# ============================
+# =========================================================
 # GET
-# ============================
-
+# =========================================================
 @router.get("/registrar-negocio", response_class=HTMLResponse)
 async def registrar_negocio_get(request: Request):
     user = get_current_user(request)
@@ -66,10 +58,9 @@ async def registrar_negocio_get(request: Request):
     )
 
 
-# ============================
+# =========================================================
 # POST
-# ============================
-
+# =========================================================
 @router.post("/registrar-negocio", response_class=HTMLResponse)
 async def registrar_negocio_post(
     request: Request,
@@ -99,7 +90,6 @@ async def registrar_negocio_post(
     if len(nombre_admin) < 3:
         errores.append("El nombre del administrador es muy corto (mínimo 3 caracteres).")
 
-    # Validación simple de email (sin dependencias)
     if (
         " " in email_norm
         or "@" not in email_norm
@@ -119,7 +109,6 @@ async def registrar_negocio_post(
     # ----------------------------
     # Unicidad (case-insensitive)
     # ----------------------------
-
     if email_norm:
         existing_user = (
             db.query(Usuario)
@@ -153,30 +142,19 @@ async def registrar_negocio_post(
         )
 
     # ----------------------------
-    # Crear negocio + admin
+    # Crear negocio + admin (source of truth: service)
     # ----------------------------
     try:
-        negocio = Negocio(
-            nombre_fantasia=nombre_negocio,
-            whatsapp_notificaciones=whatsapp or None,
-            estado=NegocioEstado.ACTIVO,  # ✅ enum aligned
-            plan_tipo="legacy",           # ✅ entitlements manda; plan_tipo solo fallback interno
+        negocio, usuario_admin = crear_negocio_con_admin(
+            db,
+            nombre_negocio=nombre_negocio,
+            whatsapp=whatsapp or None,
+            email_admin=email_norm,
+            password_admin=password,
+            nombre_admin=nombre_admin,
         )
-        db.add(negocio)
-        db.flush()  # obtiene negocio.id
 
-        usuario_admin = Usuario(
-            negocio_id=negocio.id,
-            email=email_norm,
-            password_hash=hash_password(password),
-            rol="admin",
-            activo=1,
-            nombre_mostrado=nombre_admin,
-        )
-        db.add(usuario_admin)
         db.commit()
-
-        # defensivo: asegura ids/attrs refrescados
         db.refresh(negocio)
         db.refresh(usuario_admin)
 

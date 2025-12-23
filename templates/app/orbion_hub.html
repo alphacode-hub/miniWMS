@@ -4,6 +4,15 @@
 {% block title %}ORBION · Plataforma{% endblock %}
 
 {% block content %}
+{% set u = user or {} %}
+{% set acting_id = u.get("acting_negocio_id") %}
+{% set acting_nombre = u.get("acting_negocio_nombre") %}
+{% set is_superadmin = (u.get("rol") == "superadmin") %}
+{% set is_superadmin_global = is_superadmin and not acting_id %}
+
+{% set ent = entitlements or {} %}
+{% set neg = ent.get("negocio", {}) if ent is mapping else {} %}
+
 <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
     {# =========================
@@ -17,16 +26,72 @@
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 Plataforma ORBION
             </h1>
+
+            {% if is_superadmin and acting_id %}
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Estás operando en <span class="text-slate-200 font-medium">modo negocio</span>:
+                <span class="text-cyan-300 font-semibold">{{ acting_nombre or ("Negocio #" ~ acting_id) }}</span>.
+            </p>
+            {% else %}
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
                 Accede a los módulos de tu organización. Activa lo que necesitas hoy y escala cuando tu operación lo pida.
             </p>
+            {% endif %}
         </div>
 
-        {# Slot derecho (si quieres algo futuro). De momento limpio. #}
         <div class="shrink-0 flex items-center gap-2">
-            
+            {% if is_superadmin and acting_id %}
+            <a href="/superadmin/salir-modo-negocio"
+               class="inline-flex items-center rounded-full border border-rose-500/40 px-3 py-1.5
+                      text-[11px] font-medium text-rose-200 bg-rose-500/10 hover:bg-rose-500/15
+                      transition-colors">
+                Salir modo negocio
+            </a>
+            {% endif %}
         </div>
     </header>
+
+    {# =========================
+    SUPERADMIN GLOBAL: NO MOSTRAR MÓDULOS
+    ========================= #}
+    {% if is_superadmin_global %}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 space-y-2">
+        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            Modo superadmin global
+        </p>
+        <h2 class="text-sm sm:text-base font-semibold text-slate-100">
+            Consola de administración ORBION
+        </h2>
+        <p class="text-[11px] sm:text-xs text-slate-400 max-w-2xl leading-snug">
+            Desde aquí no se accede a módulos operacionales. Para operar módulos debes entrar en modo negocio
+            (impersonación) desde la consola.
+        </p>
+
+        <div class="pt-2 flex flex-wrap gap-2">
+            <a href="/superadmin/dashboard"
+               class="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
+                      text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                      transition-transform transition-colors">
+                Ir a consola superadmin →
+            </a>
+
+            <a href="/superadmin/negocios"
+               class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
+                      text-[11px] font-medium text-slate-200 bg-slate-900
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Ver negocios (impersonar) →
+            </a>
+
+            <a href="/superadmin/jobs"
+               class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
+                      text-[11px] font-medium text-slate-200 bg-slate-900
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Job Center →
+            </a>
+        </div>
+    </section>
+
+    {% else %}
 
     {# =========================
     ONBOARDING (sin módulos)
@@ -45,39 +110,31 @@
     {# =========================
     PANEL PLAN & ESTADO (solo admin negocio)
     ========================= #}
-    {% set is_admin = user and (user.get("rol") == "admin") %}
-    {% set has_entitlements = entitlements and entitlements.get("negocio") %}
+    {% set is_admin = (u and (u.get("rol") == "admin")) %}
+    {% set has_entitlements = (neg is mapping) and (neg|length > 0) %}
 
     {% if is_admin and has_entitlements %}
-    {% set seg = entitlements.get("negocio", {}).get("segmento") or "emprendedor" %}
+    {% set seg = (neg.get("segmento") or neg.get("segment") or "emprendedor") %}
+    {% set seg = (seg|string)|lower %}
 
-    {# Jinja: para contar dentro de loops, usa namespace() #}
     {% set ns = namespace(enabled_count=0, blocked_count=0, next_period_end=None) %}
 
-    {# Fuente única: dashboard_modules (coincide con lo que ve el usuario) #}
     {% for m in (dashboard_modules or []) %}
-    {# Ignorar módulos informativos / próximamente #}
     {% if m and (m.status != "coming_soon") %}
-
     {% if m.enabled %}
     {% set ns.enabled_count = ns.enabled_count + 1 %}
-
-    {# m.period_end es ISO string: "YYYY-MM-DD" o "YYYY-MM-DDTHH:MM:SS..." #}
     {% if m.period_end %}
     {% if ns.next_period_end is none %}
     {% set ns.next_period_end = m.period_end %}
     {% else %}
-    {# ISO string compare funciona (YYYY-MM-DD...) #}
     {% if m.period_end < ns.next_period_end %}
     {% set ns.next_period_end = m.period_end %}
     {% endif %}
     {% endif %}
     {% endif %}
-
     {% else %}
     {% set ns.blocked_count = ns.blocked_count + 1 %}
     {% endif %}
-
     {% endif %}
     {% endfor %}
 
@@ -90,7 +147,7 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <h2 class="text-sm sm:text-base font-semibold text-slate-100">
-                        {{ entitlements.get("negocio", {}).get("nombre") or "Tu negocio" }}
+                        {{ neg.get("nombre") or "Tu negocio" }}
                     </h2>
 
                     <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
@@ -122,22 +179,21 @@
             <div class="flex flex-wrap gap-2 justify-start lg:justify-end">
                 <a href="/app/planes"
                    class="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
-                  text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
-                  active:scale-[0.97] transition-transform transition-colors">
+                          text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
+                          active:scale-[0.97] transition-transform transition-colors">
                     Administrar suscripción
                 </a>
 
                 <a href="/app/planes"
                    class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                          text-[11px] font-medium text-slate-200 bg-slate-900
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Ver detalle
                 </a>
             </div>
         </div>
     </section>
 
-    {# UPGRADE BANNER (si hay bloqueados) #}
     {% if ns.blocked_count > 0 %}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-3 sm:px-5 sm:py-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -153,7 +209,7 @@
             <div class="flex gap-2">
                 <a href="/app/planes"
                    class="inline-flex items-center rounded-full border border-cyan-500/50 px-4 py-2
-                    text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/10 transition-colors">
+                          text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/10 transition-colors">
                     Ver planes
                 </a>
             </div>
@@ -162,27 +218,14 @@
     {% endif %}
     {% endif %}
 
-
-
     {# =========================
     GRID DE MÓDULOS
     ========================= #}
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-
-        {% for m in dashboard_modules %}
-        <article class="
-      relative rounded-2xl
-      border border-slate-800
-      bg-slate-900/50
-      p-4 sm:p-5
-      flex flex-col gap-3 sm:gap-4
-      hover:border-cyan-400/40
-      transition
-    ">
-            <!-- Glow -->
+        {% for m in (dashboard_modules or []) %}
+        <article class="relative rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 hover:border-cyan-400/40 transition">
             <div class="absolute inset-0 rounded-2xl bg-cyan-500/5 blur-xl pointer-events-none"></div>
 
-            <!-- Header -->
             <div class="relative flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <h2 class="text-sm font-semibold text-slate-100">
@@ -193,28 +236,22 @@
                     </p>
                 </div>
 
-                <!-- Badge -->
-                <span class="
-          shrink-0 text-[10px] px-2 py-1 rounded-full border
-          {% if not m.enabled %}
-            border-slate-700 text-slate-400
-          {% elif m.status == 'trial' %}
-            border-cyan-400/60 text-cyan-300
-          {% elif m.status == 'active' %}
-            border-emerald-500/60 text-emerald-300
-          {% elif m.status in ('past_due', 'suspended') %}
-            border-amber-500/60 text-amber-300
-          {% else %}
-            border-slate-600 text-slate-300
-          {% endif %}
-        ">
+                <span class="shrink-0 text-[10px] px-2 py-1 rounded-full border
+                    {% if not m.enabled %}
+                        border-slate-700 text-slate-400
+                    {% elif m.status == 'trial' %}
+                        border-cyan-400/60 text-cyan-300
+                    {% elif m.status == 'active' %}
+                        border-emerald-500/60 text-emerald-300
+                    {% elif m.status in ('past_due', 'suspended') %}
+                        border-amber-500/60 text-amber-300
+                    {% else %}
+                        border-slate-600 text-slate-300
+                    {% endif %}">
                     {{ m.badge }}
                 </span>
             </div>
 
-            {# =========================
-            USAGE BAR (solo si enabled)
-            ========================= #}
             {% if m.enabled and m.metric_label %}
             <div class="space-y-1">
                 <div class="flex justify-between text-[10px] text-slate-400">
@@ -224,28 +261,21 @@
 
                 <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
                     {% set pct = (m.metric_used / m.metric_limit * 100) if m.metric_limit and m.metric_limit > 0 else 0 %}
-                    <div class="
-                         h-full
+                    <div class="h-full
                          {% if pct < 80 %}
-                bg-emerald-400
-              {% elif pct < 100 %}
-                bg-amber-400
-              {% else %}
-                bg-red-500
-              {% endif %}
-            "
-            style="width: {{ pct|round(0) }}%">
-          </div>
+                            bg-emerald-400
+                        {% elif pct < 100 %}
+                            bg-amber-400
+                        {% else %}
+                            bg-red-500
+                        {% endif %}"
+                        style="width: {{ pct|round(0) }}%">
+                    </div>
                 </div>
             </div>
             {% endif %}
 
-            {# =========================
-            FOOTER / CTA (sin cancelar/reactivar)
-            ========================= #}
             <div class="mt-auto pt-3 sm:pt-4 flex items-center justify-between gap-3 relative">
-
-                {# Periodo (solo si enabled) #}
                 {% if m.enabled and m.period_end %}
                 <span class="text-[10px] text-slate-500">
                     Período hasta {{ m.period_end[:10] }}
@@ -254,32 +284,16 @@
                 <span></span>
                 {% endif %}
 
-                {# CTA único por estado #}
                 {% if m.enabled %}
                 <a href="{{ m.url }}"
-                   class="
-               inline-flex items-center gap-2
-               text-xs font-medium
-               px-4 py-2 rounded-full
-               bg-[#00E4FF]
-               text-slate-900
-               hover:bg-cyan-300
-               active:scale-[0.97]
-               transition-transform transition-colors
-             ">
+                   class="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-full bg-[#00E4FF]
+                          text-slate-900 hover:bg-cyan-300 active:scale-[0.97] transition-transform transition-colors">
                     Abrir
                 </a>
                 {% else %}
                 <a href="/app/planes"
-                   class="
-               inline-flex items-center gap-2
-               text-xs font-medium
-               px-4 py-2 rounded-full
-               border border-cyan-500/50
-               text-cyan-300
-               hover:bg-cyan-500/10
-               transition
-             ">
+                   class="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-full
+                          border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 transition">
                     Suscribirse
                 </a>
                 {% endif %}
@@ -303,19 +317,14 @@
         </div>
 
         <a href="/superadmin/dashboard"
-           class="
-         inline-flex items-center gap-2
-         text-xs font-medium
-         px-4 py-2 rounded-full
-         border border-slate-700
-         text-slate-200
-         hover:bg-slate-800/70
-         transition
-       ">
+           class="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-full
+                  border border-slate-700 text-slate-200 hover:bg-slate-800/70 transition">
             Ir a consola superadmin
         </a>
     </section>
     {% endif %}
+
+    {% endif %} {# /endif superadmin_global #}
 
 </div>
 {% endblock %}

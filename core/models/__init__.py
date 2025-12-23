@@ -7,12 +7,19 @@ Modelos ORM – ORBION (SaaS enterprise)
 ✔ Timestamps UTC timezone-aware
 ✔ Relaciones claras y coherentes
 ✔ Preparado para crecimiento + Alembic
+
+Contrato SaaS operativo (vNext – base):
+- Negocio puede ser:
+  - CUSTOMER (tenant real)
+  - SYSTEM (tenants internos / consola / “ORBION system”, no es cliente)
+- El módulo de entrada por defecto para CUSTOMER es INBOUND (enabled=True).
+- WMS queda apagado por defecto (se habilita por suscripción/entitlements).
 """
 
 from __future__ import annotations
 
-
 import enum
+import json
 from datetime import datetime, timezone, date
 
 from sqlalchemy import (
@@ -30,10 +37,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import Enum as SAEnum
-from core.models.enums import NegocioEstado
 
 from core.database import Base
+from core.models.enums import NegocioEstado
 from core.models.time import utcnow
+
 
 # =========================================================
 # CORE
@@ -52,20 +60,54 @@ class Auditoria(Base):
 
     negocio = relationship("Negocio", back_populates="auditorias")
 
-def _default_entitlements() -> dict:
-    # Baseline v1 (simple, estable, sin límites hardcodeados aquí)
+
+# =========================================================
+# SAAS / TENANCY
+# =========================================================
+
+class TenantType(str, enum.Enum):
+    CUSTOMER = "customer"
+    SYSTEM = "system"
+
+
+def _default_entitlements_customer() -> dict:
+    """
+    Default para un tenant CUSTOMER (cliente real).
+    Regla: INBOUND es el módulo de entrada (enabled=True).
+    """
     return {
         "segment": "emprendedor",
         "modules": {
             "core": {"enabled": True, "status": "active"},
-            # si ya manejas estos keys en tu sistema:
-            "wms": {"enabled": True, "status": "active"},
-            "inbound": {"enabled": False, "status": "inactive"},
+            "inbound": {"enabled": True, "status": "active"},
+            "wms": {"enabled": False, "status": "inactive"},
         },
-        # los límites se completan en services_entitlements (source of truth)
         "limits": {},
         "billing": {"source": "baseline"},
     }
+
+
+def _default_entitlements_system() -> dict:
+    """
+    Default para un tenant SYSTEM (interno).
+    Nota: este negocio NO representa un cliente. Útil para auditoría/telemetría/ops internas.
+    """
+    return {
+        "segment": "system",
+        "modules": {
+            "core": {"enabled": True, "status": "active"},
+            # System no necesita módulos operativos por defecto:
+            "inbound": {"enabled": False, "status": "inactive"},
+            "wms": {"enabled": False, "status": "inactive"},
+        },
+        "limits": {},
+        "billing": {"source": "system"},
+    }
+
+
+def _default_entitlements() -> dict:
+    # Default DB para nuevos negocios (CUSTOMER)
+    return _default_entitlements_customer()
 
 
 class Negocio(Base):
@@ -75,11 +117,28 @@ class Negocio(Base):
     nombre_fantasia = Column(String, unique=True, nullable=False, index=True)
     whatsapp_notificaciones = Column(String, nullable=True)
 
+    # Tipo de tenant: customer (cliente) vs system (interno)
+    tenant_type = Column(
+        SAEnum(TenantType, name="negocio_tenant_type"),
+        default=TenantType.CUSTOMER,
+        nullable=False,
+        index=True,
+    )
+
+    # Estado operativo del negocio (bloquea acceso)
+    estado = Column(
+        SAEnum(NegocioEstado, name="negocio_estado"),
+        default=NegocioEstado.ACTIVO,
+        nullable=False,
+    )
+
+    # Legacy plan (fallback interno, NO source-of-truth)
     plan_tipo = Column(String, default="legacy", nullable=False)
     plan_fecha_inicio = Column(Date, nullable=True)
     plan_fecha_fin = Column(Date, nullable=True)
     plan_renovacion_cada_meses = Column(Integer, default=1, nullable=False)
 
+    # Entitlements (source-of-truth funcional; overlay subscriptions en snapshot)
     entitlements = Column(JSON, nullable=False, default=_default_entitlements)
 
     ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
@@ -94,7 +153,6 @@ class Negocio(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-
     # --- INBOUND (strings resuelven cuando importamos modelos inbound al final)
     inbound_config = relationship("InboundConfig", back_populates="negocio", uselist=False)
     inbound_recepciones = relationship("InboundRecepcion", back_populates="negocio", cascade="all, delete-orphan")
@@ -102,12 +160,32 @@ class Negocio(Base):
     proveedores = relationship("Proveedor", back_populates="negocio", cascade="all, delete-orphan")
     plantillas_proveedor = relationship("InboundPlantillaProveedor", back_populates="negocio", cascade="all, delete-orphan")
     prealertas_inbound = relationship("InboundPrealerta", back_populates="negocio", cascade="all, delete-orphan")
-    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio",cascade="all, delete-orphan")
+    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio", cascade="all, delete-orphan")
     inbound_analytics_snapshots = relationship("InboundAnalyticsSnapshot", back_populates="negocio", cascade="all, delete-orphan")
+
+    # --- SAAS (subscriptions + usage)
     suscripciones_modulo = relationship("SuscripcionModulo", back_populates="negocio", cascade="all, delete-orphan")
-    # --- SAAS (usage / consumo por módulo y período)
     usage_counters = relationship("UsageCounter", back_populates="negocio", cascade="all, delete-orphan")
-    estado = Column(SAEnum(NegocioEstado, name="negocio_estado"), default=NegocioEstado.ACTIVO, nullable=False,)
+
+    # -------------------------
+    # Helpers de dominio (no DB)
+    # -------------------------
+    @property
+    def is_system(self) -> bool:
+        try:
+            return self.tenant_type == TenantType.SYSTEM
+        except Exception:
+            return False
+
+    def set_system_defaults(self) -> None:
+        """
+        Helper para inicialización explícita (seed/bootstrap):
+        - marcar como SYSTEM
+        - entitlements segment=system y módulos operativos apagados
+        """
+        self.tenant_type = TenantType.SYSTEM
+        self.entitlements = _default_entitlements_system()
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -211,20 +289,11 @@ class Producto(Base):
     # =========================================================
     # ✅ ENTERPRISE: Conversión Cantidad <-> Peso (para estimados)
     # =========================================================
-    # Peso unitario en KG (ej: “cada saco pesa 25 kg” => 25.0)
     peso_unitario_kg = Column(Float, nullable=True)
-
-    # “Bulto” como contenedor operacional (ej: pallet tiene bultos, o bultos = sacos/cajas)
-    # Unidades por bulto (ej: 20 unidades por caja)
     unidades_por_bulto = Column(Integer, nullable=True)
-
-    # Peso por bulto en KG (si el documento opera por bultos directos)
     peso_por_bulto_kg = Column(Float, nullable=True)
-
-    # Etiqueta opcional (ej: "saco", "caja", "bolsa")
     nombre_bulto = Column(String, nullable=True)
 
-    # Relaciones
     negocio = relationship("Negocio", back_populates="productos")
 
     plantillas_proveedor_lineas = relationship(
@@ -275,7 +344,6 @@ class Producto(Base):
         if self.peso_por_bulto_kg:
             return round(b * float(self.peso_por_bulto_kg), 6)
 
-        # fallback: unidades_por_bulto * peso_unitario_kg
         if self.unidades_por_bulto and self.peso_unitario_kg:
             return round(b * int(self.unidades_por_bulto) * float(self.peso_unitario_kg), 6)
 
@@ -314,7 +382,7 @@ class Movimiento(Base):
     codigo_producto = Column(String, nullable=True, index=True)
 
     negocio = relationship("Negocio", back_populates="movimientos")
-    
+
 
 class Alerta(Base):
     __tablename__ = "alertas"
@@ -366,10 +434,7 @@ from core.models.enums import (  # noqa: E402
     CitaEstado,
 )
 
-from core.models.saas import (
+from core.models.saas import (  # noqa: E402
     SuscripcionModulo,
     UsageCounter,
 )
-
-
-

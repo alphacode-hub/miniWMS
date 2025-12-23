@@ -1,11 +1,12 @@
 ﻿# core/services/services_usage.py
 """
-services_usage.py – ORBION SaaS (enterprise)
+services_usage.py – ORBION SaaS (enterprise, baseline aligned)
 
 ✔ Usage no acumulativo por período (period_start/end)
 ✔ Scope: negocio_id + module_key + metric_key + periodo
 ✔ Seguro multi-db (SQLite / Postgres)
 ✔ Resiliente ante concurrencia (UniqueConstraint + IntegrityError + retry)
+✔ Incremento atómico (evita lost update)
 ✔ No acopla módulos funcionales (Inbound/WMS) con planes/billing
 """
 
@@ -13,12 +14,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from core.models.saas import UsageCounter, SuscripcionModulo
 from core.models.enums import ModuleKey
+from core.models.saas import SuscripcionModulo, UsageCounter
 from core.models.time import utcnow
 
 
@@ -28,9 +31,7 @@ from core.models.time import utcnow
 
 @dataclass(frozen=True)
 class UsageWindow:
-    """
-    Ventana de uso (mismo periodo que la suscripción del módulo).
-    """
+    """Ventana de uso (mismo periodo que la suscripción del módulo)."""
     period_start: datetime
     period_end: datetime
 
@@ -40,23 +41,22 @@ class UsageWindow:
 # =========================================================
 
 def _ensure_tz(dt: datetime) -> datetime:
-    """
-    Asegura timezone-aware. En ORBION usamos UTC tz-aware.
-    """
+    """Asegura timezone-aware. En ORBION usamos UTC tz-aware."""
     if dt.tzinfo is None:
-        # asumimos UTC si viene naive
         return dt.replace(tzinfo=utcnow().tzinfo)
     return dt
 
 
-def _get_subscription_window_or_raise(
+def _norm_metric_key(metric_key: str) -> str:
+    # Canon: minúsculas, sin espacios laterales.
+    return (metric_key or "").strip().lower()
+
+
+def _get_subscription_window_or_none(
     db: Session,
     negocio_id: int,
     module_key: ModuleKey,
-) -> tuple[SuscripcionModulo, UsageWindow]:
-    """
-    Busca la suscripción del módulo y devuelve su periodo actual.
-    """
+) -> tuple[Optional[SuscripcionModulo], Optional[UsageWindow]]:
     sub = (
         db.query(SuscripcionModulo)
         .filter(SuscripcionModulo.negocio_id == negocio_id)
@@ -64,17 +64,30 @@ def _get_subscription_window_or_raise(
         .first()
     )
     if not sub:
-        raise ValueError(
-            f"No existe suscripción para módulo={module_key.value} en negocio_id={negocio_id}"
-        )
+        return None, None
 
     if not sub.current_period_start or not sub.current_period_end:
-        raise ValueError(f"Suscripción sin periodo válido: id={sub.id}")
+        return sub, None
 
     return sub, UsageWindow(
         period_start=_ensure_tz(sub.current_period_start),
         period_end=_ensure_tz(sub.current_period_end),
     )
+
+
+def _get_subscription_window_or_raise(
+    db: Session,
+    negocio_id: int,
+    module_key: ModuleKey,
+) -> tuple[SuscripcionModulo, UsageWindow]:
+    sub, window = _get_subscription_window_or_none(db, negocio_id, module_key)
+    if not sub:
+        raise ValueError(
+            f"No existe suscripción para módulo={module_key.value} en negocio_id={negocio_id}"
+        )
+    if not window:
+        raise ValueError(f"Suscripción sin periodo válido: id={sub.id}")
+    return sub, window
 
 
 def _get_or_create_counter(
@@ -87,10 +100,10 @@ def _get_or_create_counter(
     """
     Obtiene el contador de uso del periodo; si no existe, lo crea.
 
-    ✅ Enterprise: usamos SAVEPOINT (begin_nested) para que una colisión de unique
+    ✅ Enterprise: SAVEPOINT (begin_nested) para que colisión unique
     NO haga rollback de toda la transacción del caller.
     """
-    metric = (metric_key or "").strip()
+    metric = _norm_metric_key(metric_key)
     if not metric:
         raise ValueError("metric_key vacío no es válido")
 
@@ -121,17 +134,14 @@ def _get_or_create_counter(
                     value=0.0,
                 )
                 db.add(row_new)
-                db.flush()  # detecta UniqueConstraint sin commit
+                db.flush()
                 return row_new
         except IntegrityError:
-            # Otra transacción lo creó entre el first() y el insert.
             row2 = _query().first()
             if row2:
                 return row2
-            # si aún no aparece, repetimos 1 vez más
             continue
 
-    # Último intento: si sigue sin aparecer, propagamos error (algo raro pasa)
     raise IntegrityError(
         statement=None,
         params=None,
@@ -140,7 +150,7 @@ def _get_or_create_counter(
 
 
 # =========================================================
-# API PUBLICA (SERVICIO)
+# API PÚBLICA
 # =========================================================
 
 def get_usage_value(
@@ -151,11 +161,13 @@ def get_usage_value(
 ) -> float:
     """
     Retorna el uso actual (value) de una métrica en el periodo actual del módulo.
-    Si no existe contador aún, devuelve 0.
+    Si no existe suscripción o contador aún, devuelve 0.
     """
-    _, window = _get_subscription_window_or_raise(db, negocio_id, module_key)
+    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
+    if not window:
+        return 0.0
 
-    metric = (metric_key or "").strip()
+    metric = _norm_metric_key(metric_key)
     if not metric:
         return 0.0
 
@@ -184,6 +196,7 @@ def increment_usage(
 
     - delta debe ser positivo
     - No hace commit (lo gestiona el caller)
+    - Incremento atómico (evita lost update)
     """
     try:
         d = float(delta)
@@ -193,14 +206,31 @@ def increment_usage(
     if d <= 0:
         return get_usage_value(db, negocio_id, module_key, metric_key)
 
-    _, window = _get_subscription_window_or_raise(db, negocio_id, module_key)
-    row = _get_or_create_counter(db, negocio_id, module_key, metric_key, window)
+    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
+    if not window:
+        # No hay suscripción/periodo -> no contamos usage
+        return 0.0
 
-    row.value = float(row.value or 0.0) + d
-    row.updated_at = utcnow()
+    metric = _norm_metric_key(metric_key)
+    if not metric:
+        return 0.0
 
+    row = _get_or_create_counter(db, negocio_id, module_key, metric, window)
+
+    # UPDATE atómico multi-db
+    db.execute(
+        update(UsageCounter)
+        .where(UsageCounter.id == row.id)
+        .values(
+            value=UsageCounter.value + d,
+            updated_at=utcnow(),
+        )
+    )
     db.flush()
-    return float(row.value)
+
+    # Releer el valor actualizado (barato por PK)
+    row2 = db.query(UsageCounter.value).filter(UsageCounter.id == row.id).first()
+    return float(row2[0]) if row2 and row2[0] is not None else float(d)
 
 
 def get_or_create_usage_counter(
@@ -208,12 +238,14 @@ def get_or_create_usage_counter(
     negocio_id: int,
     module_key: ModuleKey,
     metric_key: str,
-) -> UsageCounter:
+) -> Optional[UsageCounter]:
     """
     Retorna el UsageCounter del periodo actual (creándolo si no existe).
-    Útil para el resolver de entitlements (para leer más de una métrica).
+    Si no hay suscripción/periodo, retorna None.
     """
-    _, window = _get_subscription_window_or_raise(db, negocio_id, module_key)
+    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
+    if not window:
+        return None
     return _get_or_create_counter(db, negocio_id, module_key, metric_key, window)
 
 
@@ -224,8 +256,11 @@ def list_usage_for_module_current_period(
 ) -> dict[str, float]:
     """
     Devuelve todos los usage counters existentes para un módulo en su periodo actual.
+    Si no hay suscripción/periodo, devuelve {}.
     """
-    _, window = _get_subscription_window_or_raise(db, negocio_id, module_key)
+    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
+    if not window:
+        return {}
 
     rows = (
         db.query(UsageCounter.metric_key, UsageCounter.value)

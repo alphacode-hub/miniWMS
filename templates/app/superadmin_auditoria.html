@@ -1,168 +1,130 @@
-﻿<!-- templates/app/superadmin_auditoria.html -->
+﻿{# templates/app/superadmin_auditoria.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}Auditoría · {{ negocio.nombre_fantasia }} · ORBION{% endblock %}
+{% block title %}Auditoría · {{ negocio.nombre_fantasia }} · Consola Superadmin · ORBION{% endblock %}
 
-{# HEADER BAJO TOPBAR (SOLO DESKTOP/TABLET) #}
-{% block page_header %}
-<div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div class="space-y-1 min-w-0">
-        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Consola superadmin
-        </p>
-        <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-            Auditoría de negocio
-        </h1>
-        <p class="text-xs text-slate-400 leading-snug max-w-md">
-            Registro detallado de acciones realizadas en {{ negocio.nombre_fantasia }} dentro de ORBION.
-        </p>
-
-        <div class="mt-2 flex flex-wrap gap-2">
-            <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-slate-700 bg-slate-900
-                         text-[11px] font-medium text-slate-200">
-                ID negocio: {{ negocio.id }}
-            </span>
-            <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-indigo-500/40 bg-indigo-500/10
-                         text-[11px] font-medium text-indigo-200">
-                Plan: {{ (negocio.plan_tipo or "demo")|upper }}
-            </span>
-            <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-medium
-                         {% if negocio.estado == 'activo' %}
-                            border border-emerald-500/40 bg-emerald-500/10 text-emerald-200
-                         {% else %}
-                            border border-rose-500/40 bg-rose-500/10 text-rose-200
-                         {% endif %}">
-                Estado: {{ (negocio.estado or "desconocido")|capitalize }}
-            </span>
-        </div>
-    </div>
-
-    <div class="flex items-center gap-2">
-        <a href="/superadmin/negocios/{{ negocio.id }}"
-           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                  text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                  transition-colors">
-            ← Volver al detalle
-        </a>
-    </div>
-</div>
-{% endblock %}
+{% block page_header %}{% endblock %}
 
 {% block content %}
-<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+{% set estado_val = (negocio.estado.value if negocio.estado is not none and negocio.estado.value is defined else negocio.estado) %}
+{% set estado_val = (estado_val or "")|string|lower %}
+{% set base_url = "/superadmin/negocios/" ~ negocio.id ~ "/auditoria" %}
 
-    {# HEADER MOBILE #}
-    <div class="sm:hidden space-y-2">
-        <div class="flex items-center justify-between gap-2">
-            <div class="space-y-1">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Consola superadmin
-                </p>
-                <h1 class="text-base font-semibold text-slate-100 tracking-tight">
-                    Auditoría de negocio
-                </h1>
-                <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
-                    Registro detallado de acciones y eventos de {{ negocio.nombre_fantasia }} en ORBION.
-                </p>
+<div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
-                <div class="mt-2 flex flex-wrap gap-2">
-                    <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-slate-700 bg-slate-900
-                                 text-[10px] font-medium text-slate-200">
-                        ID: {{ negocio.id }}
-                    </span>
-                    <span class="inline-flex items-center px-2 py-[2px] rounded-full border border-indigo-500/40 bg-indigo-500/10
-                                 text-[10px] font-medium text-indigo-200">
-                        Plan: {{ (negocio.plan_tipo or "demo")|upper }}
-                    </span>
-                    <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-medium
-                                 {% if negocio.estado == 'activo' %}
-                                    border border-emerald-500/40 bg-emerald-500/10 text-emerald-200
-                                 {% else %}
-                                    border border-rose-500/40 bg-rose-500/10 text-rose-200
-                                 {% endif %}">
-                        {{ (negocio.estado or "desconocido")|capitalize }}
-                    </span>
-                </div>
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Superadmin global
+            </p>
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Auditoría · {{ negocio.nombre_fantasia }}
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Registro de auditoría del negocio (acciones, cambios SaaS, accesos y operaciones).
+            </p>
+
+            <div class="flex flex-wrap gap-2 pt-1">
+                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
+                     text-[10px] sm:text-[11px] font-medium text-slate-300">
+                    <span class="text-slate-500 mr-1">ID</span>
+                    <span class="text-slate-100">{{ negocio.id }}</span>
+                </span>
+
+                {% if negocio.plan_tipo is defined and negocio.plan_tipo %}
+                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1
+                     text-[10px] sm:text-[11px] font-medium text-slate-300">
+                    <span class="text-slate-500 mr-1">Plan</span>
+                    <span class="text-slate-100">{{ (negocio.plan_tipo or "legacy")|upper }}</span>
+                </span>
+                {% endif %}
+
+                {% if estado_val == "activo" %}
+                <span class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1
+                     text-[10px] sm:text-[11px] font-medium text-emerald-200">
+                    Estado: Activo
+                </span>
+                {% else %}
+                <span class="inline-flex items-center rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1
+                     text-[10px] sm:text-[11px] font-medium text-rose-200">
+                    Estado: {{ (estado_val or "desconocido")|capitalize }}
+                </span>
+                {% endif %}
             </div>
+        </div>
 
+        <div class="shrink-0 pt-0.5 flex items-center gap-2">
             <a href="/superadmin/negocios/{{ negocio.id }}"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                      transition-colors">
-                ← Detalle
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                transition-colors">
+                ← Volver a negocio
+            </a>
+
+            <a href="/superadmin/negocios"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                transition-colors">
+                ← Negocios
             </a>
         </div>
-    </div>
+    </header>
 
-    {# =========================
-    FILTROS
-    ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
-
         <header class="space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
                 Filtros de auditoría
             </p>
             <p class="text-[11px] text-slate-400 max-w-md">
-                Filtra por usuario, acción, rango de fechas y nivel de criticidad para encontrar eventos específicos.
+                Filtra por texto, rango de fechas y nivel para encontrar eventos específicos.
             </p>
         </header>
 
         <form method="get"
-              class="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2 border-t border-slate-800/80">
+              action="{{ base_url }}"
+              class="grid grid-cols-1 sm:grid-cols-6 gap-3 pt-2 border-t border-slate-800/80">
 
-            <!-- Texto libre -->
-            <div class="sm:col-span-2 space-y-1">
+            <div class="space-y-1 sm:col-span-3">
                 <label class="text-[11px] font-semibold text-slate-200">
                     Buscar (usuario, acción, detalle)
                 </label>
-                <div class="relative">
-                    <input type="text"
-                           name="q"
-                           value="{{ filtros.q }}"
-                           class="w-full rounded-xl border border-slate-700 bg-slate-900 pl-3 pr-8 py-2
-                                  text-xs sm:text-sm text-slate-100
-                                  placeholder:text-slate-500
-                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                           placeholder="Ej: usuario@mail.com, producto_creado, etc.">
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <span class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-600
-                                     text-[9px] text-slate-400">
-                            ⌕
-                        </span>
-                    </div>
-                </div>
+                <input type="text"
+                       name="q"
+                       value="{{ filtros.q }}"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                      text-xs sm:text-sm text-slate-100 placeholder:text-slate-500
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                       placeholder="Ej: user@mail.com, module.activate, auth.login.fail">
             </div>
 
-            <!-- Desde -->
             <div class="space-y-1">
                 <label class="text-[11px] font-semibold text-slate-200">Desde</label>
                 <input type="date"
                        name="desde"
                        value="{{ filtros.desde }}"
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                              text-xs sm:text-sm text-slate-100
-                              focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                      text-xs sm:text-sm text-slate-100
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
             </div>
 
-            <!-- Hasta -->
             <div class="space-y-1">
                 <label class="text-[11px] font-semibold text-slate-200">Hasta</label>
                 <input type="date"
                        name="hasta"
                        value="{{ filtros.hasta }}"
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                              text-xs sm:text-sm text-slate-100
-                              focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                      text-xs sm:text-sm text-slate-100
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
             </div>
 
-            <!-- Nivel -->
             <div class="space-y-1">
                 <label class="text-[11px] font-semibold text-slate-200">Nivel</label>
                 <select name="nivel"
                         class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                               text-xs sm:text-sm text-slate-100
-                               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                       text-xs sm:text-sm text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     <option value="" {% if not filtros.nivel %}selected{% endif %}>Todos</option>
                     <option value="critico" {% if filtros.nivel=="critico" %}selected{% endif %}>Crítico</option>
                     <option value="warning" {% if filtros.nivel=="warning" %}selected{% endif %}>Advertencia</option>
@@ -171,26 +133,23 @@
                 </select>
             </div>
 
-            <!-- Botones -->
-            <div class="sm:col-span-5 flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
-                <a href="/superadmin/negocios/{{ negocio.id }}/auditoria"
+            <div class="sm:col-span-6 flex flex-col sm:flex-row sm:justify-end gap-2 pt-1">
+                <a href="{{ base_url }}"
                    class="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-medium
-                          border border-slate-700 text-slate-300 bg-slate-900 hover:bg-slate-800">
+                  border border-slate-700 text-slate-300 bg-slate-900 hover:bg-slate-800">
                     Limpiar filtros
                 </a>
                 <button type="submit"
                         class="inline-flex items-center justify-center px-4 py-1.5 rounded-xl text-xs font-semibold
-                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.98] transition">
+                       text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.98] transition">
                     Aplicar filtros
                 </button>
             </div>
         </form>
     </section>
 
-    {# =========================
-    LISTA DE REGISTROS
-    ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
+
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p class="text-xs sm:text-sm text-slate-400">
                 Registros en esta página:
@@ -199,33 +158,13 @@
                 · Total filtrado:
                 <span class="font-semibold text-slate-100">{{ paginacion.total }}</span>
                 {% endif %}
-                {% if filtros.desde or filtros.hasta or filtros.nivel %}
-                ·
-                {% if filtros.desde or filtros.hasta %}
-                Rango:
-                <span class="font-medium text-slate-100">
-                    {{ filtros.desde or "inicio" }} → {{ filtros.hasta or "hoy" }}
-                </span>
-                {% endif %}
-                {% if filtros.nivel %}
-                · Nivel:
-                <span class="font-medium text-slate-100">
-                    {% if filtros.nivel == "critico" %}Crítico
-                    {% elif filtros.nivel == "warning" %}Advertencia
-                    {% elif filtros.nivel == "info" %}Informativo
-                    {% else %}Normal{% endif %}
-                </span>
-                {% endif %}
-                {% endif %}
             </p>
 
             {% if paginacion and paginacion.total_pages > 1 %}
             <div class="flex items-center gap-2 text-[11px] text-slate-400">
                 <span>
-                    Página
-                    <span class="font-semibold text-slate-100">{{ paginacion.page }}</span>
-                    de
-                    <span class="font-semibold text-slate-100">{{ paginacion.total_pages }}</span>
+                    Página <span class="font-semibold text-slate-100">{{ paginacion.page }}</span>
+                    de <span class="font-semibold text-slate-100">{{ paginacion.total_pages }}</span>
                 </span>
             </div>
             {% endif %}
@@ -233,28 +172,35 @@
 
         {% if paginacion and paginacion.total_pages > 1 %}
         <div class="flex justify-end gap-2 text-[11px]">
+            {% set qp = (
+            "q=" ~ (filtros.q|urlencode) ~
+            "&desde=" ~ (filtros.desde|urlencode) ~
+            "&hasta=" ~ (filtros.hasta|urlencode) ~
+            "&nivel=" ~ (filtros.nivel|urlencode)
+            ) %}
+
             {% if paginacion.has_prev %}
-            <a href="/superadmin/negocios/{{ negocio.id }}/auditoria?q={{ filtros.q }}&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&nivel={{ filtros.nivel }}&page={{ paginacion.prev_page }}"
+            <a href="{{ base_url }}?{{ qp }}&page={{ paginacion.prev_page }}"
                class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-700
-                      text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                 ← Anterior
             </a>
             {% else %}
             <span class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-800
-                         text-slate-500 opacity-50 cursor-default">
+                   text-slate-500 opacity-50 cursor-default">
                 ← Anterior
             </span>
             {% endif %}
 
             {% if paginacion.has_next %}
-            <a href="/superadmin/negocios/{{ negocio.id }}/auditoria?q={{ filtros.q }}&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&nivel={{ filtros.nivel }}&page={{ paginacion.next_page }}"
+            <a href="{{ base_url }}?{{ qp }}&page={{ paginacion.next_page }}"
                class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-700
-                      text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                 Siguiente →
             </a>
             {% else %}
             <span class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-800
-                         text-slate-500 opacity-50 cursor-default">
+                   text-slate-500 opacity-50 cursor-default">
                 Siguiente →
             </span>
             {% endif %}
@@ -262,73 +208,17 @@
         {% endif %}
 
         {% if registros and registros|length > 0 %}
-
-        {# MOBILE: CARDS #}
-        <div class="space-y-3 md:hidden">
-            {% for r in registros %}
-            {% set nivel = r.nivel if r.nivel is defined else "normal" %}
-
-            {% if nivel == "critico" %}
-            {% set badge_classes = "bg-rose-500/10 text-rose-200 border border-rose-500/40" %}
-            {% set label_nivel = "Crítico" %}
-            {% elif nivel == "warning" %}
-            {% set badge_classes = "bg-amber-500/10 text-amber-200 border border-amber-500/40" %}
-            {% set label_nivel = "Advertencia" %}
-            {% elif nivel == "info" %}
-            {% set badge_classes = "bg-sky-500/10 text-sky-200 border border-sky-500/40" %}
-            {% set label_nivel = "Info" %}
-            {% else %}
-            {% set badge_classes = "bg-slate-700/40 text-slate-100 border border-slate-600" %}
-            {% set label_nivel = "Normal" %}
-            {% endif %}
-
-            <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="space-y-0.5">
-                        <p class="text-[11px] text-slate-400">
-                            {% if r.fecha %}
-                            {{ r.fecha.strftime("%d-%m-%Y %H:%M") }}
-                            {% else %}
-                            —
-                            {% endif %}
-                        </p>
-                        <p class="text-[11px] text-slate-300">
-                            Usuario: <span class="font-medium text-slate-100">{{ r.usuario or "—" }}</span>
-                        </p>
-                    </div>
-                    <div class="flex flex-col items-end gap-1">
-                        <span class="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-semibold border {{ badge_classes }}">
-                            {{ r.accion or "—" }}
-                        </span>
-                        <span class="text-[10px] text-slate-400 uppercase tracking-wide">
-                            {{ label_nivel }}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="pt-1">
-                    {% if r.detalle %}
-                    <pre class="whitespace-pre-wrap break-words bg-slate-950/70 rounded-lg px-2 py-1
-                                border border-slate-800 max-h-40 overflow-auto text-[11px] text-slate-200">{{ r.detalle }}</pre>
-                    {% else %}
-                    <span class="text-[11px] text-slate-500">Sin detalle</span>
-                    {% endif %}
-                </div>
-            </article>
-            {% endfor %}
-        </div>
-
-        {# DESKTOP/TABLET: TABLA #}
-        <div class="hidden md:block border border-slate-800 rounded-2xl overflow-x-auto">
+        <div class="border border-slate-800 rounded-2xl overflow-x-auto">
             <table class="min-w-full text-xs sm:text-sm">
                 <thead class="bg-slate-900/80">
                     <tr class="text-[11px] sm:text-xs font-medium text-slate-400 uppercase tracking-wide">
-                        <th class="px-3 sm:px-4 py-2 text-left whitespace-nowrap">Fecha</th>
+                        <th class="px-3 sm:px-4 py-2 text-left whitespace-nowrap">Fecha (CL)</th>
                         <th class="px-3 sm:px-4 py-2 text-left">Usuario</th>
                         <th class="px-3 sm:px-4 py-2 text-left">Acción</th>
                         <th class="px-3 sm:px-4 py-2 text-left">Detalle</th>
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-slate-800/80">
                     {% for r in registros %}
                     {% set nivel = r.nivel if r.nivel is defined else "normal" %}
@@ -350,7 +240,7 @@
                     <tr class="hover:bg-slate-900 align-top">
                         <td class="px-3 sm:px-4 py-2 text-[11px] text-slate-400 whitespace-nowrap">
                             {% if r.fecha %}
-                            {{ r.fecha.strftime("%d-%m-%Y %H:%M") }}
+                            {{ cl_datetime(r.fecha, with_tz=False) }}
                             {% else %}
                             —
                             {% endif %}
@@ -374,7 +264,7 @@
                         <td class="px-3 sm:px-4 py-2 text-[11px] sm:text-xs text-slate-200">
                             {% if r.detalle %}
                             <pre class="whitespace-pre-wrap break-words bg-slate-950/70 rounded-lg px-2 py-1
-                                        border border-slate-800 max-h-40 overflow-auto">{{ r.detalle }}</pre>
+                          border border-slate-800 max-h-40 overflow-auto">{{ r.detalle }}</pre>
                             {% else %}
                             <span class="text-slate-500">Sin detalle</span>
                             {% endif %}
@@ -384,7 +274,6 @@
                 </tbody>
             </table>
         </div>
-
         {% else %}
         <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
             No se encontraron registros de auditoría con los filtros actuales.

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import Movimiento, Producto
 from core.security import require_roles_dep
-from core.services.services_audit import registrar_auditoria
+from core.services.services_audit import audit, AuditAction
 
 
 # ============================

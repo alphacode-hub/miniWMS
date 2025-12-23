@@ -2,6 +2,11 @@
 from __future__ import annotations
 import enum
 
+
+# =========================
+# Operación WMS / Inbound
+# =========================
+
 class RecepcionEstado(str, enum.Enum):
     PRE_REGISTRADO = "PRE_REGISTRADO"
     EN_ESPERA = "EN_ESPERA"
@@ -9,16 +14,19 @@ class RecepcionEstado(str, enum.Enum):
     EN_CONTROL_CALIDAD = "EN_CONTROL_CALIDAD"
     CERRADO = "CERRADO"
 
+
 class PalletEstado(str, enum.Enum):
     ABIERTO = "ABIERTO"
     EN_PROCESO = "EN_PROCESO"
     LISTO = "LISTO"
     BLOQUEADO = "BLOQUEADO"
 
+
 class IncidenciaEstado(str, enum.Enum):
     CREADA = "CREADA"
     EN_ANALISIS = "EN_ANALISIS"
     CERRADA = "CERRADA"
+
 
 class CitaEstado(str, enum.Enum):
     PROGRAMADA = "PROGRAMADA"
@@ -27,9 +35,15 @@ class CitaEstado(str, enum.Enum):
     CANCELADA = "CANCELADA"
     COMPLETADA = "COMPLETADA"
 
-# =========================================================
-# SaaS – ORBION (módulos + suscripciones)
-# =========================================================
+
+# =========================
+# SaaS – ORBION
+# =========================
+
+class TenantType(str, enum.Enum):
+    CUSTOMER = "customer"
+    SYSTEM = "system"
+
 
 class ModuleKey(str, enum.Enum):
     INBOUND = "inbound"
@@ -42,6 +56,12 @@ class SubscriptionStatus(str, enum.Enum):
     PAST_DUE = "past_due"
     SUSPENDED = "suspended"
     CANCELLED = "cancelled"
+
+
+class SubscriptionSource(str, enum.Enum):
+    LEGACY = "legacy"
+    MANUAL = "manual"
+    STRIPE = "stripe"
 
 
 class NegocioEstado(str, enum.Enum):

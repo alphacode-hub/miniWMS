@@ -17,7 +17,7 @@ from core.database import get_db
 from core.models import Movimiento, Producto, Slot, Ubicacion, Zona
 from core.security import require_roles_dep
 from modules.basic_wms.services.services_slots import get_slots_negocio
-from core.services.services_audit import registrar_auditoria
+from core.services.services_audit import audit, AuditAction
 from modules.basic_wms.services.services_alerts import evaluar_alertas_stock, evaluar_alertas_vencimiento
 
 

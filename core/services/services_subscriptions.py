@@ -1,12 +1,13 @@
 ﻿# core/services/services_subscriptions.py
 """
-services_subscriptions.py – ORBION SaaS (enterprise)
+services_subscriptions.py – ORBION SaaS (enterprise, baseline aligned)
 
-✔ Lifecycle por módulo (activate / renew / cancel)
+✔ Lifecycle por módulo (activate / renew / cancel / suspend / unschedule)
 ✔ Trial por módulo
-✔ Períodos rolling mensuales
-✔ Multi-tenant estricto
+✔ Períodos rolling mensuales (V1: 30 días * meses) [estable multi-db]
+✔ Multi-tenant estricto (a nivel de negocio_id; validación puede hacerse en capa superior)
 ✔ Seguro SQLite / Postgres
+✔ Auditoría enterprise v2.1 integrada (source of truth)
 ✔ Sin acoplar Inbound / WMS
 """
 
@@ -15,12 +16,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from core.models.saas import SuscripcionModulo
 from core.models.enums import ModuleKey, SubscriptionStatus
+from core.models.saas import SuscripcionModulo
 from core.models.time import utcnow
+from core.services.services_audit import audit, AuditAction
 
 
 # =========================================================
@@ -32,15 +34,14 @@ DEFAULT_BILLING_MONTHS = 1
 
 
 # =========================================================
-# HELPERS
+# HELPERS INTERNOS
 # =========================================================
 
 def _rolling_period(start_at: datetime, months: int = 1) -> Tuple[datetime, datetime]:
     """
     Calcula período rolling mensual.
-
-    V1 simple: months * 30 días.
-    (Se puede reemplazar por dateutil.relativedelta si quieres calendario exacto.)
+    V1 simple (baseline): months * 30 días.
+    Nota: si más adelante quieres meses calendario reales, lo migramos con cuidado.
     """
     m = int(months or 1)
     if m < 1:
@@ -62,8 +63,41 @@ def _get_existing_subscription(
     )
 
 
+def _audit_event(
+    db: Session,
+    *,
+    actor: Optional[dict],
+    action: AuditAction,
+    payload: dict,
+) -> None:
+    """
+    Auditoría enterprise v2.1.
+    Nunca rompe flujo de negocio.
+    """
+    if not actor:
+        return
+    try:
+        audit(
+            db=db,
+            actor=actor,
+            action=action,
+            payload=payload,
+            commit=False,
+        )
+    except Exception:
+        # "never break business flow"
+        return
+
+
+def _ensure_int_flag(v) -> int:
+    try:
+        return 1 if int(v) else 0
+    except Exception:
+        return 0
+
+
 # =========================================================
-# API PUBLICA
+# API PÚBLICA (ENTERPRISE)
 # =========================================================
 
 def activate_module(
@@ -73,28 +107,29 @@ def activate_module(
     *,
     start_trial: bool = True,
     trial_days: int = DEFAULT_TRIAL_DAYS,
+    actor: Optional[dict] = None,
 ) -> SuscripcionModulo:
     """
     Activa un módulo para un negocio.
-    - Si no existe: crea suscripción (trial o active)
-    - Si existe y está cancelled: reactiva (misma fila) creando nuevo período
-    - Si existe y está suspended/past_due: reactiva (política V1)
+
+    Reglas:
+    - Si existe y está CANCELLED: se "reactiva" (nuevo ciclo) con trial opcional.
+    - Si existe y está SUSPENDED/PAST_DUE: se reactiva y limpia past_due_since.
+    - Si existe y está ACTIVE/TRIAL: idempotente (retorna tal cual).
     """
 
     now = utcnow()
-
-    td = int(trial_days or 0)
-    if td < 0:
-        td = 0
+    td = max(0, int(trial_days or 0))
 
     existing = _get_existing_subscription(db, negocio_id, module_key)
 
     if existing:
-        # 1) Si está cancelada: reactivar (misma fila) con nuevo período
+        prev_status = existing.status
+
         if existing.status == SubscriptionStatus.CANCELLED:
             existing.status = SubscriptionStatus.TRIAL if start_trial else SubscriptionStatus.ACTIVE
             existing.started_at = now
-            existing.trial_ends_at = (now + timedelta(days=td)) if start_trial and td > 0 else None
+            existing.trial_ends_at = (now + timedelta(days=td)) if (start_trial and td > 0) else None
 
             p_start, p_end = _rolling_period(now, DEFAULT_BILLING_MONTHS)
             existing.current_period_start = p_start
@@ -103,37 +138,61 @@ def activate_module(
 
             existing.cancel_at_period_end = 0
             existing.cancelled_at = None
-            existing.past_due_since = None  # ✅ limpiar trazas de deuda/suspensión
-
-            db.flush()
-            return existing
-
-        # 2) Si está suspendida o past_due: reactivar (política enterprise conservadora)
-        if existing.status in (SubscriptionStatus.SUSPENDED, SubscriptionStatus.PAST_DUE):
-            existing.status = SubscriptionStatus.TRIAL if start_trial else SubscriptionStatus.ACTIVE
-            existing.trial_ends_at = (now + timedelta(days=td)) if start_trial and td > 0 else None
             existing.past_due_since = None
 
-            # Si no tiene periodo vigente, creamos uno; si tiene, lo respetamos.
+            db.flush()
+
+            _audit_event(
+                db,
+                actor=actor,
+                action=AuditAction.MODULE_ACTIVATE,
+                payload={
+                    "negocio_id": negocio_id,
+                    "module": module_key.value,
+                    "from_status": prev_status.value,
+                    "to_status": existing.status.value,
+                    "trial": bool(existing.trial_ends_at),
+                    "reactivated": True,
+                },
+            )
+            return existing
+
+        if existing.status in (SubscriptionStatus.SUSPENDED, SubscriptionStatus.PAST_DUE):
+            existing.status = SubscriptionStatus.TRIAL if start_trial else SubscriptionStatus.ACTIVE
+            existing.trial_ends_at = (now + timedelta(days=td)) if (start_trial and td > 0) else None
+            existing.past_due_since = None
+
+            # Asegura períodos si faltan
             if not existing.current_period_start or not existing.current_period_end:
                 p_start, p_end = _rolling_period(now, DEFAULT_BILLING_MONTHS)
                 existing.current_period_start = p_start
                 existing.current_period_end = p_end
                 existing.next_renewal_at = p_end
             else:
-                # asegurar que next_renewal_at exista
                 existing.next_renewal_at = existing.current_period_end
 
             db.flush()
+
+            _audit_event(
+                db,
+                actor=actor,
+                action=AuditAction.MODULE_ACTIVATE,
+                payload={
+                    "negocio_id": negocio_id,
+                    "module": module_key.value,
+                    "from_status": prev_status.value,
+                    "to_status": existing.status.value,
+                    "reactivated": True,
+                    "trial": bool(existing.trial_ends_at),
+                },
+            )
             return existing
 
-        # 3) Ya existe y está operativa → no duplicar
+        # ACTIVE/TRIAL: idempotente
         return existing
 
-    # Crear nueva suscripción
     status = SubscriptionStatus.TRIAL if start_trial else SubscriptionStatus.ACTIVE
-    trial_ends_at = (now + timedelta(days=td)) if start_trial and td > 0 else None
-
+    trial_ends_at = (now + timedelta(days=td)) if (start_trial and td > 0) else None
     p_start, p_end = _rolling_period(now, DEFAULT_BILLING_MONTHS)
 
     sub = SuscripcionModulo(
@@ -145,19 +204,35 @@ def activate_module(
         current_period_start=p_start,
         current_period_end=p_end,
         next_renewal_at=p_end,
+        cancel_at_period_end=0,
     )
 
-    db.add(sub)
+    # Savepoint: evita rollback global del request si hay carrera por unique constraint
     try:
-        db.flush()
-        return sub
+        with db.begin_nested():
+            db.add(sub)
+            db.flush()
     except IntegrityError:
-        db.rollback()
-        # Otro proceso la creó
-        sub2 = _get_existing_subscription(db, negocio_id, module_key)
-        if not sub2:
+        # No hacemos db.rollback() global.
+        # Simplemente recuperamos el registro que ganó la carrera.
+        existing2 = _get_existing_subscription(db, negocio_id, module_key)
+        if not existing2:
             raise
-        return sub2
+        return existing2
+
+    _audit_event(
+        db,
+        actor=actor,
+        action=AuditAction.MODULE_ACTIVATE,
+        payload={
+            "negocio_id": negocio_id,
+            "module": module_key.value,
+            "status": status.value,
+            "trial": bool(trial_ends_at),
+            "new": True,
+        },
+    )
+    return sub
 
 
 def renew_subscription(
@@ -165,60 +240,74 @@ def renew_subscription(
     sub: SuscripcionModulo,
     *,
     months: int = DEFAULT_BILLING_MONTHS,
+    actor: Optional[dict] = None,
 ) -> SuscripcionModulo:
     """
-    Renueva el período de una suscripción.
+    Renueva período.
 
-    Regla enterprise:
-    - Si cancel_at_period_end=1, NO se crea un nuevo período: se marca CANCELLED
-      al momento de renovación (next_renewal_at <= now).
-
-    Política V1 conservadora:
-    - Si status es SUSPENDED o PAST_DUE, NO renueva automáticamente.
-      (Se reactiva vía activate_module o flujo de pago/billing.)
+    Reglas:
+    - CANCELLED: no renueva
+    - SUSPENDED/PAST_DUE: no renueva (se reactivan por flujo de pagos / admin)
+    - TRIAL expirado -> pasa a ACTIVE antes de renovar
+    - Si cancel_at_period_end=1: en renovación se cierra definitivamente (CANCELLED)
     """
+
     now = utcnow()
 
-    # Si ya está cancelada, no hacemos nada
     if sub.status == SubscriptionStatus.CANCELLED:
         return sub
 
-    # Si está suspendida / past_due, por defecto no renovar
     if sub.status in (SubscriptionStatus.SUSPENDED, SubscriptionStatus.PAST_DUE):
         return sub
 
-    # Si estaba en trial y venció, pasa a active (solo si NO se va a cancelar)
     if sub.status == SubscriptionStatus.TRIAL and sub.trial_ends_at and sub.trial_ends_at <= now:
         sub.status = SubscriptionStatus.ACTIVE
         sub.trial_ends_at = None
 
-    # ✅ Cancelación diferida
-    if sub.cancel_at_period_end:
+    if _ensure_int_flag(sub.cancel_at_period_end):
+        prev = sub.status
         sub.status = SubscriptionStatus.CANCELLED
         sub.cancelled_at = now
         sub.next_renewal_at = None
         db.flush()
+
+        _audit_event(
+            db,
+            actor=actor,
+            action=AuditAction.MODULE_CANCEL_AT_PERIOD_END,
+            payload={
+                "negocio_id": sub.negocio_id,
+                "module": sub.module_key.value,
+                "from_status": prev.value,
+            },
+        )
         return sub
 
-    # =========================
-    # Renovar período normal
-    # =========================
-    m = int(months or 1)
-    if m < 1:
-        m = 1
+    m = max(1, int(months or 1))
 
-    if not sub.current_period_end:
-        # fallback defensivo
+    old_end = sub.current_period_end
+
+    if not old_end:
         p_start, p_end = _rolling_period(now, m)
         sub.current_period_start = p_start
         sub.current_period_end = p_end
         sub.next_renewal_at = p_end
         sub.last_payment_at = now
         db.flush()
+
+        _audit_event(
+            db,
+            actor=actor,
+            action=AuditAction.MODULE_RENEW_NOW,
+            payload={
+                "negocio_id": sub.negocio_id,
+                "module": sub.module_key.value,
+                "to_period_end": p_end.isoformat(),
+            },
+        )
         return sub
 
-    new_start = sub.current_period_end
-    new_start = new_start if new_start > now else now
+    new_start = old_end if old_end > now else now
     new_start, new_end = _rolling_period(new_start, m)
 
     sub.current_period_start = new_start
@@ -227,46 +316,106 @@ def renew_subscription(
     sub.last_payment_at = now
 
     db.flush()
+
+    _audit_event(
+        db,
+        actor=actor,
+        action=AuditAction.MODULE_RENEW_NOW,
+        payload={
+            "negocio_id": sub.negocio_id,
+            "module": sub.module_key.value,
+            "from_period_end": old_end.isoformat() if old_end else None,
+            "to_period_end": new_end.isoformat(),
+        },
+    )
     return sub
 
 
 def cancel_subscription_at_period_end(
     db: Session,
     sub: SuscripcionModulo,
+    *,
+    actor: Optional[dict] = None,
 ) -> SuscripcionModulo:
     """
-    Marca una suscripción para cancelarse al final del período actual.
+    Agenda cancelación al fin del período actual.
+    (No cancela inmediatamente).
     """
     if sub.status == SubscriptionStatus.CANCELLED:
         return sub
 
     sub.cancel_at_period_end = 1
     db.flush()
+
+    _audit_event(
+        db,
+        actor=actor,
+        action=AuditAction.MODULE_CANCEL_AT_PERIOD_END,
+        payload={
+            "negocio_id": sub.negocio_id,
+            "module": sub.module_key.value,
+        },
+    )
     return sub
 
 
-def suspend_subscription(
+def unschedule_cancel(
     db: Session,
     sub: SuscripcionModulo,
+    *,
+    actor: Optional[dict] = None,
 ) -> SuscripcionModulo:
     """
-    Suspende una suscripción (ej: por pago fallido).
-    """
-    if sub.status != SubscriptionStatus.CANCELLED:
-        sub.status = SubscriptionStatus.SUSPENDED
-        sub.past_due_since = utcnow()
-        db.flush()
-    return sub
-
-
-def unschedule_cancel(db: Session, sub: SuscripcionModulo) -> SuscripcionModulo:
-    """
-    Revierte una cancelación programada (cancel_at_period_end=0).
-    No revive CANCELLED (eso es activate_module / flujo comercial).
+    Quita cancelación agendada.
     """
     if sub.status == SubscriptionStatus.CANCELLED:
         return sub
 
     sub.cancel_at_period_end = 0
     db.flush()
+
+    _audit_event(
+        db,
+        actor=actor,
+        action=AuditAction.MODULE_UNSCHEDULE_CANCEL,
+        payload={
+            "negocio_id": sub.negocio_id,
+            "module": sub.module_key.value,
+        },
+    )
+    return sub
+
+
+def suspend_subscription(
+    db: Session,
+    sub: SuscripcionModulo,
+    *,
+    actor: Optional[dict] = None,
+) -> SuscripcionModulo:
+    """
+    Suspende (por no pago / fraude / admin).
+    No aplica si ya está CANCELLED.
+    """
+    if sub.status == SubscriptionStatus.CANCELLED:
+        return sub
+
+    if sub.status != SubscriptionStatus.SUSPENDED:
+        prev = sub.status
+        sub.status = SubscriptionStatus.SUSPENDED
+
+        # Marca "desde cuándo" está en problema (si quieres separar SUSPENDED vs PAST_DUE, lo ajustamos)
+        sub.past_due_since = sub.past_due_since or utcnow()
+
+        db.flush()
+
+        _audit_event(
+            db,
+            actor=actor,
+            action=AuditAction.MODULE_SUSPEND,
+            payload={
+                "negocio_id": sub.negocio_id,
+                "module": sub.module_key.value,
+                "from_status": prev.value,
+            },
+        )
     return sub

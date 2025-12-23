@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import Producto
 from core.models.inbound.recepciones import InboundRecepcion
-from core.services.services_audit import registrar_auditoria
+from core.services.services_audit import audit, AuditAction
 
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
