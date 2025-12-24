@@ -35,7 +35,6 @@ from core.services.services_subscriptions import (
 )
 from core.models.saas import SuscripcionModulo
 
-
 router = APIRouter(prefix="/app", tags=["app-hub"])
 
 
@@ -43,8 +42,31 @@ router = APIRouter(prefix="/app", tags=["app-hub"])
 # HELPERS UI (solo Hub)
 # =========================================================
 
+_ALLOWED_ACCESS_STATUSES = {"trial", "active"}
+
+
+def _norm_status(status: str) -> str:
+    return (status or "").strip().lower() or "inactive"
+
+
+def _is_access_allowed(enabled: bool, status: str) -> bool:
+    """
+    Contrato enterprise:
+    - enabled es “provisionado / habilitado”
+    - acceso real SOLO si status en {trial, active}
+    """
+    st = _norm_status(status)
+    return bool(enabled) and (st in _ALLOWED_ACCESS_STATUSES)
+
+
 def _badge_from_status(status: str, enabled: bool) -> str:
-    st = (status or "").strip().lower()
+    """
+    Badge humano para el Hub.
+    Nota: NO confundir enabled con acceso.
+    """
+    st = _norm_status(status)
+
+    # Si no está provisionado
     if not enabled:
         if st in ("past_due", "suspended"):
             return "Pago pendiente"
@@ -52,11 +74,19 @@ def _badge_from_status(status: str, enabled: bool) -> str:
             return "Cancelado"
         return "No activo"
 
+    # Está provisionado (enabled=True), ahora mirar estado de acceso
     if st == "trial":
         return "Trial"
     if st == "active":
         return "Activo"
-    return st or "Activo"
+    if st in ("past_due", "suspended"):
+        return "Suspendido"
+    if st == "cancelled":
+        return "Cancelado"
+    if st == "inactive":
+        return "Inactivo"
+
+    return st
 
 
 def _period_end_from_mod(mod: dict) -> str | None:
@@ -82,6 +112,7 @@ def _period_end_from_mod(mod: dict) -> str | None:
 
     return None
 
+
 def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int | None, int | None]:
     """
     Muestra métricas "de conteo" en formato entero (sin decimales).
@@ -95,11 +126,6 @@ def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int |
     remaining = mod.get("remaining") if isinstance(mod.get("remaining"), dict) else {}
 
     def _to_int(x) -> int:
-        """
-        Convierte seguro a int (0 si falla).
-        - Si viene float tipo 200.0 -> 200
-        - Si viene string "200" -> 200
-        """
         try:
             return int(float(x))
         except Exception:
@@ -110,17 +136,14 @@ def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int |
             return (None, None)
 
         lim = _to_int(limits.get(key, 0))
-
         used: int | None = None
 
-        # Preferimos usage si existe
         if key in usage:
             try:
                 used = _to_int(usage.get(key, 0))
             except Exception:
                 used = None
 
-        # Fallback: remaining -> used = limit - remaining
         if used is None and key in remaining:
             try:
                 rem = _to_int(remaining.get(key, 0))
@@ -148,12 +171,11 @@ def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int |
     return (None, None, None)
 
 
-
 def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
     """
-    Onboarding real:
+    Onboarding real enterprise:
     - Ignora "core"
-    - Si no hay módulos operativos (enabled=True) -> True
+    - Si no hay módulos operativos con ACCESS_ALLOWED -> True
     """
     if not isinstance(snapshot_modules, dict) or not snapshot_modules:
         return True
@@ -163,10 +185,10 @@ def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
             continue
         if not isinstance(mod, dict):
             continue
-        if bool(mod.get("enabled")):
-            st = (mod.get("status") or "").strip().lower()
-            if st in ("trial", "active"):
-                return False
+
+        enabled = bool(mod.get("enabled"))
+        st = _norm_status(mod.get("status"))
+        if _is_access_allowed(enabled, st):
             return False
 
     return True
@@ -219,8 +241,8 @@ async def orbion_hub_view(
     Reglas:
     - Superadmin global (NO impersonando): redirect a /superadmin/dashboard
     - Superadmin impersonando (acting_negocio_id): usa Hub como admin
-    - Admin: ve módulos + locked/estado según snapshot
-    - Operador: ve solo módulos enabled
+    - Admin: ve módulos + locked/estado según snapshot (ACCESS_ALLOWED)
+    - Operador: ve solo módulos con ACCESS_ALLOWED
     """
 
     rol_real = (user.get("rol_real") or user.get("rol") or "").strip().lower()
@@ -299,7 +321,7 @@ async def orbion_hub_view(
     snapshot_modules = (snapshot.get("modules") or {}) if isinstance(snapshot, dict) else {}
     entitlements = (snapshot.get("entitlements") or {}) if isinstance(snapshot, dict) else {}
 
-    # ✅ IMPORTANTE: negocio_ctx viene desde snapshot["negocio"], NO desde entitlements
+    # ✅ negocio_ctx viene desde snapshot["negocio"], NO desde entitlements
     negocio_ctx = (snapshot.get("negocio") or {}) if isinstance(snapshot, dict) else {}
 
     segmento = (
@@ -340,7 +362,9 @@ async def orbion_hub_view(
 
             mod = snapshot_modules.get(mk.value) or {}
             enabled = bool(mod.get("enabled"))
-            status = (mod.get("status") or "inactive")
+            status = _norm_status(mod.get("status") or "inactive")
+
+            access_allowed = _is_access_allowed(enabled, status)
             badge = _badge_from_status(status, enabled)
 
             metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod)
@@ -353,10 +377,13 @@ async def orbion_hub_view(
             dashboard_modules.append(
                 {
                     **m,
-                    "locked": not enabled,
+                    # ✅ locked si NO hay acceso (aunque enabled sea True)
+                    "locked": (not access_allowed),
+                    # ✅ enabled se mantiene como “provisionado”
                     "enabled": enabled,
+                    # ✅ badge coherente
                     "badge": badge if enabled else "Activar módulo",
-                    "status": str(status).strip().lower(),
+                    "status": status,
                     "segmento": segmento,
                     "metric_label": metric_label,
                     "metric_used": metric_used,
@@ -364,6 +391,8 @@ async def orbion_hub_view(
                     "period_end": period_end,
                     "cancel_at_period_end": cancel_at_period_end,
                     "trial_ends_at": str(trial_ends_at) if trial_ends_at else None,
+                    # ✅ extra útil para depurar (si quieres mostrarlo luego)
+                    "access_allowed": access_allowed,
                 }
             )
 
@@ -375,7 +404,7 @@ async def orbion_hub_view(
             bool(user.get("acting_negocio_id")),
         )
 
-    # Operador / otros: solo enabled
+    # Operador / otros: SOLO acceso real (trial/active)
     else:
         for m in base_modules:
             mk = m.get("module_key")
@@ -384,12 +413,12 @@ async def orbion_hub_view(
 
             mod = snapshot_modules.get(mk.value) or {}
             enabled = bool(mod.get("enabled"))
-            if not enabled:
+            status = _norm_status(mod.get("status") or "inactive")
+
+            if not _is_access_allowed(enabled, status):
                 continue
 
-            status = (mod.get("status") or "inactive")
             badge = _badge_from_status(status, enabled)
-
             metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod)
             period_end = _period_end_from_mod(mod)
 
@@ -399,7 +428,7 @@ async def orbion_hub_view(
                     "locked": False,
                     "enabled": True,
                     "badge": badge,
-                    "status": str(status).strip().lower(),
+                    "status": status,
                     "segmento": segmento,
                     "metric_label": metric_label,
                     "metric_used": metric_used,
@@ -407,6 +436,7 @@ async def orbion_hub_view(
                     "period_end": period_end,
                     "cancel_at_period_end": False,
                     "trial_ends_at": None,
+                    "access_allowed": True,
                 }
             )
 
@@ -428,7 +458,7 @@ async def orbion_hub_view(
             "show_superadmin_console": show_superadmin_console,
             "snapshot": snapshot,
             "entitlements": entitlements,
-            "negocio_ctx": negocio_ctx,  # ✅ ahora el template tiene el negocio real del snapshot
+            "negocio_ctx": negocio_ctx,
             "needs_onboarding": needs_onboarding,
         },
     )

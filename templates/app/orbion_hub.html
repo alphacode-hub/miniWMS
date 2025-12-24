@@ -16,9 +16,7 @@
 
 <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
-    {# =========================
-    HEADER (mobile-first, 1 solo)
-    ========================= #}
+    <!-- Header -->
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -52,9 +50,7 @@
         </div>
     </header>
 
-    {# =========================
-    SUPERADMIN GLOBAL: NO MOSTRAR MÓDULOS
-    ========================= #}
+    <!-- SUPERADMIN GLOBAL: NO MOSTRAR MÓDULOS -->
     {% if is_superadmin_global %}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 space-y-2">
         <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -94,31 +90,15 @@
 
     {% else %}
 
-    {# =========================
-    ONBOARDING (sin módulos)
-    ========================= #}
-    {% if needs_onboarding %}
-    <section class="rounded-2xl border border-cyan-500/40 bg-cyan-500/5 p-4 sm:p-5">
-        <h2 class="text-sm font-semibold text-cyan-300">
-            Bienvenido a ORBION 🚀
-        </h2>
-        <p class="mt-1 text-[11px] sm:text-xs text-slate-300 max-w-xl">
-            Aún no tienes módulos activos. Activa el módulo que necesitas y comienza a operar en minutos.
-        </p>
-    </section>
-    {% endif %}
-
-    {# =========================
-    PANEL PLAN & ESTADO (solo admin negocio)
-    ========================= #}
+    <!-- PANEL PLAN & ESTADO (solo admin negocio) -->
     {% set is_admin = (u and (u.get("rol") == "admin")) %}
 
     {% if is_admin and has_negocio_ctx %}
     {% set seg = (neg.get("segment") or neg.get("segmento") or "emprendedor") %}
     {% set seg = (seg|string)|lower %}
 
-    {% set ns = namespace(enabled_count=0, blocked_count=0, next_period_end=None) %}
-
+    {# ✅ contar solo enabled efectivos y calcular próximo corte desde period_end efectivo #}
+    {% set ns = namespace(enabled_count=0, next_period_end=None) %}
     {% for m in (dashboard_modules or []) %}
     {% if m and (m.status != "coming_soon") %}
     {% if m.enabled %}
@@ -132,8 +112,6 @@
     {% endif %}
     {% endif %}
     {% endif %}
-    {% else %}
-    {% set ns.blocked_count = ns.blocked_count + 1 %}
     {% endif %}
     {% endif %}
     {% endfor %}
@@ -183,44 +161,12 @@
                           active:scale-[0.97] transition-transform transition-colors">
                     Administrar suscripción
                 </a>
-
-                <a href="/app/planes"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
-                          text-[11px] font-medium text-slate-200 bg-slate-900
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Ver detalle
-                </a>
-            </div>
-        </div>
-    </section>
-
-    {% if ns.blocked_count > 0 %}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-3 sm:px-5 sm:py-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="space-y-0.5">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Desbloquea más capacidad
-                </p>
-                <p class="text-[11px] sm:text-xs text-slate-300">
-                    Tienes {{ ns.blocked_count }} módulo(s) disponible(s) para habilitar. Mejora tu plan o activa lo que necesitas.
-                </p>
-            </div>
-
-            <div class="flex gap-2">
-                <a href="/app/planes"
-                   class="inline-flex items-center rounded-full border border-cyan-500/50 px-4 py-2
-                          text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/10 transition-colors">
-                    Ver planes
-                </a>
             </div>
         </div>
     </section>
     {% endif %}
-    {% endif %}
 
-    {# =========================
-    GRID DE MÓDULOS
-    ========================= #}
+    <!-- GRID DE MÓDULOS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
         {% for m in (dashboard_modules or []) %}
         <article class="relative rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 hover:border-cyan-400/40 transition">
@@ -269,8 +215,7 @@
                         {% else %}
                             bg-red-500
                         {% endif %}"
-                        style="width: {{ pct|round(0) }}%">
-                    </div>
+                        style="width: {{ pct|round(0) }}%"></div>
                 </div>
             </div>
             {% endif %}

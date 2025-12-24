@@ -56,7 +56,7 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
             "recepciones_mes": 30,
             "incidencias_mes": 1_000,
             "citas_mes": 300,
-            "proveedores": 50,
+            "proveedores": 10,
             "evidencias_mb": 1_024,
         },
         "analytics_plus": {},
@@ -73,10 +73,10 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
             "exportaciones_mes": 300,
         },
         "inbound": {
-            "recepciones_mes": 2_000,
+            "recepciones_mes": 100,
             "incidencias_mes": 10_000,
             "citas_mes": 3_000,
-            "proveedores": 500,
+            "proveedores": 200,
             "evidencias_mb": 10_240,
         },
         "analytics_plus": {},
@@ -107,9 +107,6 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
 
 # =========================================================
 # DEFAULT ENTITLEMENTS (baseline)
-# core: SIEMPRE enabled/active (plataforma)
-# wms: base product -> enabled/active por defecto
-# inbound: por defecto disabled (se activa por provisioning explícito)
 # =========================================================
 def default_entitlements() -> dict:
     segment = "emprendedor"
@@ -124,11 +121,7 @@ def default_entitlements() -> dict:
             "analytics_plus": {"enabled": False, "status": "inactive"},
             "ml_ia": {"enabled": False, "status": "inactive"},
         },
-        # Nota: históricamente esto se persistió como snapshot completo.
-        # Hoy lo tratamos como "puede ser overrides" y aplicamos heurística para evitar congelar límites.
         "limits": base_limits,
-        # Nuevo (opcional): si en el futuro quieres overrides limpios, puedes usar esto en vez de "limits".
-        # "limits_overrides": {},
         "billing": {"source": "baseline"},
     }
 
@@ -155,13 +148,6 @@ def _norm_segment(x: Any, default: str = "emprendedor") -> str:
 
 
 def _module_alias(mk: str) -> str:
-    """
-    Normaliza nombres históricos a claves canónicas.
-    - wms_core -> wms
-    - core_wms -> wms
-    - basic_wms -> wms
-    - inbound_orbion -> inbound
-    """
     mk = _safe_str(mk).lower()
     aliases = {
         "wms_core": "wms",
@@ -173,29 +159,17 @@ def _module_alias(mk: str) -> str:
 
 
 def _looks_like_full_segment_limits(limits_in: dict) -> str | None:
-    """
-    Heurística clave (fix del "se queda pegado en 200"):
-
-    Si limits_in es un snapshot completo que coincide con los defaults de ALGÚN segmento,
-    significa que fue persistido como "defaults" (no overrides reales).
-
-    Retorna el segmento que coincide, o None si no coincide.
-    """
     if not isinstance(limits_in, dict) or not limits_in:
         return None
-
-    # Solo aplica si es por módulo (dict de dict)
     if not any(isinstance(v, dict) for v in limits_in.values()):
         return None
 
-    # normalizamos keys de módulos por si venían con aliases
     norm_in: dict[str, dict[str, Any]] = {}
     for mk, lim in limits_in.items():
         mk_norm = _module_alias(mk)
         if isinstance(lim, dict):
             norm_in[mk_norm] = dict(lim)
 
-    # Comparamos contra defaults por segmento
     for seg, defaults in DEFAULT_LIMITS_BY_SEGMENT.items():
         if not isinstance(defaults, dict):
             continue
@@ -209,12 +183,8 @@ def _looks_like_full_segment_limits(limits_in: dict) -> str | None:
                 ok = False
                 break
 
-            # Debe contener al menos las mismas claves y mismos valores (snapshot completo típico)
             for k, v in dlim.items():
-                if k not in in_lim:
-                    ok = False
-                    break
-                if in_lim.get(k) != v:
+                if k not in in_lim or in_lim.get(k) != v:
                     ok = False
                     break
             if not ok:
@@ -227,36 +197,17 @@ def _looks_like_full_segment_limits(limits_in: dict) -> str | None:
 
 
 def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides: Any = None) -> dict[str, dict[str, Any]]:
-    """
-    Resuelve limits por módulo:
-    - Defaults por segmento
-    - Overrides por negocio
-
-    Soporta:
-      A) Por módulo: {"inbound": {...}, "wms": {...}}
-      B) Legacy plano: {"usuarios_totales": 3, ...} -> se asigna a "wms"
-
-    Fix enterprise:
-      - Si limits_in parece snapshot completo de un segmento (heurística),
-        NO lo aplicamos como override cuando el segmento actual es distinto.
-        (evita que se "congele" emprendedor=200 al pasar a enterprise)
-    """
     base = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(segment, {}))
 
-    # 1) Overrides explícitos (nuevo) ganan prioridad si vienen
     effective_overrides = limits_overrides if isinstance(limits_overrides, dict) else None
-
-    # 2) Si no hay overrides explícitos, usamos limits_in como posible override (legacy)
     if effective_overrides is None:
         effective_overrides = limits_in if isinstance(limits_in, dict) else None
 
     if not isinstance(effective_overrides, dict) or not effective_overrides:
         return base
 
-    # Heurística: ¿esto es un snapshot completo de un segmento?
     seg_match = _looks_like_full_segment_limits(effective_overrides)
     if seg_match is not None and seg_match != segment:
-        # Esto era un snapshot persistido del segmento anterior -> NO lo uses como override
         logger.info(
             "[ENTITLEMENTS] limits snapshot detectado (seg=%s) pero segmento actual=%s -> ignorando snapshot para evitar límites congelados",
             seg_match,
@@ -264,7 +215,6 @@ def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides:
         )
         return base
 
-    # Caso A: por módulo
     any_module_dict = any(isinstance(v, dict) for v in effective_overrides.values())
     if any_module_dict:
         for mk, lim in effective_overrides.items():
@@ -275,7 +225,6 @@ def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides:
             base[mk_norm].update(lim)
         return base
 
-    # Caso B: plano -> asumir WMS
     base.setdefault("wms", {})
     base["wms"].update(effective_overrides)
     return base
@@ -285,13 +234,6 @@ def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides:
 # LEGACY PLAN -> CONTRATO NUEVO (fallback)
 # =========================================================
 def _map_legacy_plan_tipo(plan_tipo: str) -> dict:
-    """
-    Mapeo conservador (no rompe baseline):
-    - demo/free -> emprendedor (wms activo, inbound inactivo)
-    - pyme -> pyme (wms activo, inbound inactivo)
-    - enterprise -> enterprise (wms activo, inbound inactivo)
-    Nota: inbound se activa por provisioning explícito (SuscripcionModulo + update entitlements).
-    """
     p = _safe_str(plan_tipo, "demo").lower()
     if p in {"enterprise", "ent"}:
         seg = "enterprise"
@@ -312,18 +254,9 @@ def _map_legacy_plan_tipo(plan_tipo: str) -> dict:
 
 
 # =========================================================
-# NORMALIZACIÓN (contrato estable)
+# NORMALIZACIÓN
 # =========================================================
 def normalize_entitlements(ent: Optional[dict]) -> dict:
-    """
-    Garantiza estructura estándar mínima:
-      segment, modules, limits, billing
-
-    - segment en {emprendedor, pyme, enterprise}
-    - module keys normalizadas (aliases)
-    - limits siempre quedan por módulo (dict de dict)
-    - core siempre enabled/active
-    """
     base = default_entitlements()
 
     if not isinstance(ent, dict) or not ent:
@@ -331,15 +264,12 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
 
     out = deepcopy(base)
 
-    # segment
     out["segment"] = _norm_segment(ent.get("segment"), out["segment"])
 
-    # billing
     billing = ent.get("billing")
     if isinstance(billing, dict):
         out["billing"].update(billing)
 
-    # modules
     modules_in = ent.get("modules")
     if isinstance(modules_in, dict):
         out_modules: dict[str, dict[str, Any]] = {}
@@ -359,13 +289,11 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
 
         out["modules"].update(out_modules)
 
-    # core obligatorio
     out["modules"].setdefault("core", {"enabled": True, "status": "active"})
     out["modules"]["core"]["enabled"] = True
     out["modules"]["core"]["status"] = "active"
 
-    # limits: defaults por segmento + overrides (con fix anti-freeze)
-    limits_overrides = ent.get("limits_overrides")  # opcional (nuevo)
+    limits_overrides = ent.get("limits_overrides")
     out["limits"] = _merge_limits_for_segment(out["segment"], ent.get("limits"), limits_overrides=limits_overrides)
 
     return out
@@ -379,7 +307,6 @@ def resolve_entitlements(negocio: Negocio) -> dict:
     if isinstance(ent, dict) and ent:
         return normalize_entitlements(ent)
 
-    # fallback legacy (solo si no hay entitlements persistidos)
     plan = _safe_str(getattr(negocio, "plan_tipo", "demo"), "demo").lower()
     logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos (fallback plan_tipo=%s)", negocio.id, plan)
     return normalize_entitlements(_map_legacy_plan_tipo(plan))
@@ -400,7 +327,7 @@ def has_module(negocio: Negocio, module_key: str, *, require_active: bool = True
         return True
 
     st = _safe_str(mod.get("status"), "").lower()
-    return st in {"active", "trial"}  # trial cuenta como acceso
+    return st in {"active", "trial"}
 
 
 def get_module(ent: dict, module_key: str) -> dict:
@@ -412,6 +339,7 @@ def get_module(ent: dict, module_key: str) -> dict:
 # =========================================================
 # SNAPSHOT PARA HUB / SUPERADMIN / ENFORCEMENT
 # =========================================================
+
 def _sub_to_overlay(sub: SuscripcionModulo | None) -> dict[str, Any]:
     if not sub:
         return {}
@@ -439,13 +367,34 @@ def _sub_to_overlay(sub: SuscripcionModulo | None) -> dict[str, Any]:
     }
 
 
-def _as_modulekey_or_none(mk_norm: str) -> ModuleKey | None:
-    mk_norm = _module_alias(mk_norm)
-    if mk_norm == ModuleKey.INBOUND.value:
-        return ModuleKey.INBOUND
-    if mk_norm == ModuleKey.WMS.value:
-        return ModuleKey.WMS
-    return None
+def _effective_enabled_status(
+    *,
+    ent_enabled: bool,
+    ent_status: str,
+    sub: SuscripcionModulo | None,
+) -> tuple[bool, str]:
+    """
+    Contrato enterprise:
+    - entitlements define provisioning (enabled/disabled)
+    - subscription define acceso comercial real (trial/active/past_due/suspended/cancelled)
+    - estado efectivo y acceso = overlay de subscription cuando existe
+    """
+    ent_status_norm = _norm_status(ent_status, "inactive")
+
+    if not sub:
+        # No hay suscripción -> usar entitlements tal cual
+        return bool(ent_enabled), ent_status_norm
+
+    sub_status = getattr(sub.status, "value", str(sub.status)).lower().strip()
+    sub_status = _norm_status(sub_status, "inactive")
+
+    # Solo TRIAL/ACTIVE cuentan como acceso. El resto bloquea.
+    sub_allows = sub_status in {"trial", "active"}
+
+    effective_enabled = bool(ent_enabled) and bool(sub_allows)
+    effective_status = sub_status  # lo que “manda” para UI/decisiones
+
+    return effective_enabled, effective_status
 
 
 def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
@@ -471,44 +420,70 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
 
     for mk, mod in (ent.get("modules") or {}).items():
         mk_norm = _module_alias(mk)
-        enabled = bool(mod.get("enabled"))
-        status = _norm_status(mod.get("status", "inactive"))
+
+        ent_enabled = bool(mod.get("enabled"))
+        ent_status = _norm_status(mod.get("status", "inactive"))
 
         sub = subs_by_key.get(mk_norm)
         overlay = _sub_to_overlay(sub)
 
+        # ✅ estado/enable EFECTIVO (sin ambigüedad)
+        effective_enabled, effective_status = _effective_enabled_status(
+            ent_enabled=ent_enabled,
+            ent_status=ent_status,
+            sub=sub,
+        )
+
         # usage real: solo si hay sub + module_key conocido (wms/inbound)
-        usage: dict[str, float] = {}
+        usage_raw: dict[str, Any] = {}
         if sub:
             mk_enum = _as_modulekey_or_none(mk_norm)
             if mk_enum:
                 try:
-                    usage = list_usage_for_module_current_period(db, negocio_id, mk_enum)
+                    usage_raw = list_usage_for_module_current_period(db, negocio_id, mk_enum) or {}
                 except Exception:
-                    usage = {}
+                    usage_raw = {}
 
-        limits: dict[str, Any] = {}
+        limits_raw: dict[str, Any] = {}
         if isinstance(limits_all, dict) and isinstance(limits_all.get(mk_norm), dict):
-            limits = limits_all.get(mk_norm) or {}
+            limits_raw = limits_all.get(mk_norm) or {}
 
-        remaining: dict[str, float] = {}
-        if limits and usage:
+        limits = _cast_numeric_dict(limits_raw)
+        usage = _cast_numeric_dict(usage_raw)
+
+        remaining: dict[str, Any] = {}
+        if limits:
             for k, lim in limits.items():
                 try:
                     limit_v = float(lim)
                 except Exception:
                     continue
-                used_v = float(usage.get(k, 0.0) or 0.0)
-                remaining[k] = max(0.0, limit_v - used_v)
+                try:
+                    used_v = float(usage.get(k, 0) or 0)
+                except Exception:
+                    used_v = 0.0
+                rem_v = max(0.0, limit_v - used_v)
+                remaining[str(k)] = _num_cast(rem_v)
 
-        payload: dict[str, Any] = {"enabled": enabled, "status": status}
+        payload: dict[str, Any] = {
+            # 👇 lo que consume UI/Hub/Plan Center (coherente)
+            "enabled": effective_enabled,
+            "status": effective_status,
 
+            # 👇 opcional: mostrar/debug (si te sirve)
+            "ent_enabled": ent_enabled,
+            "ent_status": ent_status,
+        }
+
+        # period funcional desde entitlements (si lo usas)
         if "period" in mod and isinstance(mod.get("period"), dict):
             payload["period"] = mod.get("period")
 
         payload["limits"] = limits
         payload["usage"] = usage
         payload["remaining"] = remaining
+
+        # overlay comercial (trial/period/cancel flag)
         payload.update(overlay)
 
         modules_out[mk_norm] = payload
@@ -522,3 +497,57 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
         "entitlements": ent,
         "modules": modules_out,
     }
+
+
+def _as_modulekey_or_none(mk_norm: str) -> ModuleKey | None:
+    mk_norm = _module_alias(mk_norm)
+    if mk_norm == ModuleKey.INBOUND.value:
+        return ModuleKey.INBOUND
+    if mk_norm == ModuleKey.WMS.value:
+        return ModuleKey.WMS
+    return None
+
+
+def _num_cast(v: Any) -> Any:
+    try:
+        if v is None:
+            return None
+        f = float(v)
+        if abs(f - round(f)) < 1e-9:
+            return int(round(f))
+        return f
+    except Exception:
+        return v
+
+
+def _cast_numeric_dict(d: Any) -> dict[str, Any]:
+    if not isinstance(d, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for k, v in d.items():
+        out[str(k)] = _num_cast(v)
+    return out
+
+
+def has_module_db(
+    db: Session,
+    negocio_id: int,
+    module_key: str,
+    *,
+    require_active: bool = True,
+) -> bool:
+    snap = get_entitlements_snapshot(db, negocio_id)
+    mk = _module_alias(module_key)
+    mod = (snap.get("modules") or {}).get(mk) or {}
+    if not isinstance(mod, dict):
+        return False
+
+    enabled = bool(mod.get("enabled"))
+    if not enabled:
+        return False
+
+    if not require_active:
+        return True
+
+    st = _safe_str(mod.get("status"), "inactive").lower()
+    return st in {"trial", "active"}

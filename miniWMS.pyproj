@@ -51,6 +51,7 @@
     <Compile Include="core\models\time.py" />
     <Compile Include="core\models\__init__.py" />
     <Compile Include="core\routes\routes_app_hub.py" />
+    <Compile Include="core\routes\routes_app_planes.py" />
     <Compile Include="core\routes\routes_health.py" />
     <Compile Include="core\services\services_business.py" />
     <Compile Include="core\services\services_enforcement.py" />
@@ -59,6 +60,7 @@
     <Compile Include="core\services\services_observability.py" />
     <Compile Include="core\services\services_renewal_job.py" />
     <Compile Include="core\services\services_subscriptions.py" />
+    <Compile Include="core\services\services_subscription_jobs.py" />
     <Compile Include="core\services\services_usage.py" />
     <Compile Include="core\templates.py" />
     <Compile Include="core\web.py" />
@@ -160,6 +162,7 @@
     <Content Include="static\favicon.ico" />
     <Content Include="static\img\orbion.png" />
     <Content Include="static\img\orbion.svg" />
+    <Content Include="templates\app\app_planes.html" />
     <Content Include="templates\app\orbion_hub.html" />
     <Content Include="templates\app\superadmin_health.html" />
     <Content Include="templates\app\superadmin_jobs.html" />

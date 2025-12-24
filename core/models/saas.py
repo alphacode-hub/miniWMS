@@ -39,30 +39,28 @@ class SuscripcionModulo(Base):
     __tablename__ = "suscripciones_modulo"
     __table_args__ = (
         UniqueConstraint("negocio_id", "module_key", name="uq_suscripcion_modulo_negocio"),
+
+        # ✅ El período solo es válido si ambos existen (si son NULL, no aplica)
         CheckConstraint(
-            "current_period_end > current_period_start",
+            "(current_period_start IS NULL AND current_period_end IS NULL) OR (current_period_end > current_period_start)",
             name="ck_suscripcion_periodo_valido",
         ),
-        # Índices compuestos útiles (jobs / queries hub)
+
+        # ✅ Regla clave del contrato v1:
+        # Un módulo NO puede tener trial_ends_at y periodo al mismo tiempo
+        CheckConstraint(
+            "NOT (trial_ends_at IS NOT NULL AND current_period_start IS NOT NULL)",
+            name="ck_suscripcion_trial_vs_periodo_exclusivo",
+        ),
+
         Index("ix_subs_renewal_queue", "status", "next_renewal_at"),
         Index("ix_subs_negocio_status", "negocio_id", "status"),
     )
 
     id = Column(Integer, primary_key=True)
-
-    # =========================
-    # MULTI-TENANT
-    # =========================
     negocio_id = Column(Integer, ForeignKey("negocios.id"), nullable=False, index=True)
 
-    # =========================
-    # MODULO / ESTADO
-    # =========================
-    module_key = Column(
-        SAEnum(ModuleKey, name=MODULE_KEY_ENUM_NAME),
-        nullable=False,
-        index=True,
-    )
+    module_key = Column(SAEnum(ModuleKey, name=MODULE_KEY_ENUM_NAME), nullable=False, index=True)
 
     status = Column(
         SAEnum(SubscriptionStatus, name=SUB_STATUS_ENUM_NAME),
@@ -71,42 +69,34 @@ class SuscripcionModulo(Base):
         default=SubscriptionStatus.TRIAL,
     )
 
-    # =========================
-    # FECHAS COMERCIALES (UTC)
-    # =========================
     started_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
 
-    current_period_start = Column(DateTime(timezone=True), nullable=False, index=True)
-    current_period_end = Column(DateTime(timezone=True), nullable=False, index=True)
+    # ✅ Deben ser NULL en trial/inactive
+    current_period_start = Column(DateTime(timezone=True), nullable=True, index=True)
+    current_period_end = Column(DateTime(timezone=True), nullable=True, index=True)
 
     next_renewal_at = Column(DateTime(timezone=True), nullable=True, index=True)
-
     last_payment_at = Column(DateTime(timezone=True), nullable=True)
     past_due_since = Column(DateTime(timezone=True), nullable=True)
 
-    cancel_at_period_end = Column(Integer, default=0, nullable=False)  # 0/1 SQLite-friendly
+    cancel_at_period_end = Column(Integer, default=0, nullable=False)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Auditoría
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-    # =========================
-    # RELACIONES
-    # =========================
     negocio = relationship("Negocio", back_populates="suscripciones_modulo")
 
-    # =========================
-    # HELPERS (no DB)
-    # =========================
     @property
     def enabled(self) -> bool:
-        return self.status in (SubscriptionStatus.TRIAL, SubscriptionStatus.ACTIVE)
+        # ✅ Contrato v1: acceso permitido en trial/active/past_due
+        return self.status in (SubscriptionStatus.TRIAL, SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE)
 
     @property
     def is_trial(self) -> bool:
         return self.status == SubscriptionStatus.TRIAL
+
 
 
 class UsageCounter(Base):

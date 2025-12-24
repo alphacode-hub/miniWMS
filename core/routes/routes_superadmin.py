@@ -55,7 +55,7 @@ from core.services.services_entitlements import (
     normalize_entitlements,
     resolve_entitlements,
 )
-from core.services.services_renewal_job import run_subscription_renewal_job
+from core.services.services_subscription_jobs import run_subscriptions_job
 from core.services.services_subscriptions import (
     activate_module,
     cancel_subscription_at_period_end,
@@ -470,11 +470,15 @@ async def superadmin_jobs(
 
     jobs = [
         {
-            "slug": "renew_subscriptions",
-            "label": "Renovar suscripciones (global)",
-            "description": "Ejecuta el job mensual: renueva períodos y aplica cancel_at_period_end.",
+            "slug": "subscriptions_job",
+            "label": "Subscriptions Job (Contrato v1)",
+            "description": (
+                "Procesa suscripciones a nivel global: expira trials, marca past_due, "
+                "repara inconsistencias y renueva períodos pagados. "
+                "Respeta cancel_at_period_end."
+            ),
             "method": "POST",
-            "action": "/superadmin/jobs/renew-subscriptions",
+            "action": "/superadmin/jobs/subscriptions",
         },
     ]
 
@@ -484,29 +488,36 @@ async def superadmin_jobs(
     )
 
 
-@router.post("/jobs/renew-subscriptions", response_class=HTMLResponse)
-async def superadmin_job_renew_subscriptions(
+@router.post("/jobs/subscriptions", response_class=HTMLResponse)
+async def superadmin_job_subscriptions(
     request: Request,
+    batch_size: int = Form(500),
+    lookahead_minutes: int = Form(5),
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
     _require_superadmin_global(user)
 
+    bs = max(10, min(int(batch_size or 500), 5000))
+    la = max(0, min(int(lookahead_minutes or 5), 1440))
+
     try:
-        res = run_subscription_renewal_job(db)
+        res = run_subscriptions_job(db, batch_size=bs, lookahead_minutes=la, commit=True)
     except Exception:
-        logger.exception("[SUPERADMIN][JOB] renew_subscriptions crashed")
+        logger.exception("[SUPERADMIN][JOB] subscriptions_job crashed")
         raise
 
-    # Nota baseline:
-    # - Ejecución es "global" (superadmin), pero la auditoría NO es global.
-    # - El job audita por negocio afectado dentro de renew_subscription (actor system con negocio_id).
+    counters = (res or {}).get("counters") or {}
+
     logger.info(
-        "[SUPERADMIN][JOB] renew_subscriptions done checked=%s renewed=%s cancelled=%s errors=%s",
-        getattr(res, "checked", None),
-        getattr(res, "renewed", None),
-        getattr(res, "cancelled", None),
-        getattr(res, "errors", None),
+        "[SUPERADMIN][JOB] subscriptions_job done scanned=%s renewed=%s past_due=%s cancelled=%s trial_expired=%s repaired=%s errors=%s",
+        counters.get("scanned"),
+        counters.get("renewed"),
+        counters.get("past_due"),
+        counters.get("cancelled"),
+        counters.get("trial_expired"),
+        counters.get("repaired"),
+        counters.get("errors"),
     )
 
     return templates.TemplateResponse(
@@ -514,7 +525,7 @@ async def superadmin_job_renew_subscriptions(
         {
             "request": request,
             "user": user,
-            "job_name": "Renovación de suscripciones (global)",
+            "job_name": "Subscriptions Job (Contrato v1)",
             "result": res,
         },
     )

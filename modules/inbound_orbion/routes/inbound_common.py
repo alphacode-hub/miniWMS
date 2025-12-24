@@ -3,7 +3,7 @@
 Utilidades compartidas del módulo Inbound (ORBION).
 
 ✔ Resolver templates (global + inbound) sin hardcodes frágiles
-✔ Dependency de roles inbound (RBAC)
+✔ Dependency de roles inbound (RBAC) + gating de módulo (entitlements + subscription overlay)
 ✔ Helper seguro para obtener negocio
 """
 
@@ -12,13 +12,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Tuple
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from core.database import get_db
 from core.models import Negocio
-from core.security import require_roles_dep
-from core.web import templates
-from core.web import add_template_dir  # ✅
+from core.security import require_roles_dep, require_user_dep
+from core.services.services_entitlements import has_module_db
+from core.web import add_template_dir, templates
 
 # ============================
 #   TEMPLATES (registrar dir inbound)
@@ -46,13 +47,64 @@ INBOUND_ROLES: Tuple[str, ...] = (
 )
 
 
+def _effective_negocio_id(user: dict) -> int | None:
+    """
+    Baseline:
+    - acting_negocio_id (impersonación) tiene prioridad
+    - si no, negocio_id normal
+    """
+    try:
+        if user.get("acting_negocio_id"):
+            return int(user["acting_negocio_id"])
+    except Exception:
+        pass
+
+    try:
+        if user.get("negocio_id"):
+            return int(user["negocio_id"])
+    except Exception:
+        pass
+
+    return None
+
+
 def inbound_roles_dep() -> Callable:
     """
-    Dependency para validar roles inbound.
+    Dependency inbound enterprise (RBAC + gating):
+    - valida sesión usuario
+    - valida roles inbound
+    - valida que el módulo inbound esté ACTIVO (effective enabled) según snapshot
+      (entitlements.enabled + subscription.status ∈ {trial, active})
+
     Uso:
         user = Depends(inbound_roles_dep())
     """
-    return require_roles_dep(*INBOUND_ROLES)
+
+    roles_dep = require_roles_dep(*INBOUND_ROLES)
+
+    async def _dep(
+        request: Request,
+        db: Session = Depends(get_db),
+        user: dict = Depends(require_user_dep),
+    ) -> dict:
+        # 1) roles inbound
+        roles_dep(user)  # lanza 403 si no tiene roles
+
+        # 2) gating módulo (enterprise)
+        negocio_id = _effective_negocio_id(user)
+        if not negocio_id:
+            raise HTTPException(status_code=400, detail="No se encontró contexto de negocio en la sesión.")
+
+        if not has_module_db(db, negocio_id, "inbound", require_active=True):
+            # mensaje claro para UI
+            raise HTTPException(
+                status_code=403,
+                detail="Módulo Inbound no está activo para este negocio (suscripción suspendida o no habilitada).",
+            )
+
+        return user
+
+    return _dep
 
 
 # ============================

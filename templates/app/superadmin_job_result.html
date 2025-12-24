@@ -1,119 +1,103 @@
 ﻿{# templates/app/superadmin_job_result.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}Resultado Job · Consola Superadmin · ORBION{% endblock %}
+{% block title %}ORBION · Resultado Job{% endblock %}
 
 {% block content %}
-{% set r = result %}
-{% set checked = (r.checked if r is not none and r.checked is defined else (r.get("checked") if r is mapping else none)) %}
-{% set renewed = (r.renewed if r is not none and r.renewed is defined else (r.get("renewed") if r is mapping else none)) %}
-{% set cancelled = (r.cancelled if r is not none and r.cancelled is defined else (r.get("cancelled") if r is mapping else none)) %}
-{% set errors = (r.errors if r is not none and r.errors is defined else (r.get("errors") if r is mapping else none)) %}
-{% set details = (r.details if r is not none and r.details is defined else (r.get("details") if r is mapping else none)) %}
-{% set items = (r.items if r is not none and r.items is defined else (r.get("items") if r is mapping else none)) %}
+{% set u = user or {} %}
+{% set r = result or {} %}
+{% set c = (r.get("counters") or {}) if (r is mapping) else {} %}
 
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
-    {# =========================
-    HEADER
-    ========================= #}
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Consola superadmin
+                Superadmin · Job Center
             </p>
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-                Resultado · {{ job_name or "Job" }}
+                {{ job_name or "Job" }}
             </h1>
-            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
-                Resumen de ejecución. Auditoría se registra por negocio afectado dentro de services_*.
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-2xl">
+                Resultado de ejecución. Este resumen es operativo; el detalle completo queda en logs/observability.
             </p>
         </div>
 
         <div class="shrink-0 flex items-center gap-2">
             <a href="/superadmin/jobs"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Job Center
-            </a>
-            <a href="/superadmin/dashboard"
-               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                Consola
+                text-[11px] font-medium text-slate-200 bg-slate-900
+                hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver al Job Center
             </a>
         </div>
     </header>
 
-    {# =========================
-    SUMMARY CARDS
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-4">
-        <header class="space-y-1">
-            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Resumen
-            </p>
-            <p class="text-[11px] text-slate-500">
-                Métricas principales reportadas por el job.
-            </p>
-        </header>
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
+                now: {{ r.get("now") or "—" }}
+            </span>
+            <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
+                batch: {{ r.get("batch_size") or "—" }}
+            </span>
+            <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
+                lookahead: {{ r.get("lookahead_minutes") or "—" }} min
+            </span>
+            {% if r.get("ok") %}
+            <span class="text-[10px] px-2 py-1 rounded-full border border-emerald-500/50 text-emerald-300">
+                OK
+            </span>
+            {% else %}
+            <span class="text-[10px] px-2 py-1 rounded-full border border-rose-500/50 text-rose-200">
+                Error
+            </span>
+            {% endif %}
+        </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 space-y-1.5">
-                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Checked</p>
-                <p class="text-2xl font-semibold text-slate-50">{{ checked if checked is not none else "—" }}</p>
-                <p class="text-[11px] text-slate-500">Suscripciones evaluadas.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Scanned</p>
+                <p class="text-base font-semibold text-slate-100">{{ c.get("scanned", 0) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Renewed</p>
+                <p class="text-base font-semibold text-emerald-300">{{ c.get("renewed", 0) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Past due</p>
+                <p class="text-base font-semibold text-amber-300">{{ c.get("past_due", 0) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Cancelled</p>
+                <p class="text-base font-semibold text-rose-200">{{ c.get("cancelled", 0) }}</p>
             </div>
 
-            <div class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 space-y-1.5">
-                <p class="text-[11px] font-medium text-emerald-300 uppercase tracking-wide">Renewed</p>
-                <p class="text-2xl font-semibold text-emerald-50">{{ renewed if renewed is not none else "—" }}</p>
-                <p class="text-[11px] text-emerald-200/80">Renovaciones aplicadas.</p>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Trial expired</p>
+                <p class="text-base font-semibold text-cyan-300">{{ c.get("trial_expired", 0) }}</p>
             </div>
-
-            <div class="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 space-y-1.5">
-                <p class="text-[11px] font-medium text-cyan-200 uppercase tracking-wide">Cancelled</p>
-                <p class="text-2xl font-semibold text-cyan-50">{{ cancelled if cancelled is not none else "—" }}</p>
-                <p class="text-[11px] text-cyan-100/80">Cancelaciones efectivas.</p>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Repaired</p>
+                <p class="text-base font-semibold text-slate-100">{{ c.get("repaired", 0) }}</p>
             </div>
-
-            <div class="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 space-y-1.5">
-                <p class="text-[11px] font-medium text-rose-200 uppercase tracking-wide">Errors</p>
-                <p class="text-2xl font-semibold text-rose-50">{{ errors if errors is not none else 0 }}</p>
-                <p class="text-[11px] text-rose-100/80">Errores reportados.</p>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Skipped</p>
+                <p class="text-base font-semibold text-slate-100">{{ c.get("skipped", 0) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
+                <p class="text-[10px] text-slate-500">Errors</p>
+                <p class="text-base font-semibold text-rose-200">{{ c.get("errors", 0) }}</p>
             </div>
         </div>
     </section>
 
-    {# =========================
-    DETAILS (optional)
-    ========================= #}
-    {% if details or items %}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-5 sm:py-6 space-y-4">
-        <header class="space-y-1">
-            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Detalle
-            </p>
-            <p class="text-[11px] text-slate-500">
-                Listado resumido de resultados (si el job lo entrega).
-            </p>
-        </header>
-
-        {% set rows = details or items %}
-        {% if rows and rows is iterable %}
-        <div class="space-y-2">
-            {% for it in rows %}
-            <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-[11px] text-slate-200">
-                {{ it }}
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
-            El job no entregó un detalle iterable.
-        </div>
-        {% endif %}
-    </section>
-    {% endif %}
+    <details class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+        <summary class="cursor-pointer text-[12px] font-semibold text-slate-200">
+            Ver resultado raw (debug)
+        </summary>
+        <pre class="mt-3 text-[11px] text-slate-300 whitespace-pre-wrap break-words">{{ r | tojson(indent=2) }}</pre>
+    </details>
 
 </div>
 {% endblock %}
