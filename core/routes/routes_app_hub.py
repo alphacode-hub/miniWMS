@@ -1,23 +1,19 @@
-﻿# core/routes/routes_app_hub.py
-"""
+﻿"""
 ORBION App Hub – SaaS enterprise module launcher (baseline aligned)
 
 ✔ Hub central de módulos (fuente de verdad: entitlements snapshot)
 ✔ Soporte superadmin (global + impersonado)
 ✔ Control por rol + suscripción por módulo
-✔ Flags locked / activo / estados para UI
-✔ Preparado para billing, addons y analytics
+✔ coming_soon: bloquea CTAs y acciones (no vendible aún)
 
 Baseline:
 - Superadmin global (NO impersonando) NO usa el Hub -> redirect a /superadmin/dashboard
 - Impersonación oficial: acting_negocio_id (cookie payload)
-- Snapshot shape:
-    snapshot = { negocio:{...segment}, entitlements:{...}, modules:{...} }
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -32,15 +28,11 @@ from core.services.services_subscriptions import (
     activate_module,
     cancel_subscription_at_period_end,
     unschedule_cancel,
+    mark_paid_now,
 )
 from core.models.saas import SuscripcionModulo
 
 router = APIRouter(prefix="/app", tags=["app-hub"])
-
-
-# =========================================================
-# HELPERS UI (solo Hub)
-# =========================================================
 
 _ALLOWED_ACCESS_STATUSES = {"trial", "active"}
 
@@ -49,24 +41,19 @@ def _norm_status(status: str) -> str:
     return (status or "").strip().lower() or "inactive"
 
 
-def _is_access_allowed(enabled: bool, status: str) -> bool:
-    """
-    Contrato enterprise:
-    - enabled es “provisionado / habilitado”
-    - acceso real SOLO si status en {trial, active}
-    """
+def _is_access_allowed(enabled: bool, status: str, coming_soon: bool) -> bool:
+    if coming_soon:
+        return False
     st = _norm_status(status)
     return bool(enabled) and (st in _ALLOWED_ACCESS_STATUSES)
 
 
-def _badge_from_status(status: str, enabled: bool) -> str:
-    """
-    Badge humano para el Hub.
-    Nota: NO confundir enabled con acceso.
-    """
+def _badge_from_status(status: str, enabled: bool, coming_soon: bool) -> str:
+    if coming_soon:
+        return "Próximamente"
+
     st = _norm_status(status)
 
-    # Si no está provisionado
     if not enabled:
         if st in ("past_due", "suspended"):
             return "Pago pendiente"
@@ -74,7 +61,6 @@ def _badge_from_status(status: str, enabled: bool) -> str:
             return "Cancelado"
         return "No activo"
 
-    # Está provisionado (enabled=True), ahora mirar estado de acceso
     if st == "trial":
         return "Trial"
     if st == "active":
@@ -85,17 +71,13 @@ def _badge_from_status(status: str, enabled: bool) -> str:
         return "Cancelado"
     if st == "inactive":
         return "Inactivo"
-
     return st
 
 
-def _period_end_from_mod(mod: dict) -> str | None:
-    """
-    Preferimos overlay de suscripción:
-      mod.subscription.period.end
-    Si no, fallback:
-      mod.period.to / mod.period.end
-    """
+def _period_end_from_mod(mod: dict, coming_soon: bool) -> str | None:
+    if coming_soon:
+        return None
+
     sub = mod.get("subscription") or {}
     if isinstance(sub, dict):
         per = sub.get("period") or {}
@@ -113,14 +95,10 @@ def _period_end_from_mod(mod: dict) -> str | None:
     return None
 
 
-def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int | None, int | None]:
-    """
-    Muestra métricas "de conteo" en formato entero (sin decimales).
-    Soporta snapshots viejos y nuevos:
-    - limits: dict
-    - usage: dict (si existe)
-    - remaining: dict (si existe)  -> used = limit - remaining
-    """
+def _best_metric_summary(module_slug: str, mod: dict, coming_soon: bool) -> tuple[str | None, int | None, int | None]:
+    if coming_soon:
+        return (None, None, None)
+
     limits = mod.get("limits") if isinstance(mod.get("limits"), dict) else {}
     usage = mod.get("usage") if isinstance(mod.get("usage"), dict) else {}
     remaining = mod.get("remaining") if isinstance(mod.get("remaining"), dict) else {}
@@ -139,17 +117,11 @@ def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int |
         used: int | None = None
 
         if key in usage:
-            try:
-                used = _to_int(usage.get(key, 0))
-            except Exception:
-                used = None
+            used = _to_int(usage.get(key, 0))
 
         if used is None and key in remaining:
-            try:
-                rem = _to_int(remaining.get(key, 0))
-                used = max(lim - rem, 0)
-            except Exception:
-                used = None
+            rem = _to_int(remaining.get(key, 0))
+            used = max(lim - rem, 0)
 
         if used is None:
             used = 0
@@ -172,11 +144,6 @@ def _best_metric_summary(module_slug: str, mod: dict) -> tuple[str | None, int |
 
 
 def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
-    """
-    Onboarding real enterprise:
-    - Ignora "core"
-    - Si no hay módulos operativos con ACCESS_ALLOWED -> True
-    """
     if not isinstance(snapshot_modules, dict) or not snapshot_modules:
         return True
 
@@ -188,7 +155,9 @@ def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
 
         enabled = bool(mod.get("enabled"))
         st = _norm_status(mod.get("status"))
-        if _is_access_allowed(enabled, st):
+        coming_soon = bool(mod.get("coming_soon", False))
+
+        if _is_access_allowed(enabled, st, coming_soon):
             return False
 
     return True
@@ -205,11 +174,6 @@ def _mk_from_str(module_key: str) -> ModuleKey:
 
 
 def _effective_negocio_id(user: dict) -> int | None:
-    """
-    Regla baseline para contexto negocio:
-    - Si hay acting_negocio_id (impersonación) -> usarlo
-    - Si no, usar negocio_id propio
-    """
     try:
         if user.get("acting_negocio_id"):
             return int(user["acting_negocio_id"])
@@ -225,9 +189,12 @@ def _effective_negocio_id(user: dict) -> int | None:
     return None
 
 
-# =========================================================
-# HUB VIEW
-# =========================================================
+def _is_coming_soon_for(db: Session, negocio_id: int, mk: ModuleKey) -> bool:
+    snap = get_entitlements_snapshot(db, negocio_id)
+    mods = (snap.get("modules") or {})
+    mod = mods.get(mk.value) if isinstance(mods, dict) else {}
+    return bool(mod.get("coming_soon", False)) if isinstance(mod, dict) else False
+
 
 @router.get("", response_class=HTMLResponse)
 async def orbion_hub_view(
@@ -235,16 +202,6 @@ async def orbion_hub_view(
     db: Session = Depends(get_db),
     user: dict = Depends(require_user_dep),
 ):
-    """
-    Hub central de módulos ORBION (contexto negocio).
-
-    Reglas:
-    - Superadmin global (NO impersonando): redirect a /superadmin/dashboard
-    - Superadmin impersonando (acting_negocio_id): usa Hub como admin
-    - Admin: ve módulos + locked/estado según snapshot (ACCESS_ALLOWED)
-    - Operador: ve solo módulos con ACCESS_ALLOWED
-    """
-
     rol_real = (user.get("rol_real") or user.get("rol") or "").strip().lower()
     rol_efectivo = (user.get("rol") or "").strip().lower()
 
@@ -265,7 +222,6 @@ async def orbion_hub_view(
                 "user": user,
                 "negocio": None,
                 "dashboard_modules": [],
-                "show_superadmin_console": False,
                 "snapshot": None,
                 "entitlements": None,
                 "negocio_ctx": None,
@@ -283,7 +239,6 @@ async def orbion_hub_view(
                 "user": user,
                 "negocio": None,
                 "dashboard_modules": [],
-                "show_superadmin_console": False,
                 "snapshot": None,
                 "entitlements": None,
                 "negocio_ctx": None,
@@ -291,15 +246,8 @@ async def orbion_hub_view(
             },
         )
 
-    # Catálogo UI (marketing)
+    # 🔥 Importante: aquí “core” NO es un módulo del Hub.
     base_modules: list[dict] = [
-        {
-            "slug": "wms",
-            "label": "ORBION Core WMS",
-            "description": "Inventario, ubicaciones, rotación y auditoría.",
-            "url": "/dashboard",
-            "module_key": ModuleKey.WMS,
-        },
         {
             "slug": "inbound",
             "label": "ORBION Inbound",
@@ -308,20 +256,31 @@ async def orbion_hub_view(
             "module_key": ModuleKey.INBOUND,
         },
         {
+            "slug": "wms",
+            "label": "ORBION Core WMS",
+            "description": "Inventario, ubicaciones, rotación y auditoría.",
+            "url": "/dashboard",
+            "module_key": ModuleKey.WMS,
+        },
+        {
             "slug": "analytics_plus",
-            "label": "Analytics & IA Operacional",
-            "description": "Cross-módulo, modelos predictivos y proyecciones (futuro).",
+            "label": "Analytics Plus",
+            "description": "Analítica avanzada cross-módulo (futuro).",
             "url": "#",
-            "module_key": None,  # coming_soon
+            "module_key": None,
+        },
+        {
+            "slug": "ml_ia",
+            "label": "ML/IA Operacional",
+            "description": "Modelos predictivos, scoring y automatizaciones (futuro).",
+            "url": "#",
+            "module_key": None,
         },
     ]
 
-    # Snapshot (fuente única)
     snapshot = get_entitlements_snapshot(db, negocio.id)
     snapshot_modules = (snapshot.get("modules") or {}) if isinstance(snapshot, dict) else {}
     entitlements = (snapshot.get("entitlements") or {}) if isinstance(snapshot, dict) else {}
-
-    # ✅ negocio_ctx viene desde snapshot["negocio"], NO desde entitlements
     negocio_ctx = (snapshot.get("negocio") or {}) if isinstance(snapshot, dict) else {}
 
     segmento = (
@@ -334,13 +293,12 @@ async def orbion_hub_view(
     needs_onboarding = _compute_needs_onboarding(snapshot_modules)
 
     dashboard_modules: list[dict] = []
-    show_superadmin_console = False  # baseline: superadmin global no usa Hub
 
-    # Admin: ve todo (con locked / activación)
     if rol_efectivo == "admin":
         for m in base_modules:
             mk = m.get("module_key")
 
+            # módulos “futuros” sin mk (solo UI)
             if mk is None:
                 dashboard_modules.append(
                     {
@@ -349,6 +307,7 @@ async def orbion_hub_view(
                         "enabled": False,
                         "badge": "Próximamente",
                         "status": "coming_soon",
+                        "coming_soon": True,
                         "segmento": segmento,
                         "metric_label": None,
                         "metric_used": None,
@@ -356,42 +315,48 @@ async def orbion_hub_view(
                         "period_end": None,
                         "cancel_at_period_end": False,
                         "trial_ends_at": None,
+                        "access_allowed": False,
                     }
                 )
                 continue
 
             mod = snapshot_modules.get(mk.value) or {}
+            mod = mod if isinstance(mod, dict) else {}
+
+            coming_soon = bool(mod.get("coming_soon", False))
             enabled = bool(mod.get("enabled"))
             status = _norm_status(mod.get("status") or "inactive")
 
-            access_allowed = _is_access_allowed(enabled, status)
-            badge = _badge_from_status(status, enabled)
+            access_allowed = _is_access_allowed(enabled, status, coming_soon)
+            badge = _badge_from_status(status, enabled, coming_soon)
 
-            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod)
-            period_end = _period_end_from_mod(mod)
+            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod, coming_soon)
+            period_end = _period_end_from_mod(mod, coming_soon)
 
             sub = mod.get("subscription") or {}
             cancel_at_period_end = bool(sub.get("cancel_at_period_end")) if isinstance(sub, dict) else False
             trial_ends_at = sub.get("trial_ends_at") if isinstance(sub, dict) else None
 
+            # ✅ si coming_soon, NO queremos CTA “Activar módulo”
+            if coming_soon:
+                enabled = False
+                access_allowed = False
+
             dashboard_modules.append(
                 {
                     **m,
-                    # ✅ locked si NO hay acceso (aunque enabled sea True)
                     "locked": (not access_allowed),
-                    # ✅ enabled se mantiene como “provisionado”
                     "enabled": enabled,
-                    # ✅ badge coherente
-                    "badge": badge if enabled else "Activar módulo",
-                    "status": status,
+                    "badge": badge,
+                    "status": ("coming_soon" if coming_soon else status),
+                    "coming_soon": coming_soon,
                     "segmento": segmento,
                     "metric_label": metric_label,
                     "metric_used": metric_used,
                     "metric_limit": metric_limit,
                     "period_end": period_end,
-                    "cancel_at_period_end": cancel_at_period_end,
-                    "trial_ends_at": str(trial_ends_at) if trial_ends_at else None,
-                    # ✅ extra útil para depurar (si quieres mostrarlo luego)
+                    "cancel_at_period_end": cancel_at_period_end if (not coming_soon) else False,
+                    "trial_ends_at": str(trial_ends_at) if (trial_ends_at and not coming_soon) else None,
                     "access_allowed": access_allowed,
                 }
             )
@@ -404,23 +369,26 @@ async def orbion_hub_view(
             bool(user.get("acting_negocio_id")),
         )
 
-    # Operador / otros: SOLO acceso real (trial/active)
     else:
+        # operador: solo módulos con acceso real (y no coming_soon)
         for m in base_modules:
             mk = m.get("module_key")
             if mk is None:
                 continue
 
             mod = snapshot_modules.get(mk.value) or {}
+            mod = mod if isinstance(mod, dict) else {}
+
+            coming_soon = bool(mod.get("coming_soon", False))
             enabled = bool(mod.get("enabled"))
             status = _norm_status(mod.get("status") or "inactive")
 
-            if not _is_access_allowed(enabled, status):
+            if not _is_access_allowed(enabled, status, coming_soon):
                 continue
 
-            badge = _badge_from_status(status, enabled)
-            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod)
-            period_end = _period_end_from_mod(mod)
+            badge = _badge_from_status(status, enabled, coming_soon)
+            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod, coming_soon)
+            period_end = _period_end_from_mod(mod, coming_soon)
 
             dashboard_modules.append(
                 {
@@ -429,6 +397,7 @@ async def orbion_hub_view(
                     "enabled": True,
                     "badge": badge,
                     "status": status,
+                    "coming_soon": False,
                     "segmento": segmento,
                     "metric_label": metric_label,
                     "metric_used": metric_used,
@@ -455,7 +424,6 @@ async def orbion_hub_view(
             "user": user,
             "negocio": negocio,
             "dashboard_modules": dashboard_modules,
-            "show_superadmin_console": show_superadmin_console,
             "snapshot": snapshot,
             "entitlements": entitlements,
             "negocio_ctx": negocio_ctx,
@@ -465,7 +433,7 @@ async def orbion_hub_view(
 
 
 # =========================================================
-# ACTIONS DESDE HUB (ADMIN)
+# ACTIONS (ADMIN) - BLOQUEAR coming_soon
 # =========================================================
 
 @router.post("/modules/{module_key}/activate")
@@ -485,7 +453,11 @@ async def activate_module_from_hub(
 
     mk = _mk_from_str(module_key)
 
-    before_status: str | None = None
+    # ✅ no activable si coming_soon
+    if _is_coming_soon_for(db, negocio_id, mk):
+        return RedirectResponse(url="/app/planes?error=Módulo próximamente (no disponible aún)", status_code=303)
+
+    sub_before_status: str | None = None
     try:
         sub_before = (
             db.query(SuscripcionModulo)
@@ -494,11 +466,11 @@ async def activate_module_from_hub(
             .first()
         )
         if sub_before and getattr(sub_before, "status", None) is not None:
-            before_status = getattr(sub_before.status, "value", str(sub_before.status))
+            sub_before_status = getattr(sub_before.status, "value", str(sub_before.status))
     except Exception:
         pass
 
-    sub = activate_module(db, negocio_id=negocio_id, module_key=mk, start_trial=True)
+    sub = activate_module(db, negocio_id=negocio_id, module_key=mk, start_trial=True, actor=user)
     db.commit()
 
     logger.info(
@@ -506,11 +478,58 @@ async def activate_module_from_hub(
         user.get("email"),
         negocio_id,
         mk.value,
-        before_status,
+        sub_before_status,
         getattr(sub.status, "value", str(sub.status)),
     )
 
-    return RedirectResponse(url="/app", status_code=303)
+    return RedirectResponse(url="/app/planes?ok=Trial activado", status_code=303)
+
+
+@router.post("/modules/{module_key}/pay_now")
+async def pay_now_module_from_hub(
+    module_key: str,
+    request: Request,
+    months: int = Form(1),
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_user_dep),
+):
+    rol = (user.get("rol") or "").strip().lower()
+    negocio_id = _effective_negocio_id(user)
+
+    if rol != "admin":
+        raise HTTPException(status_code=403, detail="Acceso no autorizado")
+    if not negocio_id:
+        raise HTTPException(status_code=400, detail="Usuario sin negocio asociado")
+
+    mk = _mk_from_str(module_key)
+
+    if _is_coming_soon_for(db, negocio_id, mk):
+        return RedirectResponse(url="/app/planes?error=Módulo próximamente (no disponible aún)", status_code=303)
+
+    sub: SuscripcionModulo | None = (
+        db.query(SuscripcionModulo)
+        .filter(SuscripcionModulo.negocio_id == negocio_id)
+        .filter(SuscripcionModulo.module_key == mk)
+        .first()
+    )
+
+    if not sub:
+        sub = activate_module(db, negocio_id=negocio_id, module_key=mk, start_trial=False, actor=user)
+    else:
+        mark_paid_now(db, sub, months=max(1, int(months or 1)), actor=user)
+
+    db.commit()
+
+    logger.info(
+        "[HUB] module_pay_now email=%s negocio_id=%s module=%s months=%s status=%s",
+        user.get("email"),
+        negocio_id,
+        mk.value,
+        months,
+        getattr(sub.status, "value", str(sub.status)),
+    )
+
+    return RedirectResponse(url="/app/planes?ok=Pago simulado: módulo activado", status_code=303)
 
 
 @router.post("/modules/{module_key}/cancel")
@@ -530,6 +549,9 @@ async def cancel_module_from_hub(
 
     mk = _mk_from_str(module_key)
 
+    if _is_coming_soon_for(db, negocio_id, mk):
+        return RedirectResponse(url="/app/planes?error=Módulo próximamente (no disponible aún)", status_code=303)
+
     sub: SuscripcionModulo | None = (
         db.query(SuscripcionModulo)
         .filter(SuscripcionModulo.negocio_id == negocio_id)
@@ -539,22 +561,10 @@ async def cancel_module_from_hub(
     if not sub:
         raise HTTPException(status_code=404, detail="No existe suscripción para este módulo")
 
-    before_status = getattr(sub.status, "value", str(sub.status)) if getattr(sub, "status", None) else None
-    before_cancel = bool(getattr(sub, "cancel_at_period_end", 0))
-
-    cancel_subscription_at_period_end(db, sub)
+    cancel_subscription_at_period_end(db, sub, actor=user)
     db.commit()
 
-    logger.info(
-        "[HUB] module_cancel email=%s negocio_id=%s module=%s before_status=%s before_cancel=%s",
-        user.get("email"),
-        negocio_id,
-        mk.value,
-        before_status,
-        before_cancel,
-    )
-
-    return RedirectResponse(url="/app", status_code=303)
+    return RedirectResponse(url="/app/planes?ok=Cancelación agendada", status_code=303)
 
 
 @router.post("/modules/{module_key}/reactivate")
@@ -574,6 +584,9 @@ async def reactivate_module_from_hub(
 
     mk = _mk_from_str(module_key)
 
+    if _is_coming_soon_for(db, negocio_id, mk):
+        return RedirectResponse(url="/app/planes?error=Módulo próximamente (no disponible aún)", status_code=303)
+
     sub: SuscripcionModulo | None = (
         db.query(SuscripcionModulo)
         .filter(SuscripcionModulo.negocio_id == negocio_id)
@@ -583,17 +596,7 @@ async def reactivate_module_from_hub(
     if not sub:
         raise HTTPException(status_code=404, detail="No existe suscripción para este módulo")
 
-    before_cancel = bool(getattr(sub, "cancel_at_period_end", 0))
-
-    unschedule_cancel(db, sub)
+    unschedule_cancel(db, sub, actor=user)
     db.commit()
 
-    logger.info(
-        "[HUB] module_reactivate email=%s negocio_id=%s module=%s before_cancel=%s",
-        user.get("email"),
-        negocio_id,
-        mk.value,
-        before_cancel,
-    )
-
-    return RedirectResponse(url="/app", status_code=303)
+    return RedirectResponse(url="/app/planes?ok=Suscripción reactivada", status_code=303)

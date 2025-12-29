@@ -4,12 +4,12 @@ services_entitlements.py – ORBION SaaS (enterprise, baseline aligned)
 ✅ Fuente única: Negocio.entitlements (verdad funcional)
 ✅ Segmentos oficiales: emprendedor / pyme / enterprise
 ✅ Límites por módulo (defaults por segmento + overrides por negocio)
-✅ Legacy: plan_tipo solo como fallback -> se mapea al contrato nuevo
 ✅ Snapshot para Hub/Superadmin/Enforcement:
    - modules: enabled/status/period (desde entitlements)
    - limits por módulo (resueltos)
    - usage real por período (UsageCounter; solo módulos conocidos)
    - overlay SuscripcionModulo si existe (trial_ends, cancel_at_period_end, period*)
+   - coming_soon (flag canónico para UI: no vendible / no activable aún)
 """
 
 from __future__ import annotations
@@ -115,11 +115,14 @@ def default_entitlements() -> dict:
     return {
         "segment": segment,
         "modules": {
+            # core es del sistema: siempre ON y NO “vendible”
             "core": {"enabled": True, "status": "active"},
-            "wms": {"enabled": True, "status": "active"},
-            "inbound": {"enabled": False, "status": "inactive"},
-            "analytics_plus": {"enabled": False, "status": "inactive"},
-            "ml_ia": {"enabled": False, "status": "inactive"},
+            # inbound: módulo de entrada (vendible y operativo)
+            "inbound": {"enabled": True, "status": "active"},
+            # futuros (no vendibles aún)
+            "wms": {"enabled": False, "status": "inactive", "coming_soon": True},
+            "analytics_plus": {"enabled": False, "status": "inactive", "coming_soon": True},
+            "ml_ia": {"enabled": False, "status": "inactive", "coming_soon": True},
         },
         "limits": base_limits,
         "billing": {"source": "baseline"},
@@ -196,7 +199,12 @@ def _looks_like_full_segment_limits(limits_in: dict) -> str | None:
     return None
 
 
-def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides: Any = None) -> dict[str, dict[str, Any]]:
+def _merge_limits_for_segment(
+    segment: str,
+    limits_in: Any,
+    *,
+    limits_overrides: Any = None,
+) -> dict[str, dict[str, Any]]:
     base = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(segment, {}))
 
     effective_overrides = limits_overrides if isinstance(limits_overrides, dict) else None
@@ -231,32 +239,15 @@ def _merge_limits_for_segment(segment: str, limits_in: Any, *, limits_overrides:
 
 
 # =========================================================
-# LEGACY PLAN -> CONTRATO NUEVO (fallback)
-# =========================================================
-def _map_legacy_plan_tipo(plan_tipo: str) -> dict:
-    p = _safe_str(plan_tipo, "demo").lower()
-    if p in {"enterprise", "ent"}:
-        seg = "enterprise"
-    elif p in {"pyme", "pro"}:
-        seg = "pyme"
-    else:
-        seg = "emprendedor"
-
-    ent = default_entitlements()
-    ent["segment"] = seg
-    ent["limits"] = deepcopy(DEFAULT_LIMITS_BY_SEGMENT.get(seg, {}))
-
-    ent["modules"]["wms"] = {"enabled": True, "status": "active"}
-    ent["modules"]["inbound"] = {"enabled": False, "status": "inactive"}
-
-    ent["billing"] = {"source": "legacy", "plan_tipo": p}
-    return ent
-
-
-# =========================================================
-# NORMALIZACIÓN
+# NORMALIZACIÓN (NO BORRAR FLAGS COMO coming_soon)
 # =========================================================
 def normalize_entitlements(ent: Optional[dict]) -> dict:
+    """
+    Regla enterprise:
+    - Base = default_entitlements()
+    - Overlay = lo que venga en ent (pero preservando flags del baseline si ent no los trae)
+      (ej: coming_soon debe sobrevivir aunque el JSON guardado no lo tenga).
+    """
     base = default_entitlements()
 
     if not isinstance(ent, dict) or not ent:
@@ -272,23 +263,29 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
 
     modules_in = ent.get("modules")
     if isinstance(modules_in, dict):
-        out_modules: dict[str, dict[str, Any]] = {}
         for k, v in modules_in.items():
             mk = _module_alias(k)
             mv = v if isinstance(v, dict) else {}
-            enabled = bool(mv.get("enabled", False))
-            status = _norm_status(mv.get("status", "inactive"))
 
-            mod_out: dict[str, Any] = {"enabled": enabled, "status": status}
+            # 🔒 IMPORTANTE: partir desde lo que trae el baseline (preserva coming_soon)
+            base_mod = out["modules"].get(mk)
+            mod_out: dict[str, Any] = dict(base_mod) if isinstance(base_mod, dict) else {}
 
+            mod_out["enabled"] = bool(mv.get("enabled", mod_out.get("enabled", False)))
+            mod_out["status"] = _norm_status(mv.get("status", mod_out.get("status", "inactive")))
+
+            # period (si lo usas)
             period = mv.get("period")
             if isinstance(period, dict):
                 mod_out["period"] = {"from": period.get("from"), "to": period.get("to")}
 
-            out_modules[mk] = mod_out
+            # preserve / allow override coming_soon
+            if "coming_soon" in mv:
+                mod_out["coming_soon"] = bool(mv.get("coming_soon"))
 
-        out["modules"].update(out_modules)
+            out["modules"][mk] = mod_out
 
+    # core siempre ON
     out["modules"].setdefault("core", {"enabled": True, "status": "active"})
     out["modules"]["core"]["enabled"] = True
     out["modules"]["core"]["status"] = "active"
@@ -307,9 +304,9 @@ def resolve_entitlements(negocio: Negocio) -> dict:
     if isinstance(ent, dict) and ent:
         return normalize_entitlements(ent)
 
-    plan = _safe_str(getattr(negocio, "plan_tipo", "demo"), "demo").lower()
-    logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos (fallback plan_tipo=%s)", negocio.id, plan)
-    return normalize_entitlements(_map_legacy_plan_tipo(plan))
+    # Baseline enterprise: si no hay entitlements persistidos, devolvemos default (sin legacy)
+    logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos -> usando default baseline", getattr(negocio, "id", None))
+    return normalize_entitlements(None)
 
 
 # =========================================================
@@ -321,6 +318,10 @@ def has_module(negocio: Negocio, module_key: str, *, require_active: bool = True
     mod = (ent.get("modules") or {}).get(mk)
 
     if not mod or not bool(mod.get("enabled")):
+        return False
+
+    # coming soon no cuenta como acceso real
+    if bool(mod.get("coming_soon", False)):
         return False
 
     if not require_active:
@@ -339,7 +340,6 @@ def get_module(ent: dict, module_key: str) -> dict:
 # =========================================================
 # SNAPSHOT PARA HUB / SUPERADMIN / ENFORCEMENT
 # =========================================================
-
 def _sub_to_overlay(sub: SuscripcionModulo | None) -> dict[str, Any]:
     if not sub:
         return {}
@@ -372,28 +372,28 @@ def _effective_enabled_status(
     ent_enabled: bool,
     ent_status: str,
     sub: SuscripcionModulo | None,
+    coming_soon: bool,
 ) -> tuple[bool, str]:
     """
     Contrato enterprise:
     - entitlements define provisioning (enabled/disabled)
     - subscription define acceso comercial real (trial/active/past_due/suspended/cancelled)
-    - estado efectivo y acceso = overlay de subscription cuando existe
+    - coming_soon SIEMPRE bloquea acceso (no vendible aún)
     """
+    if coming_soon:
+        return False, "inactive"
+
     ent_status_norm = _norm_status(ent_status, "inactive")
 
     if not sub:
-        # No hay suscripción -> usar entitlements tal cual
         return bool(ent_enabled), ent_status_norm
 
     sub_status = getattr(sub.status, "value", str(sub.status)).lower().strip()
     sub_status = _norm_status(sub_status, "inactive")
 
-    # Solo TRIAL/ACTIVE cuentan como acceso. El resto bloquea.
     sub_allows = sub_status in {"trial", "active"}
-
     effective_enabled = bool(ent_enabled) and bool(sub_allows)
-    effective_status = sub_status  # lo que “manda” para UI/decisiones
-
+    effective_status = sub_status
     return effective_enabled, effective_status
 
 
@@ -423,20 +423,20 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
 
         ent_enabled = bool(mod.get("enabled"))
         ent_status = _norm_status(mod.get("status", "inactive"))
+        coming_soon = bool(mod.get("coming_soon", False))
 
         sub = subs_by_key.get(mk_norm)
         overlay = _sub_to_overlay(sub)
 
-        # ✅ estado/enable EFECTIVO (sin ambigüedad)
         effective_enabled, effective_status = _effective_enabled_status(
             ent_enabled=ent_enabled,
             ent_status=ent_status,
             sub=sub,
+            coming_soon=coming_soon,
         )
 
-        # usage real: solo si hay sub + module_key conocido (wms/inbound)
         usage_raw: dict[str, Any] = {}
-        if sub:
+        if sub and (not coming_soon):
             mk_enum = _as_modulekey_or_none(mk_norm)
             if mk_enum:
                 try:
@@ -466,24 +466,19 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
                 remaining[str(k)] = _num_cast(rem_v)
 
         payload: dict[str, Any] = {
-            # 👇 lo que consume UI/Hub/Plan Center (coherente)
             "enabled": effective_enabled,
             "status": effective_status,
-
-            # 👇 opcional: mostrar/debug (si te sirve)
             "ent_enabled": ent_enabled,
             "ent_status": ent_status,
+            "coming_soon": coming_soon,
         }
 
-        # period funcional desde entitlements (si lo usas)
         if "period" in mod and isinstance(mod.get("period"), dict):
             payload["period"] = mod.get("period")
 
         payload["limits"] = limits
         payload["usage"] = usage
         payload["remaining"] = remaining
-
-        # overlay comercial (trial/period/cancel flag)
         payload.update(overlay)
 
         modules_out[mk_norm] = payload
@@ -540,6 +535,9 @@ def has_module_db(
     mk = _module_alias(module_key)
     mod = (snap.get("modules") or {}).get(mk) or {}
     if not isinstance(mod, dict):
+        return False
+
+    if bool(mod.get("coming_soon", False)):
         return False
 
     enabled = bool(mod.get("enabled"))

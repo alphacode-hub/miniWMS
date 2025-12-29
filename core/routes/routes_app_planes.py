@@ -1,16 +1,15 @@
-﻿# core/routes/routes_app_planes.py
-"""
-ORBION Plan Center – /app/planes (v0, baseline aligned)
+﻿"""
+ORBION Plan Center – /app/planes (baseline aligned)
 
 ✅ Un solo lugar para:
 - Ver segmento actual (snapshot)
 - Ver módulos, estado, período
 - Ver límites/uso (snapshot)
 - Acciones básicas: activar / cancelar / reactivar (reusa endpoints del Hub)
-- Evita 404/500 desde CTAs del Hub (Administrar suscripción / Ver detalle / Ver planes / Suscribirse)
 
-Nota:
-- No implementa billing real/checkout todavía (solo UI + acciones existentes).
+Reglas enterprise:
+- NO mostrar "core" (es del sistema, siempre ON)
+- coming_soon => mostrar Próximamente y NO permitir acciones
 """
 
 from __future__ import annotations
@@ -29,11 +28,6 @@ router = APIRouter(prefix="/app", tags=["app-planes"])
 
 
 def _effective_negocio_id(user: dict) -> int | None:
-    """
-    Baseline:
-    - acting_negocio_id (impersonación) tiene prioridad
-    - si no, negocio_id normal
-    """
     try:
         if user.get("acting_negocio_id"):
             return int(user["acting_negocio_id"])
@@ -50,10 +44,6 @@ def _effective_negocio_id(user: dict) -> int | None:
 
 
 def _as_int_if_whole(x):
-    """
-    Convierte 200.0 -> 200 para UI (no queremos recepciones con decimales).
-    Mantiene float si realmente tiene decimales.
-    """
     try:
         if x is None:
             return None
@@ -80,36 +70,20 @@ def _norm_status(s: object) -> str:
 
 
 def _normalize_subscription_for_ui(mod_status: str, sub: dict, ent_period: dict) -> tuple[str, dict, dict]:
-    """
-    ✅ Contrato UI v1:
-    - TRIAL: solo trial_ends_at (sin períodos comerciales)
-    - NO TRIAL: solo períodos comerciales (sin trial_ends_at)
-
-    Además:
-    - status final = subscription.status si existe, si no usa mod.status
-    - period final = subscription.period si existe; sino fallback ent_period
-    """
     sub = sub or {}
     ent_period = ent_period or {}
 
-    # 1) status final (prioriza subscription.status)
     sub_status = _norm_status(sub.get("status"))
     status_final = sub_status if sub_status else _norm_status(mod_status)
 
-    # 2) period: prioriza subscription.period
     sub_period = sub.get("period") if isinstance(sub.get("period"), dict) else {}
     period_final = sub_period if sub_period else (ent_period if isinstance(ent_period, dict) else {})
 
-    # 3) aplica contrato v1
     if status_final == "trial":
-        # En trial NO mostramos periodo comercial
-        # (limpiamos ambos: subscription.period y entitlements.period)
         if "period" in sub:
             sub.pop("period", None)
         period_final = {}
-        # trial_ends_at se deja si existe
     else:
-        # En no-trial NO mostramos trial_ends_at
         sub.pop("trial_ends_at", None)
 
     return status_final, sub, period_final
@@ -153,22 +127,34 @@ async def app_planes_view(
         if not isinstance(mod, dict):
             continue
 
+        # ✅ core no se muestra (es del sistema)
+        if slug == "core":
+            continue
+
+        coming_soon = bool(mod.get("coming_soon", False))
+
         limits = mod.get("limits") if isinstance(mod.get("limits"), dict) else {}
         usage = mod.get("usage") if isinstance(mod.get("usage"), dict) else {}
         remaining = mod.get("remaining") if isinstance(mod.get("remaining"), dict) else {}
 
-        # 🔧 Normalización contrato UI v1: evita "Período hasta" + "Trial ends" a la vez
         mod_status = _norm_status(mod.get("status") or "inactive")
         sub = mod.get("subscription") if isinstance(mod.get("subscription"), dict) else {}
         ent_period = mod.get("period") if isinstance(mod.get("period"), dict) else {}
 
         status_final, sub_final, period_final = _normalize_subscription_for_ui(mod_status, sub, ent_period)
 
+        # ✅ coming_soon manda para UI: no activable
+        if coming_soon:
+            status_final = "coming_soon"
+            sub_final = {}
+            period_final = {}
+
         dashboard_modules.append(
             {
                 "slug": slug,
-                "enabled": bool(mod.get("enabled")),
+                "enabled": (False if coming_soon else bool(mod.get("enabled"))),
                 "status": status_final,
+                "coming_soon": coming_soon,
                 "period": period_final,
                 "subscription": sub_final,
                 "limits": _normalize_numeric_dict(limits),
@@ -177,8 +163,8 @@ async def app_planes_view(
             }
         )
 
-    # Orden UI (core primero, wms, inbound, resto)
-    order = {"core": 0, "wms": 1, "inbound": 2}
+    # Orden UI (inbound primero; wms y futuros después)
+    order = {"inbound": 0, "wms": 1, "analytics_plus": 2, "ml_ia": 3}
     dashboard_modules.sort(key=lambda x: order.get(x["slug"], 50))
 
     is_admin = (rol_efectivo == "admin")

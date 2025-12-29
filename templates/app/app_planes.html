@@ -1,5 +1,4 @@
-﻿<!-- templates/app/app_planes.html -->
-{% extends "base/base_app.html" %}
+﻿{% extends "base/base_app.html" %}
 
 {% block title %}ORBION · Planes{% endblock %}
 
@@ -7,19 +6,11 @@
 {% set u = user or {} %}
 {% set neg = negocio_ctx or {} %}
 {% set seg = (neg.get("segment") or "emprendedor")|string|lower %}
-{% set nombre = neg.get("nombre") or ("Negocio #" ~ (neg.get("id") or "")) %}
-
-{# ✅ Filtrar módulos: solo activos (enabled) y no mostrar core #}
-{% set ns = namespace(active=[]) %}
-{% for m in (dashboard_modules or []) %}
-  {% if m and m.enabled and (m.slug != "core") %}
-    {% set ns.active = ns.active + [m] %}
-  {% endif %}
-{% endfor %}
+{% set nombre = neg.get("nombre") or neg.get("name") or ("Negocio #" ~ (neg.get("id") or "")) %}
+{% set is_admin = (is_admin or false) %}
 
 <div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
 
-    <!-- Header -->
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -29,7 +20,7 @@
                 Plan Center
             </h1>
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-2xl">
-                Gestiona módulos, estado y límites del período. Billing real/checkout se habilitará en un incremental.
+                Hoy solo Inbound está disponible. El resto se muestra como Próximamente.
             </p>
         </div>
 
@@ -55,18 +46,13 @@
     </section>
     {% endif %}
 
-    <!-- Cuenta & segmento -->
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="min-w-0 space-y-1">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Cuenta
-                </p>
+                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Cuenta</p>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="text-sm sm:text-base font-semibold text-slate-100">
-                        {{ nombre }}
-                    </h2>
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-100">{{ nombre }}</h2>
                     <span class="text-[10px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">
                         Segmento: {{ (seg)|capitalize }}
                     </span>
@@ -84,60 +70,56 @@
         </div>
     </section>
 
-    <!-- Módulos (solo activos) -->
-    {% if ns.active|length == 0 %}
+    {% if (dashboard_modules or [])|length == 0 %}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5">
-        <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Módulos
+        <h3 class="text-sm font-semibold text-slate-100">No hay módulos en snapshot</h3>
+        <p class="mt-1 text-[11px] sm:text-xs text-slate-400">
+            Revisa get_entitlements_snapshot(): debería devolver modules{} aunque estén inactivos.
         </p>
-        <h3 class="mt-1 text-sm font-semibold text-slate-100">
-            No tienes módulos activos
-        </h3>
-        <p class="mt-1 text-[11px] sm:text-xs text-slate-400 max-w-2xl">
-            Activa un módulo desde el Hub para comenzar a operar. Cuando esté habilitado aparecerá aquí con sus límites y uso del período.
-        </p>
-        <div class="pt-3">
-            <a href="/app"
-               class="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
-                      text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
-                      active:scale-[0.97] transition-transform transition-colors">
-                Ir al hub
-            </a>
-        </div>
     </section>
     {% else %}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {% for m in ns.active %}
-        {% set slug = m.slug %}
-        {% set enabled = m.enabled %}
-        {% set st = (m.status or "inactive")|string|lower %}
 
-        {% set sub = m.subscription or {} %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+        {% for m in (dashboard_modules or []) %}
+        {% set slug = (m.slug or m.get("slug")) %}
+        {% set enabled = (m.enabled if m.enabled is not none else m.get("enabled")) %}
+        {% set st = (m.status if m.status is not none else m.get("status") or "inactive")|string|lower %}
+        {% set coming_soon = (m.coming_soon if m.coming_soon is not none else (m.get("coming_soon") or false)) %}
+
+        {% set sub = m.subscription if m.subscription is mapping else (m.get("subscription") or {}) %}
         {% set cancel_at_period_end = (sub.get("cancel_at_period_end") or false) %}
 
-        {# period: subscription.period.end preferido; fallback a entitlements.period.to #}
-        {% set sub_period = sub.get("period") if sub.get("period") is mapping else {} %}
-        {% set per_end = sub_period.get("end") %}
-        {% set ent_period = m.period if m.period is mapping else {} %}
-        {% set per_end = per_end or ent_period.get("to") %}
-
+        {% set per = m.period if m.period is mapping else (m.get("period") or {}) %}
+        {% set per_end = per.get("end") or per.get("to") %}
         {% set trial_ends = sub.get("trial_ends_at") %}
+
+        {% set limits = m.limits if m.limits is mapping else (m.get("limits") or {}) %}
+        {% set usage  = m.usage  if m.usage  is mapping else (m.get("usage") or {}) %}
+
+        {% set access_allowed = (enabled and (not coming_soon) and st in ["trial","active"]) %}
 
         <article class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5 space-y-3">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-slate-100">
-                        {{ slug|upper }}
+                        {{ (slug|upper) if slug else "MODULO" }}
                     </h3>
 
+                    {% if coming_soon %}
+                    <p class="text-[11px] sm:text-xs text-slate-400">
+                        Estado: <span class="text-slate-200 font-semibold">Próximamente</span> ·
+                        Este módulo aún no está disponible para suscripción.
+                    </p>
+                    {% else %}
                     <p class="text-[11px] sm:text-xs text-slate-400">
                         Estado: <span class="text-slate-200 font-medium">{{ st }}</span>
-                        {% if enabled %}
-                        · <span class="text-emerald-300 font-medium">enabled</span>
-                        {% endif %}
+                        · Provisionado: <span class="text-slate-200 font-medium">{{ "sí" if enabled else "no" }}</span>
+                        · Acceso:
+                        <span class="{{ 'text-emerald-300' if access_allowed else 'text-amber-300' }} font-semibold">
+                            {{ "habilitado" if access_allowed else "bloqueado" }}
+                        </span>
                     </p>
 
-                    {# ✅ Contrato UI: si es trial, mostramos trial_ends; si no, mostramos periodo #}
                     {% if st == "trial" and trial_ends %}
                     <p class="text-[11px] sm:text-xs text-cyan-300">
                         Trial hasta: {{ trial_ends[:10] }}
@@ -147,27 +129,32 @@
                         Período hasta: {{ per_end[:10] }}
                     </p>
                     {% endif %}
+
+                    {% if st in ("suspended","past_due") %}
+                    <p class="mt-1 text-[11px] sm:text-xs text-amber-200">
+                        Acceso bloqueado por estado {{ st }}. (Billing real aún no implementado.)
+                    </p>
+                    {% endif %}
+                    {% endif %}
                 </div>
 
                 <span class="shrink-0 text-[10px] px-2 py-1 rounded-full border
-                  {% if st == 'trial' %}
-                    border-cyan-400/60 text-cyan-300
-                  {% elif st == 'active' %}
-                    border-emerald-500/60 text-emerald-300
-                  {% elif st in ('past_due', 'suspended') %}
-                    border-amber-500/60 text-amber-300
-                  {% elif st == 'cancelled' %}
-                    border-rose-500/60 text-rose-200
-                  {% else %}
-                    border-slate-600 text-slate-300
-                  {% endif %}">
-                    {{ st }}
+                    {% if coming_soon %}
+                      border-slate-700 text-slate-400
+                    {% elif st == 'trial' %}
+                      border-cyan-400/60 text-cyan-300
+                    {% elif st == 'active' %}
+                      border-emerald-500/60 text-emerald-300
+                    {% elif st in ('past_due','suspended') %}
+                      border-amber-500/60 text-amber-300
+                    {% elif st == 'cancelled' %}
+                      border-rose-500/60 text-rose-200
+                    {% else %}
+                      border-slate-600 text-slate-300
+                    {% endif %}">
+                    {{ "Próximamente" if coming_soon else st }}
                 </span>
             </div>
-
-            <!-- Limits / usage -->
-            {% set limits = m.limits or {} %}
-            {% set usage = m.usage or {} %}
 
             {% if limits and (limits|length > 0) %}
             <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
@@ -182,7 +169,8 @@
                         <div class="min-w-0">
                             <p class="text-[11px] text-slate-300 truncate">{{ k }}</p>
                             <p class="text-[10px] text-slate-500">
-                                Uso: <span class="text-slate-200">{{ cl_num(used, 0) }}</span> / <span class="text-slate-200">{{ cl_num(lim, 0) }}</span>
+                                Uso: <span class="text-slate-200">{{ cl_num(used, 0) }}</span> /
+                                <span class="text-slate-200">{{ cl_num(lim, 0) }}</span>
                             </p>
                         </div>
 
@@ -191,9 +179,9 @@
                             <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
                                 <div class="h-full
                                      {% if pct < 80 %}bg-emerald-400
-                                  {% elif pct < 100 %}bg-amber-400
-                                  {% else %}bg-red-500{% endif %}"
-                                  style="width: {{ pct|round(0) }}%"></div>
+                                     {% elif pct < 100 %}bg-amber-400
+                                     {% else %}bg-red-500{% endif %}"
+                                     style="width: {{ pct|round(0) }}%"></div>
                             </div>
                             <p class="mt-1 text-[10px] text-slate-500 text-right">{{ pct|round(0) }}%</p>
                         </div>
@@ -207,41 +195,66 @@
             </p>
             {% endif %}
 
-            <!-- Actions (solo admin) -->
             <div class="pt-2 flex flex-wrap gap-2">
-                {% if is_admin %}
+                {% if is_admin and (not coming_soon) %}
+
+                {% if st in ("inactive","cancelled") and (not access_allowed) %}
+                <form action="/app/modules/{{ slug }}/activate" method="post">
+                    <button type="submit"
+                            class="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                        Activar trial
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if st in ("suspended","past_due") %}
+                <form action="/app/modules/{{ slug }}/pay_now" method="post">
+                    <input type="hidden" name="months" value="1">
+                    <button type="submit"
+                            class="inline-flex items-center rounded-full border border-amber-500/50 px-4 py-2
+                               text-[11px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-colors">
+                        Simular pago (activar 1 mes)
+                    </button>
+                </form>
+                {% endif %}
+
                 {% if cancel_at_period_end %}
                 <form action="/app/modules/{{ slug }}/reactivate" method="post">
                     <button type="submit"
                             class="inline-flex items-center rounded-full border border-emerald-500/50 px-4 py-2
-                                     text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-colors">
+                               text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition-colors">
                         Reactivar
                     </button>
                 </form>
                 {% else %}
+                {% if st in ("trial","active") %}
                 <form action="/app/modules/{{ slug }}/cancel" method="post">
                     <button type="submit"
                             class="inline-flex items-center rounded-full border border-amber-500/50 px-4 py-2
-                                     text-[11px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-colors">
+                                 text-[11px] font-semibold text-amber-300 hover:bg-amber-500/10 transition-colors">
                         Cancelar al fin de período
                     </button>
                 </form>
                 {% endif %}
                 {% endif %}
+                {% endif %}
 
-                <!-- CTA operar (solo si enabled para evitar 403) -->
-                {% if slug == "inbound" and enabled %}
+                {% if access_allowed %}
+                {% if slug == "inbound" %}
                 <a href="/inbound"
                    class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
-                          text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                        text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Ir a Inbound →
                 </a>
-                {% elif slug == "wms" and enabled %}
+                {% elif slug == "wms" %}
                 <a href="/dashboard"
                    class="inline-flex items-center rounded-full border border-slate-700 px-4 py-2
-                          text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                        text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Ir a WMS →
                 </a>
+                {% endif %}
                 {% endif %}
             </div>
 
@@ -251,7 +264,7 @@
         </article>
         {% endfor %}
     </div>
-    {% endif %}
 
+    {% endif %}
 </div>
 {% endblock %}
