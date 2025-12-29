@@ -25,33 +25,18 @@ router = APIRouter()
 
 
 # =========================================================
-# Helpers sesión / identidad
+# Helpers sesión / identidad (baseline: user es dict)
 # =========================================================
 
-def _get_negocio_id(user) -> int:
-    if callable(user):
-        user = user()
-
-    if isinstance(user, dict):
-        val = user.get("negocio_id")
-        if val is None:
-            raise InboundDomainError("Sesión inválida: falta negocio_id.")
-        return int(val)
-
-    val = getattr(user, "negocio_id", None)
+def _get_negocio_id(user: dict) -> int:
+    val = user.get("negocio_id")
     if val is None:
         raise InboundDomainError("Sesión inválida: falta negocio_id.")
     return int(val)
 
 
-def _get_user_identity(user) -> str | None:
-    if callable(user):
-        user = user()
-
-    if isinstance(user, dict):
-        return user.get("email") or user.get("usuario") or user.get("nombre") or None
-
-    return getattr(user, "email", None) or getattr(user, "usuario", None) or getattr(user, "nombre", None) or None
+def _get_user_identity(user: dict) -> str | None:
+    return user.get("email") or user.get("usuario") or user.get("nombre") or None
 
 
 def _redirect_back(request: Request, recepcion_id: int) -> RedirectResponse:
@@ -59,6 +44,23 @@ def _redirect_back(request: Request, recepcion_id: int) -> RedirectResponse:
         url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id)),
         status_code=303,
     )
+
+
+def _parse_ok_form(ok: str | None) -> bool | None:
+    """
+    Tri-state BOOL:
+    - "true"  => True
+    - "false" => False
+    - ""/None => None (pendiente)
+    """
+    if ok is None:
+        return None
+    s = str(ok).strip().lower()
+    if s in ("true", "1", "yes", "si", "sí", "ok"):
+        return True
+    if s in ("false", "0", "no", "nok", "no_ok"):
+        return False
+    return None
 
 
 # =========================================================
@@ -70,7 +72,7 @@ async def inbound_checklist_recepcion(
     request: Request,
     recepcion_id: int,
     db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
+    user: dict = Depends(inbound_roles_dep()),
 ):
     negocio_id = _get_negocio_id(user)
 
@@ -115,20 +117,18 @@ async def inbound_checklist_guardar_item(
     recepcion_id: int,
     checklist_item_id: int = Form(...),
 
-    # checkbox HTML: si NO viene, es None
+    # Tri-state radio: "true" / "false" / "" (pendiente)
     ok: str | None = Form(None),
     valor: str | None = Form(None),
     nota: str | None = Form(None),
 
     db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
+    user: dict = Depends(inbound_roles_dep()),
 ):
     negocio_id = _get_negocio_id(user)
     respondido_por = _get_user_identity(user)
 
-    ok_bool = None
-    if ok is not None:
-        ok_bool = True if ok in ("on", "true", "1", "yes", "si", "sí", "checked") else False
+    ok_bool = _parse_ok_form(ok)
 
     try:
         guardar_respuesta_item(
@@ -147,7 +147,8 @@ async def inbound_checklist_guardar_item(
     except InboundDomainError as e:
         db.rollback()
         return RedirectResponse(
-            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id)) + f"?error={str(getattr(e,'message',None) or e)}",
+            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id))
+            + f"?error={str(getattr(e,'message',None) or e)}",
             status_code=303,
         )
 
@@ -161,12 +162,12 @@ async def inbound_checklist_guardar_todo(
     request: Request,
     recepcion_id: int,
     db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
+    user: dict = Depends(inbound_roles_dep()),
 ):
     """
     Guardar todo (modo seguro):
-    - BOOL: guarda SOLO los que están checked => ok=True
-      (unchecked => no se guarda / no se marca NO OK)
+    - BOOL: guarda SOLO los que están OK (ok=True)
+      (NO OK o Pendiente => no se guarda en bulk)
     - NO BOOL: guarda solo si viene valor o nota no vacíos
     """
     negocio_id = _get_negocio_id(user)
@@ -193,7 +194,7 @@ async def inbound_checklist_guardar_todo(
 
             # --- MODO SEGURO ---
             if tipo == "BOOL":
-                # solo guardamos si viene ok=True (checked)
+                # solo guardamos si viene ok=True (OK)
                 if ok is not True:
                     continue
                 ok_bool = True
@@ -237,7 +238,7 @@ async def inbound_checklist_completar(
     request: Request,
     recepcion_id: int,
     db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
+    user: dict = Depends(inbound_roles_dep()),
 ):
     negocio_id = _get_negocio_id(user)
 
@@ -249,7 +250,8 @@ async def inbound_checklist_completar(
     except InboundDomainError as e:
         db.rollback()
         return RedirectResponse(
-            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id)) + f"?error={str(getattr(e,'message',None) or e)}",
+            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id))
+            + f"?error={str(getattr(e,'message',None) or e)}",
             status_code=303,
         )
 
@@ -259,7 +261,7 @@ async def inbound_checklist_reabrir(
     request: Request,
     recepcion_id: int,
     db: Session = Depends(get_db),
-    user=Depends(inbound_roles_dep()),
+    user: dict = Depends(inbound_roles_dep()),
 ):
     negocio_id = _get_negocio_id(user)
 
@@ -271,6 +273,7 @@ async def inbound_checklist_reabrir(
     except InboundDomainError as e:
         db.rollback()
         return RedirectResponse(
-            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id)) + f"?error={str(getattr(e,'message',None) or e)}",
+            url=str(request.url_for("inbound_checklist_recepcion", recepcion_id=recepcion_id))
+            + f"?error={str(getattr(e,'message',None) or e)}",
             status_code=303,
         )

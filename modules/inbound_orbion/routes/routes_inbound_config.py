@@ -1,18 +1,18 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_config.py
 """
-Rutas Config – Inbound ORBION
+Rutas Config – Inbound ORBION (baseline entitlements)
 
 ✔ Vista + guardado de configuración inbound por negocio
 ✔ Multi-tenant estricto
-✔ Normalización robusta de form (bool/int/float/str)
+✔ Parse robusto de form (bool/int/float/str) con hidden+checkbox
 ✔ Logging estructurado
-✔ Preparado para restricción a rol admin
+✔ Plan summary vía ENTITLEMENTS (NO plan_tipo legacy)
+✔ SLA en MINUTOS como ENTEROS (baseline)
 """
 
 from __future__ import annotations
 
 from typing import Any
-from datetime import datetime, timezone
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -20,25 +20,18 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import InboundConfig
+from core.models.time import utcnow  # ✅ baseline utcnow
 
 from modules.inbound_orbion.services.services_inbound_config import (
     get_or_create_inbound_config,
-)
-from modules.inbound_orbion.services.services_inbound_logging import (
-    log_inbound_event,
+    normalize_inbound_config_dict,
+    get_inbound_config_page_context,
 )
 
+from modules.inbound_orbion.services.services_inbound_logging import log_inbound_event
 from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
 
 router = APIRouter()
-
-
-
-
-# ============================
-#   PARSE FORM (enterprise)
-# ============================
 
 _TRUE_SET = {"true", "on", "yes", "si", "sí", "1"}
 _FALSE_SET = {"false", "off", "no", "0"}
@@ -75,8 +68,7 @@ def _parse_form_value(raw: Any):
 
     # float (tolera coma decimal)
     try:
-        s2 = s.replace(",", ".")
-        return float(s2)
+        return float(s.replace(",", "."))
     except ValueError:
         return s
 
@@ -86,16 +78,10 @@ def _require_admin_if_needed(user: dict) -> None:
     Si decides restringir config solo a admin, activa esta validación.
     """
     # 🔒 Activar cuando quieras:
-    # if user.get("rol") != "admin":
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="Solo el admin del negocio puede administrar la configuración inbound.",
-    #     )
+    # if (user.get("rol") or "").strip().lower() != "admin":
+    #     raise HTTPException(status_code=403, detail="Solo admin puede administrar configuración inbound.")
     return
 
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
 
 # ============================
 #   VIEW
@@ -107,25 +93,18 @@ async def inbound_config_view(
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     negocio = get_negocio_or_404(db, negocio_id)
 
     _require_admin_if_needed(user)
 
-    # ✅ centralizamos creación/lectura en service enterprise
-    config = get_or_create_inbound_config(db, negocio_id)
-    try:
-        config_data = json.loads(config.reglas_json) if config.reglas_json else {}
-    except Exception:
-        config_data = {}
-
-    plan_cfg = get_inbound_plan_config(negocio.plan_tipo)
+    # ✅ Ruta liviana: todo el contexto sale del service (config/config_data normalizado/plan_cfg entitlements)
+    ctx = get_inbound_config_page_context(db, negocio)
 
     log_inbound_event(
         "config_view",
         negocio_id=negocio_id,
         user_email=user.get("email"),
-        plan=negocio.plan_tipo,
     )
 
     return templates.TemplateResponse(
@@ -134,9 +113,7 @@ async def inbound_config_view(
             "request": request,
             "user": user,
             "negocio": negocio,
-            "config": config,
-            "config_data": config_data,
-            "plan_cfg": plan_cfg,
+            **ctx,  # {"config":..., "config_data":..., "plan_cfg":...}
             "modulo_nombre": "Orbion Inbound",
         },
     )
@@ -146,13 +123,13 @@ async def inbound_config_view(
 #   SAVE (enterprise robust)
 # ============================
 
-@router.post("/config", response_class=HTMLResponse)
+@router.post("/config")
 async def inbound_config_save(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
 ):
-    negocio_id = user["negocio_id"]
+    negocio_id = int(user["negocio_id"])
     get_negocio_or_404(db, negocio_id)
 
     _require_admin_if_needed(user)
@@ -163,14 +140,12 @@ async def inbound_config_save(
     # 1) Cargar JSON actual
     try:
         data: dict[str, Any] = json.loads(config.reglas_json) if config.reglas_json else {}
+        if not isinstance(data, dict):
+            data = {}
     except Exception:
         data = {}
 
-    # 2) Aplicar valores del form con soporte para multi-values (checkbox + hidden)
-    #    - Si llega ["false", "true"] -> debe quedar True
-    #    - Si llega solo ["false"]    -> queda False
-    #    - Si llega solo ["true"]     -> queda True
-    #    - Si llega valor único       -> se parsea normal
+    # 2) Aplicar valores del form con soporte multi-values (checkbox + hidden)
     ignore_keys = {"csrf_token"}
 
     for key in form.keys():
@@ -178,25 +153,27 @@ async def inbound_config_save(
             continue
 
         values = form.getlist(key)
-
         if not values:
             data[key] = None
             continue
 
-        # Caso checkbox: prioriza true si aparece
         lowered = [str(v).strip().lower() for v in values if v is not None]
-        if "true" in lowered or "on" in lowered or "1" in lowered or "yes" in lowered or "si" in lowered or "sí" in lowered:
+
+        # checkbox con hidden: prioriza True si aparece
+        if any(v in _TRUE_SET for v in lowered):
             data[key] = True
             continue
-        if "false" in lowered or "off" in lowered or "0" in lowered or "no" in lowered:
-            # si solo vienen falsos, queda False
+        if any(v in _FALSE_SET for v in lowered):
             data[key] = False
             continue
 
         # Fallback: toma el último valor y parsea
         data[key] = _parse_form_value(values[-1])
 
-    # 3) Persistir
+    # ✅ 3) Normalizar baseline (SLA ENTEROS, bools, ints) antes de guardar
+    data = normalize_inbound_config_dict(data)
+
+    # 4) Persistir
     config.reglas_json = json.dumps(data, ensure_ascii=False)
     config.updated_at = utcnow()
 
@@ -209,6 +186,4 @@ async def inbound_config_save(
         user_email=user.get("email"),
     )
 
-    return RedirectResponse(url="/inbound/config", status_code=302)
-
-
+    return RedirectResponse(url="/inbound/config?success=1", status_code=302)

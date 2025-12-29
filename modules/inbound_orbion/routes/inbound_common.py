@@ -67,28 +67,24 @@ def _effective_negocio_id(user: dict) -> int | None:
 
     return None
 
-
 def inbound_roles_dep() -> Callable:
     """
     Dependency inbound enterprise (RBAC + gating):
-    - valida sesión usuario
-    - valida roles inbound
-    - valida que el módulo inbound esté ACTIVO (effective enabled) según snapshot
-      (entitlements.enabled + subscription.status ∈ {trial, active})
-
-    Uso:
-        user = Depends(inbound_roles_dep())
+    - valida sesión usuario (require_user_dep)
+    - valida roles inbound usando el dict user ya resuelto
+    - valida módulo inbound ACTIVO (has_module_db)
     """
-
-    roles_dep = require_roles_dep(*INBOUND_ROLES)
+    allowed = {r.strip().lower() for r in INBOUND_ROLES}
 
     async def _dep(
         request: Request,
         db: Session = Depends(get_db),
         user: dict = Depends(require_user_dep),
     ) -> dict:
-        # 1) roles inbound
-        roles_dep(user)  # lanza 403 si no tiene roles
+        # 1) roles inbound (sin reconsultar sesión)
+        rol = str(user.get("rol") or "").strip().lower()
+        if rol not in allowed:
+            raise HTTPException(status_code=403, detail="No tienes permisos para acceder a Inbound.")
 
         # 2) gating módulo (enterprise)
         negocio_id = _effective_negocio_id(user)
@@ -96,7 +92,6 @@ def inbound_roles_dep() -> Callable:
             raise HTTPException(status_code=400, detail="No se encontró contexto de negocio en la sesión.")
 
         if not has_module_db(db, negocio_id, "inbound", require_active=True):
-            # mensaje claro para UI
             raise HTTPException(
                 status_code=403,
                 detail="Módulo Inbound no está activo para este negocio (suscripción suspendida o no habilitada).",

@@ -1,4 +1,4 @@
-﻿{# templates/checklist_recepcion.html #}
+﻿{# modules/inbound_orbion/templates/inbound_checklist_recepcion.html #}
 {% extends "base/base_app.html" %}
 
 {% block title %}Inbound · Checklist{% endblock %}
@@ -121,7 +121,7 @@
                 <div>
                     <div class="text-sm font-semibold text-slate-100">Acciones</div>
                     <div class="text-xs text-slate-400 mt-1">
-                        Marca y guarda. Puedes guardar ítem por ítem o usar “Guardar todo”.
+                        Marca y guarda. “Guardar todo” es modo seguro (BOOL solo guarda OK).
                     </div>
                 </div>
 
@@ -154,7 +154,7 @@
             <div class="mt-4 rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
                 <div class="text-xs text-slate-300">
                     <span class="font-semibold text-slate-100">Tip enterprise:</span>
-                    Si hay “No OK”, registra nota; luego adjuntaremos evidencia (fotos/documentos) cuando integremos esos módulos.
+                    Si hay “NO OK”, registra nota; luego adjuntaremos evidencia (fotos/documentos) cuando integremos esos módulos.
                 </div>
             </div>
         </div>
@@ -244,14 +244,35 @@
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
                         <div class="md:col-span-8">
                             {% if tipo == "BOOL" %}
-                            <div class="flex items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <label class="flex items-center gap-2 text-sm text-slate-200">
-                                    <input type="checkbox" name="ok"
-                                           class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-400 focus:ring-cyan-400/40"
-                                           {% if resp_ok %}checked{% endif %} />
-                                    Conforme (OK)
-                                </label>
-                                <span class="text-xs text-slate-500">Desmarca para registrar No OK.</span>
+                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
+                                <div class="text-xs font-semibold text-slate-300 mb-2">Resultado</div>
+
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                                        <input type="radio" name="ok" value=""
+                                               class="h-4 w-4"
+                                               {% if resp_ok is none %}checked{% endif %} />
+                                        Pendiente
+                                    </label>
+
+                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                                        <input type="radio" name="ok" value="true"
+                                               class="h-4 w-4"
+                                               {% if resp_ok is not none and resp_ok %}checked{% endif %} />
+                                        OK
+                                    </label>
+
+                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                                        <input type="radio" name="ok" value="false"
+                                               class="h-4 w-4"
+                                               {% if resp_ok is not none and (not resp_ok) %}checked{% endif %} />
+                                        NO OK
+                                    </label>
+                                </div>
+
+                                <div class="mt-2 text-xs text-slate-500">
+                                    “Guardar todo” solo guarda OK (modo seguro). Para NO OK usa “Guardar”.
+                                </div>
                             </div>
 
                             {% elif tipo == "OPCION" %}
@@ -265,7 +286,7 @@
                                     {% for op in lista %}
                                     {% set v = op.strip() %}
                                     {% if v %}
-                                    <option value="{{ v }}" {% if resp_valor==v %}selected{% endif %}>{{ v }}</option>
+                                    <option value="{{ v }}" {% if resp_valor == v %}selected{% endif %}>{{ v }}</option>
                                     {% endif %}
                                     {% endfor %}
                                 </select>
@@ -360,7 +381,7 @@
         const tipo = (row.getAttribute("data-tipo") || "").toUpperCase();
 
         const form = row.querySelector("form.checklist-form");
-        const okEl = form ? form.querySelector('input[name="ok"]') : null;
+        const okEl = form ? form.querySelector('input[name="ok"]:checked') : null;
         const valorEl = form ? form.querySelector('input[name="valor"], select[name="valor"]') : null;
         const notaEl = form ? form.querySelector('textarea[name="nota"]') : null;
 
@@ -368,10 +389,12 @@
         const nota = notaEl ? (notaEl.value || "") : "";
 
         // MODO SEGURO:
-        // - BOOL: solo true si checked (si no, mandamos null para que el backend lo ignore)
+        // - BOOL: solo enviamos ok=true si el usuario eligió OK.
+        //         NO OK o Pendiente => ok=null (backend lo ignora en guardar_todo)
         let ok = null;
         if (tipo === "BOOL") {
-          ok = (okEl && okEl.checked) ? true : null;
+          const v = okEl ? (okEl.value || "") : "";
+          ok = (v === "true") ? true : null;
         }
 
         return {
@@ -395,7 +418,6 @@
         return;
       }
 
-      // recargar para ver estados OK inmediatamente
       window.location.reload();
 
     } catch (e) {

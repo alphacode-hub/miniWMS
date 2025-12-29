@@ -257,6 +257,11 @@ def _es_respondido(r: Optional[InboundChecklistRespuesta]) -> bool:
 
 
 def _requerido_ok(it: InboundPlantillaChecklistItem, r: Optional[InboundChecklistRespuesta]) -> bool:
+    """
+    Contrato:
+    - Requerido BOOL => debe estar ok==True
+    - Requerido NO-BOOL => valor no vacío (o ok True si alguien lo usa así)
+    """
     if not it.requerido:
         return True
 
@@ -393,7 +398,7 @@ def guardar_respuesta_item(
             plantilla_id=chk.plantilla_id,
             checklist_item_id=checklist_item_id,
             respondido_por=respondido_por,
-            ok=ok,
+            ok=ok,  # ✅ puede ser True/False/None
             valor=v_clean,
             nota=n_clean,
             creado_en=now,
@@ -422,21 +427,16 @@ def guardar_respuesta_item(
 # =========================================================
 
 def completar_checklist_recepcion(db: Session, negocio_id: int, recepcion_id: int) -> InboundChecklistRecepcion:
+    chk = obtener_o_crear_checklist_recepcion(db, negocio_id, recepcion_id)
+
+    # idempotente
+    if chk.estado == CHECKLIST_ESTADO_COMPLETADO:
+        return chk
+
     vm = obtener_checklist_vm(db, negocio_id, recepcion_id)
     pendientes = int(vm.resumen.get("requeridos_pendientes", 0) or 0)
     if pendientes > 0:
         raise InboundDomainError(f"No es posible completar el checklist: faltan {pendientes} requeridos.")
-
-    chk = (
-        db.query(InboundChecklistRecepcion)
-        .filter(
-            InboundChecklistRecepcion.negocio_id == negocio_id,
-            InboundChecklistRecepcion.recepcion_id == recepcion_id,
-        )
-        .first()
-    )
-    if not chk:
-        raise InboundDomainError("Checklist de recepción no encontrado.")
 
     now = utcnow()
     chk.estado = CHECKLIST_ESTADO_COMPLETADO
