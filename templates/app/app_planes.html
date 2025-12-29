@@ -112,11 +112,11 @@
                     </p>
                     {% else %}
                     <p class="text-[11px] sm:text-xs text-slate-400">
-                        Estado: <span class="text-slate-200 font-medium">{{ st }}</span>
+                        Estado: <span class="text-slate-200 font-medium">{{ (st)|capitalize }}</span>
                         · Provisionado: <span class="text-slate-200 font-medium">{{ "sí" if enabled else "no" }}</span>
                         · Acceso:
                         <span class="{{ 'text-emerald-300' if access_allowed else 'text-amber-300' }} font-semibold">
-                            {{ "habilitado" if access_allowed else "bloqueado" }}
+                            {{ "Habilitado" if access_allowed else "Bloqueado" }}
                         </span>
                     </p>
 
@@ -152,7 +152,7 @@
                     {% else %}
                       border-slate-600 text-slate-300
                     {% endif %}">
-                    {{ "Próximamente" if coming_soon else st }}
+                    {{ "Próximamente" if coming_soon else (st)|capitalize }}
                 </span>
             </div>
 

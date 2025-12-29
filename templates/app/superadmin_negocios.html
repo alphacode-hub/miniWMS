@@ -18,7 +18,7 @@
                 Negocios de la plataforma
             </h1>
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
-                Vista global de negocios, estado, segmento y suscripciones por módulo.
+                Vista global de negocios customer (operativos), estado, segmento y suscripciones por módulo.
             </p>
         </div>
 
@@ -42,11 +42,16 @@
     HELPERS (jinja)
     ========================= #}
     {% macro estado_badge(estado) -%}
-    {% set s = (estado|string)|lower %}
-    {% if s == "activo" or s == "activa" or s == "activo " or s == "active" or s == "negocioestado.activo" %}
+    {% set s = (estado|string)|lower|trim %}
+    {% if s in ["activo", "activa", "active", "negocioestado.activo"] %}
     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
                          bg-emerald-500/10 text-emerald-200 border border-emerald-500/40">
         Activo
+    </span>
+    {% elif s in ["suspendido", "suspended", "negocioestado.suspendido"] %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
+                         bg-amber-500/10 text-amber-200 border border-amber-500/40">
+        Suspendido
     </span>
     {% else %}
     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-medium
@@ -63,9 +68,23 @@
     </span>
     {%- endmacro %}
 
+    {% macro qv(k, v) -%}
+    {# Query param helper: si v viene vacío, no lo imprimimos #}
+    {% if v is not none and (v|string)|trim %}
+    {{ k }}={{ (v|string)|urlencode }}
+    {% endif %}
+    {%- endmacro %}
+
+    {% set f = filtros or {} %}
+    {% set q = f.q or "" %}
+    {% set estado = f.estado or "" %}
+    {% set module = f.module or "" %}
+    {% set page_size = f.page_size or 15 %}
+    {% set p = paginacion or {} %}
+
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
 
-        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="space-y-1">
                 <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
                     Panel global
@@ -74,17 +93,94 @@
                     Negocios y suscripciones
                 </h2>
                 <p class="text-[11px] text-slate-400 max-w-md">
-                    Fuente de verdad: SaaS modular (segmento + módulos + períodos).
+                    Fuente de verdad: snapshot SaaS (segmento + módulos + períodos).
                 </p>
             </div>
 
-            {% if negocios and negocios|length > 0 %}
-            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
-                <span class="mr-1 text-slate-500">Mostrando:</span>
-                <span class="font-semibold text-slate-100">{{ negocios|length }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+                {% if p.total is defined %}
+                <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="mr-1 text-slate-500">Total:</span>
+                    <span class="font-semibold text-slate-100">{{ p.total }}</span>
+                </div>
+                {% endif %}
+                {% if negocios and negocios|length > 0 %}
+                <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="mr-1 text-slate-500">Mostrando:</span>
+                    <span class="font-semibold text-slate-100">{{ negocios|length }}</span>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </header>
+
+        {# =========================
+        FILTROS (GET)
+        ========================= #}
+        <form method="get" action="/superadmin/negocios" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div class="sm:col-span-5 space-y-1.5">
+                    <label class="text-[11px] font-semibold text-slate-200" for="q">Buscar</label>
+                    <input id="q" name="q" value="{{ q }}"
+                           placeholder="Nombre o ID…"
+                           class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
+                                  placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400" />
+                </div>
+
+                <div class="sm:col-span-3 space-y-1.5">
+                    <label class="text-[11px] font-semibold text-slate-200" for="estado">Estado</label>
+                    <select id="estado" name="estado"
+                            class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
+                        <option value="" {% if not estado %}selected{% endif %}>Todos</option>
+                        <option value="activo" {% if (estado|string)|lower == "activo" %}selected{% endif %}>Activo</option>
+                        <option value="suspendido" {% if (estado|string)|lower == "suspendido" %}selected{% endif %}>Suspendido</option>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-2 space-y-1.5">
+                    <label class="text-[11px] font-semibold text-slate-200" for="module">Módulo</label>
+                    <select id="module" name="module"
+                            class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
+                        <option value="" {% if not module %}selected{% endif %}>Todos</option>
+                        <option value="wms" {% if (module|string)|lower == "wms" %}selected{% endif %}>WMS</option>
+                        <option value="inbound" {% if (module|string)|lower == "inbound" %}selected{% endif %}>Inbound</option>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-2 space-y-1.5">
+                    <label class="text-[11px] font-semibold text-slate-200" for="page_size">Página</label>
+                    <select id="page_size" name="page_size"
+                            class="w-full h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400">
+                        <option value="10" {% if (page_size|string) == "10" %}selected{% endif %}>10</option>
+                        <option value="15" {% if (page_size|string) == "15" %}selected{% endif %}>15</option>
+                        <option value="25" {% if (page_size|string) == "25" %}selected{% endif %}>25</option>
+                        <option value="50" {% if (page_size|string) == "50" %}selected{% endif %}>50</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button type="submit"
+                        class="inline-flex items-center h-10 px-4 rounded-full text-[11px] sm:text-xs font-semibold
+                               text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 shadow-sm active:scale-[0.97]
+                               transition-transform transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
+                    Aplicar filtros
+                </button>
+
+                <a href="/superadmin/negocios"
+                   class="inline-flex items-center h-10 px-4 rounded-full text-[11px] sm:text-xs font-semibold
+                          border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300
+                          transition-colors active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-cyan-400/50">
+                    Limpiar
+                </a>
+            </div>
+
+            <p class="text-[11px] text-slate-500">
+                Nota: los tenants <span class="text-slate-200 font-medium">SYSTEM</span> (ej: ORBION) no se listan aquí.
+            </p>
+        </form>
 
         {% if negocios and negocios|length > 0 %}
 
@@ -139,7 +235,6 @@
                             Detalle
                         </a>
 
-                        {# opcional (solo si backend lo soporta): n.impersonate_url o n.can_impersonate #}
                         {% if n.impersonate_url %}
                         <a href="{{ n.impersonate_url }}"
                            class="inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-medium
@@ -236,9 +331,55 @@
             </table>
         </div>
 
+        {# =========================
+        PAGINACIÓN
+        ========================= #}
+        {% set base = "/superadmin/negocios" %}
+        {% set qs = [] %}
+        {% if q %}{% set _ = qs.append("q=" ~ (q|string)|urlencode) %}{% endif %}
+        {% if estado %}{% set _ = qs.append("estado=" ~ (estado|string)|urlencode) %}{% endif %}
+        {% if module %}{% set _ = qs.append("module=" ~ (module|string)|urlencode) %}{% endif %}
+        {% if page_size %}{% set _ = qs.append("page_size=" ~ (page_size|string)|urlencode) %}{% endif %}
+        {% set qs_str = ("&".join(qs)) %}
+
+        <div class="pt-2 flex items-center justify-between gap-2">
+            <div class="text-[11px] text-slate-500">
+                Página <span class="text-slate-200 font-semibold">{{ p.page or 1 }}</span>
+                de <span class="text-slate-200 font-semibold">{{ p.total_pages or 1 }}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {% if p.has_prev %}
+                <a href="{{ base }}?{{ qs_str }}&page={{ p.prev_page }}"
+                   class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
+                          border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    ← Anterior
+                </a>
+                {% else %}
+                <span class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
+                             border border-slate-800 text-slate-600 bg-slate-900/40 cursor-not-allowed">
+                    ← Anterior
+                </span>
+                {% endif %}
+
+                {% if p.has_next %}
+                <a href="{{ base }}?{{ qs_str }}&page={{ p.next_page }}"
+                   class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
+                          border border-slate-700 text-slate-200 bg-slate-900 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Siguiente →
+                </a>
+                {% else %}
+                <span class="inline-flex items-center h-9 px-3 rounded-full text-[11px] font-semibold
+                             border border-slate-800 text-slate-600 bg-slate-900/40 cursor-not-allowed">
+                    Siguiente →
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
         {% else %}
         <div class="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs sm:text-sm text-slate-300">
-            Aún no hay negocios registrados en la plataforma.
+            No se encontraron negocios con los filtros actuales.
         </div>
         {% endif %}
     </section>

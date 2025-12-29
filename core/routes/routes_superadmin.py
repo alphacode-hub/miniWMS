@@ -2,26 +2,21 @@
 """
 Superadmin Console – ORBION (SaaS enterprise, baseline aligned)
 
-✔ Dashboard global (solo superadmin global)
-✔ Gestión de negocios (lista + detalle) con filtros + paginación
-✔ Snapshot SaaS canónico (entitlements + subscription overlay + usage/limits)
-✔ Acciones SaaS por módulo (source of truth en services_subscriptions):
-   - activar (trial)
-   - cancelar al fin de período
-   - reactivar (unschedule cancel)
-   - suspender
-   - forzar renovación (renew now)
-✔ Job center (renovación global)
-✔ Alertas globales
-✔ Impersonación ("ver como negocio") + salir modo negocio
-✔ Auditoría POR NEGOCIO (desde el detalle del negocio)
-✔ Cambio de segmento (baseline SaaS) persiste en negocio.entitlements["segment"]
+✅ FIX (defensivo):
+- Excluir negocios SYSTEM (tenant_type == SYSTEM)
+- Excluir negocio interno "ORBION" por nombre_fantasia (case-insensitive),
+  incluso si quedó mal marcado (NULL / CUSTOMER / etc).
 
-Notas baseline:
-- NO existe "auditoría global multi-negocio": la auditoría pertenece al negocio (tenant real).
-- Los jobs globales se registran en logs/observability, y también generan auditoría por negocio
-  cuando el job ejecuta acciones sobre suscripciones (actor system con negocio_id).
-- Se evita duplicar auditoría en rutas: la auditoría vive en services_* (source of truth).
+✅ FIX (enterprise):
+- Paginación consistente cuando existe module_filter:
+  - total / total_pages / páginas NO se calculan sobre base_query “sin filtro real”
+  - se filtra primero (por módulo) y luego se pagina
+
+Esto evita que el negocio ORBION aparezca en:
+- contadores del dashboard
+- lista /superadmin/negocios
+- detalle / impersonación / auditoría por negocio
+- alertas globales
 """
 
 from __future__ import annotations
@@ -40,7 +35,15 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.formatting import cl_date, cl_datetime
 from core.logging_config import logger
-from core.models import Alerta, Auditoria, Movimiento, Negocio, Producto, Usuario
+from core.models import (
+    Alerta,
+    Auditoria,
+    Movimiento,
+    Negocio,
+    Producto,
+    Usuario,
+    TenantType,
+)
 from core.models.enums import ModuleKey, NegocioEstado
 from core.models.saas import SuscripcionModulo
 from core.models.time import utcnow
@@ -70,22 +73,19 @@ router = APIRouter(prefix="/superadmin", tags=["superadmin"])
 PAGE_SIZE_DEFAULT = 15
 AUDIT_PAGE_SIZE = 15
 
+# Nombres internos reservados (defensivo)
+_INTERNAL_NEGOCIO_NAMES = {"orbion"}  # puedes agregar "orbion-system" si lo usas
+
 
 # =========================================================
 # HELPERS
 # =========================================================
 
 def _is_impersonating(user: dict) -> bool:
-    """
-    Compatible con distintas keys:
-    - cookie payload usa 'acting_negocio_id'
-    - algunos flujos pueden usar 'impersonando_negocio_id'
-    """
     return bool(user.get("acting_negocio_id") or user.get("impersonando_negocio_id"))
 
 
 def _require_superadmin_global(user: dict) -> None:
-    """Bloquea operaciones peligrosas si el superadmin está impersonando negocio."""
     if _is_impersonating(user):
         raise HTTPException(status_code=403, detail="No permitido en modo negocio (impersonación).")
 
@@ -98,7 +98,6 @@ def _safe_int(v: str | None, default: int = 1) -> int:
 
 
 def _ensure_utc_aware(dt: datetime) -> datetime:
-    """Asegura tz-aware UTC. Si viene naive, asumimos UTC."""
     if not isinstance(dt, datetime):
         raise TypeError("dt must be datetime")
     if dt.tzinfo is None:
@@ -107,11 +106,6 @@ def _ensure_utc_aware(dt: datetime) -> datetime:
 
 
 def _parse_iso_dt(s: Any) -> datetime | None:
-    """
-    Parse defensivo de ISO datetime.
-    - Acepta None / "" / "Z"
-    - Retorna tz-aware UTC
-    """
     if s is None:
         return None
     ss = str(s).strip()
@@ -126,11 +120,6 @@ def _parse_iso_dt(s: Any) -> datetime | None:
 
 
 def _derive_next_period_end_fallback(n: Negocio) -> datetime | None:
-    """
-    Fallback legacy si el snapshot no trae period_end:
-    - usa plan_fecha_fin si existe
-    - si no, estima desde plan_fecha_inicio + plan_renovacion_cada_meses (~30 días/mes)
-    """
     dfin: date | None = getattr(n, "plan_fecha_fin", None)
     if dfin:
         return datetime(dfin.year, dfin.month, dfin.day, 0, 0, 0, tzinfo=timezone.utc)
@@ -146,10 +135,6 @@ def _derive_next_period_end_fallback(n: Negocio) -> datetime | None:
 
 
 def _module_alias(mk: str) -> str:
-    """
-    Normaliza nombres históricos a claves canónicas.
-    Mantenerlo aquí evita dependencias cruzadas.
-    """
     mk = (mk or "").strip().lower()
     aliases = {
         "wms_core": "wms",
@@ -161,13 +146,6 @@ def _module_alias(mk: str) -> str:
 
 
 def _module_rollup_from_ent(ent: dict) -> dict:
-    """
-    Resume módulos desde entitlements (idealmente normalizados):
-    - enabled_count
-    - blocked_count
-    - next_period_end: mínimo end entre módulos enabled (si existe)
-    - segment: emprendedor | pyme | enterprise (fallback emprendedor)
-    """
     mods = (ent or {}).get("modules") or {}
     seg = (ent or {}).get("segment") or (ent or {}).get("segmento") or "emprendedor"
     seg = str(seg).strip().lower() or "emprendedor"
@@ -210,10 +188,6 @@ def _module_rollup_from_ent(ent: dict) -> dict:
 
 
 def _modules_list_for_view_from_snapshot(snapshot: dict) -> list[dict]:
-    """
-    Convierte snapshot.modules -> lista ordenada para render.
-    Snapshot puede traer overlay subscription.period.{start,end} y usage/limits/remaining.
-    """
     mods = (snapshot or {}).get("modules") or {}
     out: list[dict] = []
 
@@ -254,7 +228,6 @@ def _modules_list_for_view_from_snapshot(snapshot: dict) -> list[dict]:
             trial_ends = sub.get("trial_ends_at")
             cancel_at_period_end = bool(sub.get("cancel_at_period_end", False))
 
-        # fallback a entitlements.period.{from,to}
         if not per_start or not per_end:
             per2 = v.get("period") or {}
             if isinstance(per2, dict):
@@ -280,33 +253,23 @@ def _modules_list_for_view_from_snapshot(snapshot: dict) -> list[dict]:
     out.sort(key=lambda x: (not x["enabled"], x["slug"]))
     return out
 
+
 def _mk_from_str(module_key: str) -> ModuleKey:
-    """
-    Convierte cualquier representación de módulo a ModuleKey canónico.
-    Soporta aliases históricos y slugs técnicos.
-    """
     if not module_key:
         raise HTTPException(status_code=404, detail="Módulo no válido")
 
     s = module_key.strip().lower()
-
-    # 1) limpiar paths raros: core.wms / modules/wms / etc
     if "/" in s:
         s = s.split("/")[-1]
     if "." in s:
         s = s.split(".")[-1]
 
-    # 2) normalizar alias histórico -> canónico
     s = _module_alias(s)
 
-    # 3) convertir a enum (source of truth)
     try:
         return ModuleKey(s)
     except ValueError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Módulo no válido: {module_key}",
-        )
+        raise HTTPException(status_code=404, detail=f"Módulo no válido: {module_key}")
 
 
 def _get_sub_or_404(db: Session, negocio_id: int, mk: ModuleKey) -> SuscripcionModulo:
@@ -341,10 +304,6 @@ def _normalize_segment(seg: str) -> str:
 
 
 def _get_negocio_entitlements_obj(n: Negocio) -> dict:
-    """
-    Lee entitlements desde la mejor fuente disponible.
-    Soporta columnas JSON(dict) o Text(str con JSON).
-    """
     for attr in ("entitlements", "entitlements_json", "entitlements_override"):
         if not hasattr(n, attr):
             continue
@@ -392,7 +351,6 @@ def _set_negocio_entitlements_obj(n: Negocio, ent: dict) -> None:
 
 
 def _safe_parse_date_ymd(s: str) -> datetime | None:
-    """Parse yyyy-mm-dd como UTC tz-aware (inicio del día)."""
     s = (s or "").strip()
     if not s:
         return None
@@ -404,7 +362,6 @@ def _safe_parse_date_ymd(s: str) -> datetime | None:
 
 
 def _safe_parse_date_ymd_end(s: str) -> datetime | None:
-    """Parse yyyy-mm-dd como UTC tz-aware (fin del día)."""
     dt = _safe_parse_date_ymd(s)
     if not dt:
         return None
@@ -412,16 +369,64 @@ def _safe_parse_date_ymd_end(s: str) -> datetime | None:
 
 
 def _actor_from_user(user: dict) -> dict:
-    """
-    Actor canónico para services_* (audit v2.1).
-    - No fuerza negocio_id aquí (se pasa explícito cuando corresponde).
-    """
     return {
         "email": user.get("email") or user.get("usuario") or user.get("user") or "superadmin",
         "role": user.get("rol") or user.get("role") or "superadmin",
         "user_id": user.get("id") or user.get("user_id"),
         "tenant_type": user.get("tenant_type") or "system",
     }
+
+
+def _internal_name_expr():
+    # lower(coalesce(nombre_fantasia,'')) IN {'orbion', ...}
+    return func.lower(func.coalesce(Negocio.nombre_fantasia, "")).in_([n.lower() for n in _INTERNAL_NEGOCIO_NAMES])
+
+
+def _customer_negocios_query(db: Session):
+    """
+    Query base para negocios cliente (tenant real).
+    Excluye:
+    - tenant_type SYSTEM
+    - nombre_fantasia == 'orbion' (defensivo, aunque esté mal marcado)
+    """
+    return (
+        db.query(Negocio)
+        .filter(Negocio.tenant_type != TenantType.SYSTEM)
+        .filter(~_internal_name_expr())
+    )
+
+
+def _require_customer_negocio(negocio: Negocio | None) -> Negocio:
+    if not negocio:
+        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    if getattr(negocio, "tenant_type", None) == TenantType.SYSTEM:
+        raise HTTPException(status_code=404, detail="Negocio no disponible")
+    nf = (getattr(negocio, "nombre_fantasia", "") or "").strip().lower()
+    if nf in _INTERNAL_NEGOCIO_NAMES:
+        raise HTTPException(status_code=404, detail="Negocio no disponible")
+    if getattr(negocio, "is_system", False):
+        raise HTTPException(status_code=404, detail="Negocio no disponible")
+    return negocio
+
+
+def _enabled_for_module_from_snapshot(snapshot: dict, module_slug: str) -> bool:
+    """
+    Decide si un negocio califica para el filtro por módulo.
+    - Si el módulo no existe -> False
+    - Si status == coming_soon -> False
+    - Si enabled True -> True
+    """
+    ms = (module_slug or "").strip().lower()
+    if not ms:
+        return False
+    mods = (snapshot or {}).get("modules") or {}
+    m = mods.get(ms)
+    if not isinstance(m, dict):
+        return False
+    status = (m.get("status") or "").strip().lower()
+    if status == "coming_soon":
+        return False
+    return bool(m.get("enabled"))
 
 
 # =========================================================
@@ -433,16 +438,25 @@ async def superadmin_dashboard(
     db: Session = Depends(get_db),
     user: dict = Depends(require_superadmin_dep),
 ):
-    # Si el superadmin está impersonando, lo mandamos al dashboard del negocio
     if _is_impersonating(user):
         return RedirectResponse(url="/dashboard", status_code=302)
 
-    total_negocios = db.query(Negocio).count()
-    negocios_activos = db.query(Negocio).filter(Negocio.estado == NegocioEstado.ACTIVO).count()
-    negocios_suspendidos = db.query(Negocio).filter(Negocio.estado == NegocioEstado.SUSPENDIDO).count()
-    alertas_pendientes = db.query(Alerta).filter(Alerta.estado == "pendiente").count()
+    qn = _customer_negocios_query(db)
 
-    logger.info("[SUPERADMIN] dashboard total_negocios=%s", total_negocios)
+    total_negocios = qn.count()
+    negocios_activos = qn.filter(Negocio.estado == NegocioEstado.ACTIVO).count()
+    negocios_suspendidos = qn.filter(Negocio.estado == NegocioEstado.SUSPENDIDO).count()
+
+    alertas_pendientes = (
+        db.query(Alerta)
+        .join(Negocio, Alerta.negocio_id == Negocio.id)
+        .filter(Negocio.tenant_type != TenantType.SYSTEM)
+        .filter(~_internal_name_expr())
+        .filter(Alerta.estado == "pendiente")
+        .count()
+    )
+
+    logger.info("[SUPERADMIN] dashboard total_negocios(customer_defensivo)=%s", total_negocios)
 
     return templates.TemplateResponse(
         "app/superadmin_dashboard.html",
@@ -532,7 +546,7 @@ async def superadmin_job_subscriptions(
 
 
 # =========================================================
-# NEGOCIOS LISTA (filtros + paginación)
+# NEGOCIOS LISTA (enterprise paginación consistente con module_filter)
 # =========================================================
 @router.get("/negocios", response_class=HTMLResponse)
 async def superadmin_negocios(
@@ -544,7 +558,7 @@ async def superadmin_negocios(
 
     params = request.query_params
     q = (params.get("q") or "").strip()
-    estado = (params.get("estado") or "").strip().lower()  # activo/suspendido
+    estado = (params.get("estado") or "").strip().lower()
     module_filter = _module_alias((params.get("module") or "").strip().lower())  # wms/inbound/...
     page = _safe_int(params.get("page"), 1)
     page_size = _safe_int(params.get("page_size"), PAGE_SIZE_DEFAULT)
@@ -552,15 +566,13 @@ async def superadmin_negocios(
     page = max(1, page)
     page_size = min(max(5, page_size), 50)
 
-    base_query = db.query(Negocio)
+    base_query = _customer_negocios_query(db)
 
-    # Filtro estado
     if estado in {"activo", "suspendido"}:
         base_query = base_query.filter(
             Negocio.estado == (NegocioEstado.ACTIVO if estado == "activo" else NegocioEstado.SUSPENDIDO)
         )
 
-    # Búsqueda por nombre o ID
     if q:
         like_expr = f"%{q.lower()}%"
         base_query = base_query.filter(
@@ -570,46 +582,74 @@ async def superadmin_negocios(
             )
         )
 
-    total = base_query.count()
-    total_pages = max(1, math.ceil(total / page_size))
-    if page > total_pages:
-        page = total_pages
+    # -----------------------------
+    # ✅ Enterprise FIX:
+    # Si hay module_filter -> filtrar IDs primero (con snapshot), luego paginar.
+    # -----------------------------
+    if module_filter:
+        # Traemos IDs ordenados (sin cargar objetos completos)
+        id_rows = base_query.order_by(Negocio.id.desc()).with_entities(Negocio.id).all()
+        ordered_ids = [r[0] for r in id_rows]
 
-    negocios = (
-        base_query.order_by(Negocio.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    )
+        matched_ids: list[int] = []
+        for nid in ordered_ids:
+            try:
+                snap = get_entitlements_snapshot(db, nid)
+            except Exception:
+                # snapshot no debería romper listado
+                snap = {}
+            if _enabled_for_module_from_snapshot(snap, module_filter):
+                matched_ids.append(nid)
+
+        total = len(matched_ids)
+        total_pages = max(1, math.ceil(total / page_size)) if total > 0 else 1
+        if page > total_pages:
+            page = total_pages
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_ids = matched_ids[start:end]
+
+        negocios = []
+        if page_ids:
+            # Query en batch y preservamos orden
+            objs = db.query(Negocio).filter(Negocio.id.in_(page_ids)).all()
+            by_id = {o.id: o for o in objs}
+            negocios = [by_id[i] for i in page_ids if i in by_id]
+    else:
+        # Sin filtro por módulo: paginación clásica (rápida)
+        total = base_query.count()
+        total_pages = max(1, math.ceil(total / page_size))
+        if page > total_pages:
+            page = total_pages
+
+        negocios = (
+            base_query.order_by(Negocio.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        )
 
     hace_30 = utcnow() - timedelta(days=30)
 
     data: list[dict] = []
     for n in negocios:
-        # métricas
         usuarios = db.query(Usuario).filter(Usuario.negocio_id == n.id).count()
         productos = db.query(Producto).filter(Producto.negocio_id == n.id).count()
         movimientos = db.query(Movimiento).filter(Movimiento.negocio_id == n.id, Movimiento.fecha >= hace_30).count()
 
-        # Snapshot canónico (overlay + usage/limits/remaining)
-        snap = get_entitlements_snapshot(db, n.id)
+        # Snapshot solo si fue necesario arriba (module_filter), si no, evitamos costo.
+        snap = None
+        if module_filter:
+            try:
+                snap = get_entitlements_snapshot(db, n.id)
+            except Exception:
+                snap = {}
 
         # Segmento y resumen desde resolve (fuente viva)
         ent_live = resolve_entitlements(n) or {}
         roll = _module_rollup_from_ent(ent_live)
 
-        # filtro por módulo enabled (si el usuario lo pide)
-        if module_filter:
-            mods = (snap or {}).get("modules") or {}
-            mod = mods.get(module_filter)
-            enabled = bool(mod and mod.get("enabled"))
-            if not enabled:
-                continue
-
-        # Próximo corte:
-        dt_next = _parse_iso_dt(roll.get("next_period_end"))
-        if not dt_next:
-            dt_next = _derive_next_period_end_fallback(n)
+        dt_next = _parse_iso_dt(roll.get("next_period_end")) or _derive_next_period_end_fallback(n)
         next_period_end_cl = cl_date(dt_next) if dt_next else "—"
 
-        # Último acceso
         dt_last = n.ultimo_acceso or getattr(n, "updated_at", None) or getattr(n, "created_at", None)
         ultimo_acceso_cl = cl_datetime(dt_last, with_tz=False) if dt_last else "—"
 
@@ -655,7 +695,7 @@ async def superadmin_negocios(
 
 
 # =========================================================
-# NEGOCIO DETALLE (snapshot + acciones SaaS)
+# NEGOCIO DETALLE
 # =========================================================
 @router.get("/negocios/{negocio_id}", response_class=HTMLResponse)
 async def superadmin_negocio_detalle(
@@ -667,8 +707,7 @@ async def superadmin_negocio_detalle(
     _require_superadmin_global(user)
 
     negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
-    if not negocio:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    negocio = _require_customer_negocio(negocio)
 
     snap = get_entitlements_snapshot(db, negocio_id)
     ent_live = resolve_entitlements(negocio) or {}
@@ -731,8 +770,7 @@ async def superadmin_negocio_estado_update(
     _require_superadmin_global(user)
 
     negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
-    if not negocio:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    negocio = _require_customer_negocio(negocio)
 
     estado_norm = (estado or "").strip().lower()
     if estado_norm not in {"activo", "suspendido"}:
@@ -744,7 +782,6 @@ async def superadmin_negocio_estado_update(
     db.commit()
     db.refresh(negocio)
 
-    # Auditoría del cambio de estado (evento de negocio)
     audit(
         db,
         action=AuditAction.NEGOCIO_STATE_UPDATE,
@@ -759,9 +796,6 @@ async def superadmin_negocio_estado_update(
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
-# =========================================================
-# CAMBIO DE SEGMENTO (baseline SaaS)
-# =========================================================
 @router.post("/negocios/{negocio_id}/segmento")
 async def superadmin_negocio_segmento_update(
     negocio_id: int,
@@ -772,8 +806,7 @@ async def superadmin_negocio_segmento_update(
     _require_superadmin_global(user)
 
     negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
-    if not negocio:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    negocio = _require_customer_negocio(negocio)
 
     seg = _normalize_segment(segmento)
 
@@ -803,8 +836,7 @@ async def superadmin_negocio_segmento_update(
 
 
 # =========================================================
-# ACCIONES SaaS POR MÓDULO (desde superadmin)
-# - Auditoría vive en services_subscriptions (source of truth)
+# ACCIONES SaaS POR MÓDULO
 # =========================================================
 @router.post("/negocios/{negocio_id}/modules/{module_key}/activate")
 async def superadmin_activate_module(
@@ -815,17 +847,13 @@ async def superadmin_activate_module(
 ):
     _require_superadmin_global(user)
 
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    _require_customer_negocio(negocio)
+
     mk = _mk_from_str(module_key)
-    activate_module(
-        db,
-        negocio_id=negocio_id,
-        module_key=mk,
-        start_trial=True,
-        actor=_actor_from_user(user),
-    )
+    activate_module(db, negocio_id=negocio_id, module_key=mk, start_trial=True, actor=_actor_from_user(user))
     db.commit()
 
-    logger.info("[SUPERADMIN] module_activate negocio_id=%s module=%s", negocio_id, mk.value)
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
@@ -838,13 +866,14 @@ async def superadmin_cancel_module(
 ):
     _require_superadmin_global(user)
 
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    _require_customer_negocio(negocio)
+
     mk = _mk_from_str(module_key)
     sub = _get_sub_or_404(db, negocio_id, mk)
-
     cancel_subscription_at_period_end(db, sub, actor=_actor_from_user(user))
     db.commit()
 
-    logger.info("[SUPERADMIN] module_cancel negocio_id=%s module=%s", negocio_id, mk.value)
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
@@ -857,13 +886,14 @@ async def superadmin_reactivate_module(
 ):
     _require_superadmin_global(user)
 
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    _require_customer_negocio(negocio)
+
     mk = _mk_from_str(module_key)
     sub = _get_sub_or_404(db, negocio_id, mk)
-
     unschedule_cancel(db, sub, actor=_actor_from_user(user))
     db.commit()
 
-    logger.info("[SUPERADMIN] module_reactivate negocio_id=%s module=%s", negocio_id, mk.value)
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
@@ -876,13 +906,14 @@ async def superadmin_suspend_module(
 ):
     _require_superadmin_global(user)
 
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    _require_customer_negocio(negocio)
+
     mk = _mk_from_str(module_key)
     sub = _get_sub_or_404(db, negocio_id, mk)
-
     suspend_subscription(db, sub, actor=_actor_from_user(user))
     db.commit()
 
-    logger.info("[SUPERADMIN] module_suspend negocio_id=%s module=%s", negocio_id, mk.value)
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
@@ -895,13 +926,14 @@ async def superadmin_force_renew_module(
 ):
     _require_superadmin_global(user)
 
+    negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
+    _require_customer_negocio(negocio)
+
     mk = _mk_from_str(module_key)
     sub = _get_sub_or_404(db, negocio_id, mk)
-
     renew_subscription(db, sub, actor=_actor_from_user(user))
     db.commit()
 
-    logger.info("[SUPERADMIN] module_renew_now negocio_id=%s module=%s", negocio_id, mk.value)
     return RedirectResponse(url=f"/superadmin/negocios/{negocio_id}", status_code=303)
 
 
@@ -919,6 +951,8 @@ async def superadmin_alertas(
     alertas = (
         db.query(Alerta)
         .join(Negocio, Alerta.negocio_id == Negocio.id)
+        .filter(Negocio.tenant_type != TenantType.SYSTEM)
+        .filter(~_internal_name_expr())
         .order_by(Alerta.fecha_creacion.desc(), Alerta.id.desc())
         .limit(500)
         .all()
@@ -943,8 +977,7 @@ async def superadmin_ver_como_negocio(
     _require_superadmin_global(user)
 
     negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
-    if not negocio:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado.")
+    negocio = _require_customer_negocio(negocio)
 
     payload = _get_session_payload_from_request(request)
     if not payload:
@@ -965,7 +998,6 @@ async def superadmin_ver_como_negocio(
         commit=True,
     )
 
-    logger.info("[SUPERADMIN] impersonate negocio_id=%s", negocio.id)
     return resp
 
 
@@ -994,7 +1026,6 @@ async def superadmin_salir_modo_negocio(
         commit=True,
     )
 
-    logger.info("[SUPERADMIN] exit_impersonation")
     return resp
 
 
@@ -1011,8 +1042,7 @@ async def superadmin_auditoria_negocio(
     _require_superadmin_global(user)
 
     negocio = db.query(Negocio).filter(Negocio.id == negocio_id).first()
-    if not negocio:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
+    negocio = _require_customer_negocio(negocio)
 
     params = request.query_params
     texto = (params.get("q") or "").strip()
