@@ -13,6 +13,7 @@ class RecepcionEstado(str, enum.Enum):
     EN_DESCARGA = "EN_DESCARGA"
     EN_CONTROL_CALIDAD = "EN_CONTROL_CALIDAD"
     CERRADO = "CERRADO"
+    CANCELADO = "CANCELADO"
 
 
 class PalletEstado(str, enum.Enum):

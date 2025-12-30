@@ -10,6 +10,7 @@ Servicios – Proveedores + Plantillas proveedor (Inbound ORBION, baseline align
 ✔ Plantillas proveedor + líneas (base para citas/prealertas)
 ✔ Plantilla/Líneas alineadas a core/models/inbound/plantillas.py (SIN descripcion en plantilla,
   SIN cantidad_sugerida/peso_kg_sugerido en líneas)
+✔ Helper enterprise: listar_plantillas_activas_grouped_por_proveedor (1 query, no N+1)
 """
 
 from __future__ import annotations
@@ -282,6 +283,33 @@ def listar_plantillas_proveedor(
     if solo_activas:
         q = q.filter(InboundPlantillaProveedor.activo == 1)
     return q.order_by(InboundPlantillaProveedor.nombre.asc()).all()
+
+
+def listar_plantillas_activas_grouped_por_proveedor(
+    db: Session,
+    negocio_id: int,
+) -> dict[int, list[InboundPlantillaProveedor]]:
+    """
+    Devuelve plantillas activas agrupadas por proveedor_id.
+    Útil para UI (crear cita) evitando N+1 queries.
+    """
+    plantillas = (
+        db.query(InboundPlantillaProveedor)
+        .filter(
+            InboundPlantillaProveedor.negocio_id == negocio_id,
+            InboundPlantillaProveedor.activo == 1,
+        )
+        .order_by(
+            InboundPlantillaProveedor.proveedor_id.asc(),
+            InboundPlantillaProveedor.nombre.asc(),
+        )
+        .all()
+    )
+
+    out: dict[int, list[InboundPlantillaProveedor]] = {}
+    for pl in plantillas:
+        out.setdefault(int(pl.proveedor_id), []).append(pl)
+    return out
 
 
 def crear_plantilla_proveedor(

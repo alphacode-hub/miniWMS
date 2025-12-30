@@ -1,5 +1,4 @@
-﻿# core/formatting.py
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -10,32 +9,54 @@ try:
 except Exception:  # pragma: no cover
     ZoneInfo = None  # type: ignore
 
+
 _CL_TZ = ZoneInfo("America/Santiago") if ZoneInfo else None
 
 
 def to_cl_tz(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
-    # si viene naive, asumimos UTC (baseline ya usa utc-aware, pero por seguridad)
+
+    # si viene naive, asumimos UTC
     if dt.tzinfo is None:
         from datetime import timezone
         dt = dt.replace(tzinfo=timezone.utc)
+
     if _CL_TZ:
         return dt.astimezone(_CL_TZ)
+
     return dt
 
 
-def cl_datetime(dt: datetime | None, with_tz: bool = True) -> str:
+def cl_datetime(
+    dt: datetime | None,
+    *,
+    short: bool = False,
+    no_tz: bool = False,
+) -> str:
     """
-    Formato Chile: dd-mm-YYYY HH:MM[:SS] (CLT/CLST)
+    Formato Chile:
+    - default:  DD-MM-YYYY HH:MM:SS CLST
+    - short:    DD-MM-YYYY HH:MM
+    - no_tz:    oculta zona horaria
     """
     if dt is None:
         return "-"
+
     dcl = to_cl_tz(dt) or dt
-    tz = dcl.tzname() if with_tz else ""
-    # sin microsegundos
-    s = dcl.strftime("%d-%m-%Y %H:%M:%S")
-    return f"{s} {tz}".strip()
+
+    if short:
+        fmt = "%d-%m-%Y %H:%M"
+    else:
+        fmt = "%d-%m-%Y %H:%M:%S"
+
+    base = dcl.strftime(fmt)
+
+    if no_tz:
+        return base
+
+    tz = dcl.tzname() or ""
+    return f"{base} {tz}".strip()
 
 
 def cl_date(dt: datetime | None) -> str:
@@ -46,11 +67,6 @@ def cl_date(dt: datetime | None) -> str:
 
 
 def cl_num(value: Any, decimals: int = 0) -> str:
-    """
-    Formato numérico Chile:
-    miles con punto, decimales con coma.
-    Ej: 1234567.89 -> 1.234.567,89
-    """
     if value is None or value == "":
         return "-"
     try:
@@ -61,15 +77,9 @@ def cl_num(value: Any, decimals: int = 0) -> str:
     q = Decimal("1") if decimals == 0 else Decimal("1." + ("0" * decimals))
     num = num.quantize(q)
 
-    # formateo US primero: 1,234,567.89
     s = f"{num:,.{decimals}f}"
-    # swap a Chile: 1.234.567,89
-    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
-    return s
+    return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def clp(value: Any, decimals: int = 0) -> str:
-    """
-    Moneda CLP estándar: $ 1.234.567 (sin decimales por defecto)
-    """
     return f"$ {cl_num(value, decimals=decimals)}"

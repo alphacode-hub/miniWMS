@@ -1,145 +1,319 @@
-﻿{# templates/inbound_citas.html #}
+﻿{# modules/inbound_orbion/templates/inbound_citas.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}Inbound · Citas{% endblock %}
+{% block title %}ORBION · Citas Inbound{% endblock %}
+
+{% block page_header %}{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
-    <!-- Header -->
-    <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-            <h1 class="text-lg sm:text-xl font-semibold text-slate-100">Citas</h1>
-            <p class="text-xs sm:text-sm text-slate-300 mt-1">
-                Agenda inbound para programar llegadas (base para medir puntualidad y SLA).
+    {# =========================
+    HEADER (1 solo, mobile-first)
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Citas
+            </p>
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Agenda de llegadas
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Al crear una cita se crea automáticamente una <span class="text-slate-200 font-semibold">Recepción PRE-REGISTRADA</span>.
+                La edición avanzada se gestiona dentro de la recepción.
             </p>
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
-            
+        <div class="shrink-0">
             <a href="/inbound/recepciones"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Volver a recepción
+                      text-[11px] font-medium text-slate-300
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a recepciones
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- Alerts -->
+    {# =========================
+    ALERTAS (backend render)
+    ========================= #}
     {% if error %}
-    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-rose-100">
-        <div class="text-sm font-semibold">Error</div>
-        <div class="text-sm text-rose-100/90 mt-1">{{ error }}</div>
-    </div>
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ error }}</p>
+    </section>
     {% endif %}
 
-    {% if ok %}
-    <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-100">
-        <div class="text-sm font-semibold">Listo</div>
-        <div class="text-sm text-emerald-100/90 mt-1">{{ ok }}</div>
-    </div>
+    {# =========================
+    ALERTAS (querystring ok/error)
+    ========================= #}
+    {% set qs_ok = (ok if ok is defined else (request.query_params.get("ok") if request and request.query_params is defined else None)) %}
+    {% set qs_error = (error if error is defined else (request.query_params.get("error") if request and request.query_params is defined else None)) %}
+
+    {% if qs_ok %}
+    <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Acción completada</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1 whitespace-pre-line">{{ qs_ok }}</p>
+    </section>
     {% endif %}
 
-    <!-- Crear cita -->
-    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60">
-        <div class="p-4 border-b border-slate-800/60">
-            <div class="text-sm font-semibold text-slate-100">Nueva cita</div>
-            <div class="text-xs text-slate-400 mt-1">Programa fecha/hora y opcionalmente asigna proveedor.</div>
-        </div>
+    {% if qs_error and not error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ qs_error }}</p>
+    </section>
+    {% endif %}
 
-        <form method="post" action="/inbound/citas/nueva" class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div class="md:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-300 mb-2">Fecha y hora *</label>
-                    {# datetime-local -> enviará "YYYY-MM-DDTHH:MM" #}
+    {# =========================
+    CREAR CITA (alineado a recepcion_form)
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <form method="post" action="/inbound/citas/nueva" class="space-y-5" id="formCitaNueva">
+
+            {# =========================
+            PROVEEDOR (combo libre robusto)
+            ========================= #}
+            <div class="space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Proveedor <span class="text-slate-500">(recomendado)</span>
+                </label>
+
+                <input type="hidden" name="proveedor_id" id="proveedor_id" value="">
+
+                <input type="text"
+                       name="proveedor_nombre"
+                       id="proveedor_nombre"
+                       autocomplete="off"
+                       list="proveedores_list"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                              text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                       placeholder="Escribe un proveedor o elige uno existente…" />
+
+                <datalist id="proveedores_list">
+                    {% if proveedores %}
+                    {% for p in proveedores %}
+                    <option value="{{ p.nombre }}"></option>
+                    {% endfor %}
+                    {% endif %}
+                </datalist>
+
+                <p class="text-[10px] text-slate-500">
+                    Si coincide exactamente, se vincula automáticamente y se filtran plantillas.
+                </p>
+
+                <script>
+                  (function () {
+                    const input = document.getElementById("proveedor_nombre");
+                    const hiddenId = document.getElementById("proveedor_id");
+
+                    const proveedores = [
+                      {% if proveedores %}
+                        {% for p in proveedores %}
+                          { id: {{ p.id }}, nombre: {{ p.nombre|tojson }} },
+                        {% endfor %}
+                      {% endif %}
+                    ];
+
+                    function norm(s) { return (s || "").trim().toLowerCase(); }
+
+                    function syncProveedor() {
+                      const val = norm(input.value);
+                      const match = proveedores.find(p => norm(p.nombre) === val);
+                      hiddenId.value = match ? String(match.id) : "";
+                    }
+
+                    input.addEventListener("input", syncProveedor);
+                    input.addEventListener("change", syncProveedor);
+                    syncProveedor();
+                  })();
+                </script>
+            </div>
+
+            {# =========================
+            FECHA/HORA + PLANTILLA
+            ========================= #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Fecha y hora (ETA) <span class="text-rose-400">*</span>
+                    </label>
                     <input type="datetime-local" name="fecha_programada" required
-                           class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-cyan-400/30" />
-                    <div class="text-[11px] text-slate-500 mt-1">
-                        Consejo: agenda con 10-15 min de holgura para operación.
-                    </div>
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <p class="text-[10px] text-slate-500">
+                        Se usa para planificación y control operativo.
+                    </p>
                 </div>
 
-                <div class="md:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-300 mb-2">Proveedor (opcional)</label>
-                    <select name="proveedor_id"
-                            class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
-                        <option value="">— Sin proveedor —</option>
-                        {% for p in (proveedores or []) %}
-                        <option value="{{ p.id }}">{{ p.nombre }}</option>
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Plantilla (opcional)</label>
+
+                    <select name="plantilla_id" id="selPlantilla"
+                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                   text-xs sm:text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                        <option value="" data-proveedor="">Selecciona plantilla (opcional)</option>
+                        {% for prov_id, pls in (plantillas_por_proveedor or {}).items() %}
+                        {% for pl in (pls or []) %}
+                        <option value="{{ pl.id }}" data-proveedor="{{ prov_id }}">{{ pl.nombre }}</option>
+                        {% endfor %}
                         {% endfor %}
                     </select>
+
+                    <p class="text-[10px] text-slate-500">
+                        Si eliges plantilla, se guardará en la recepción como <span class="text-slate-200 font-semibold">plantilla_id</span>.
+                    </p>
                 </div>
 
-                <div class="md:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-300 mb-2">Referencia</label>
-                    <input name="referencia"
-                           class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                           placeholder="Ej: BL / OC / Guía / Contenedor..." />
+            </div>
+
+            {# =========================
+            REFERENCIA + NOTAS
+            ========================= #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Referencia</label>
+                    <input type="text" name="referencia"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="OC / BL / Guía / Factura / Contenedor…">
                 </div>
 
-                <div class="md:col-span-12">
-                    <label class="block text-xs font-semibold text-slate-300 mb-2">Notas</label>
-                    <input name="notas"
-                           class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                           placeholder="Ej: Andén 2, descarga con grúa, requiere temperatura..." />
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Notas</label>
+                    <input type="text" name="notas"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Instrucciones, andén, grúa, temperatura…">
                 </div>
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            {# =========================
+            TRANSPORTE (idéntico a recepción)
+            ========================= #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Nº contenedor</label>
+                    <input type="text" name="contenedor"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500 uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: MSKU1234567">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Patente camión</label>
+                    <input type="text" name="patente_camion"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500 uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: AB-CD12">
+                </div>
+
+            </div>
+
+            <p class="text-[10px] text-slate-500">
+                Recomendado: ingresa al menos <span class="text-slate-200 font-semibold">contenedor</span> o
+                <span class="text-slate-200 font-semibold">patente</span>.
+            </p>
+
+            <div class="space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">Tipo de carga</label>
+                <select name="tipo_carga"
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                               text-xs sm:text-sm text-slate-100
+                               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <option value="" selected>Selecciona tipo</option>
+                    <option value="congelado">Congelado</option>
+                    <option value="refrigerado">Refrigerado</option>
+                    <option value="seco">Seco</option>
+                    <option value="palletizado">Palletizado</option>
+                    <option value="granel">Granel</option>
+                </select>
+            </div>
+
+            {# ACTIONS #}
+            <div class="flex items-center justify-end gap-2 pt-2">
                 <button type="submit"
-                        class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
-                    Crear cita
+                        class="inline-flex items-center rounded-full px-5 py-1.5
+                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                               hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    Crear cita y recepción
                 </button>
             </div>
-        </form>
-    </div>
 
-    <!-- Lista citas -->
-    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60">
-        <div class="p-4 border-b border-slate-800/60">
-            <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-semibold text-slate-100">Agenda</div>
-                <div class="text-xs text-slate-400">
-                    {% if citas %}{{ citas|length }}{% else %}0{% endif %} citas
+        </form>
+    </section>
+
+    {# =========================
+    AGENDA
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <header class="px-4 py-4 sm:px-5 border-b border-slate-800/80">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="space-y-0.5">
+                    <h2 class="text-sm font-semibold text-slate-100">Agenda</h2>
+                    <p class="text-[11px] text-slate-400">Gestiona estados. Para cancelar usa el botón (cita manda).</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                        Total: {% if citas %}{{ citas|length }}{% else %}0{% endif %}
+                    </span>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <div class="divide-y divide-slate-800/60">
+        <div class="divide-y divide-slate-800/70">
             {% for c in (citas or []) %}
             {% set est = c.estado.value if c.estado and c.estado.value is defined else (c.estado|string) %}
-            <div class="p-4">
+            {% set is_done = est in ["COMPLETADA"] %}
+            {% set is_cancel = est in ["CANCELADA"] %}
+            {% set lock_actions = is_done or is_cancel %}
+
+            {% set rx = c.recepcion if c.recepcion else None %}
+            {% set cont_txt = (rx.contenedor if rx and rx.contenedor else "—") %}
+            {% set pat_txt = (rx.patente_camion if rx and rx.patente_camion else "—") %}
+            {% set tipo_txt = (rx.tipo_carga if rx and rx.tipo_carga else "—") %}
+            {% set eta_txt = (
+            (rx.fecha_estimada_llegada.strftime("%d-%m-%Y") if rx and rx.fecha_estimada_llegada else
+            (c.fecha_programada.strftime("%d-%m-%Y") if c.fecha_programada else "—"))
+            ) %}
+
+            <div class="px-4 py-4 sm:px-5 space-y-3">
+
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
+                    <div class="min-w-0 space-y-2">
+
+                        <div class="flex flex-wrap items-center gap-2">
                             <div class="text-sm font-semibold text-slate-100">
                                 {{ c.fecha_programada.strftime("%Y-%m-%d %H:%M") if c.fecha_programada else "Sin fecha" }}
                             </div>
 
                             {% if est in ["PROGRAMADA"] %}
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">
-                                {{ est }}
-                            </span>
-                            {% elif est in ["EN_CURSO","EN_CURSO".lower()] %}
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
-                                {{ est }}
-                            </span>
-                            {% elif est in ["COMPLETADA","FINALIZADA"] %}
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
-                                {{ est }}
-                            </span>
+                            <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">{{ est }}</span>
+                            {% elif est in ["ARRIBADO"] %}
+                            <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">{{ est }}</span>
+                            {% elif est in ["COMPLETADA"] %}
+                            <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">{{ est }}</span>
+                            {% elif est in ["CANCELADA"] %}
+                            <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-rose-500/15 text-rose-200 border border-rose-500/20">{{ est }}</span>
                             {% else %}
-                            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
-                                {{ est }}
-                            </span>
+                            <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">{{ est }}</span>
                             {% endif %}
                         </div>
 
-                        <div class="text-xs text-slate-300 mt-1">
+                        <div class="text-[11px] text-slate-300">
                             {% if c.proveedor and c.proveedor.nombre %}
                             Proveedor: <span class="text-slate-100 font-semibold">{{ c.proveedor.nombre }}</span>
                             {% else %}
@@ -148,51 +322,198 @@
                             {% if c.referencia %}
                             · Ref: <span class="text-slate-100 font-medium">{{ c.referencia }}</span>
                             {% endif %}
+                            <span class="text-slate-500"> · #{{ c.id }}</span>
+                        </div>
+
+                        {# ✅ Datos transporte visibles (estilo compacto) #}
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            <div class="rounded-xl border border-slate-800/70 bg-slate-950/20 px-3 py-2">
+                                <p class="text-slate-500">Contenedor:</p>
+                                <p class="text-slate-200 font-semibold truncate">{{ cont_txt|upper }}</p>
+                            </div>
+                            <div class="rounded-xl border border-slate-800/70 bg-slate-950/20 px-3 py-2">
+                                <p class="text-slate-500">Patente:</p>
+                                <p class="text-slate-200 font-semibold truncate">{{ pat_txt|upper }}</p>
+                            </div>
+                            <div class="rounded-xl border border-slate-800/70 bg-slate-950/20 px-3 py-2">
+                                <p class="text-slate-500">Tipo:</p>
+                                <p class="text-slate-200 font-semibold truncate">{{ tipo_txt|capitalize }}</p>
+                            </div>
+                            <div class="rounded-xl border border-slate-800/70 bg-slate-950/20 px-3 py-2">
+                                <p class="text-slate-500">ETA:</p>
+                                <p class="text-slate-200 font-semibold truncate">{{ eta_txt }}</p>
+                            </div>
                         </div>
 
                         {% if c.notas %}
-                        <div class="text-xs text-slate-400 mt-1">
-                            {{ c.notas }}
+                        <div class="text-[11px] text-slate-400">{{ c.notas }}</div>
+                        {% endif %}
+
+                        {% if rx %}
+                        <div class="text-[11px] text-slate-400">
+                            Recepción:
+                            <a class="text-cyan-300 hover:text-cyan-200 font-semibold"
+                               href="/inbound/recepciones/{{ rx.id }}">{{ rx.codigo_recepcion }}</a>
+                            · Estado: <span class="text-slate-200 font-semibold">{{ rx.estado.value }}</span>
                         </div>
                         {% endif %}
+
+                        <div class="text-[11px] text-slate-500">
+                            {% if c.created_at %}Creada: {{ c.created_at|cl_datetime(short=True, no_tz=True) }}{% endif %}
+                        </div>
+
                     </div>
 
-                    <!-- Acciones -->
-                    <div class="shrink-0 flex items-center gap-2">
-                        <form method="post" action="/inbound/citas/{{ c.id }}/estado">
-                            <select name="estado"
-                                    class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-xs
-                             focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
+                    {# Acciones #}
+                    <div class="shrink-0 flex flex-col items-end gap-2">
+                        <form method="post" action="/inbound/citas/{{ c.id }}/estado" class="flex items-center gap-2">
+                            <select name="estado" {% if lock_actions %}disabled{% endif %}
+                                    class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                           text-[11px] text-slate-100
+                                           focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                                           disabled:opacity-60 disabled:cursor-not-allowed">
                                 {% for s in estados %}
-                                {% set sval = s.name %}
-                                <option value="{{ sval }}" {% if est==s.value %}selected{% endif %}>
-                                    {{ s.value }}
-                                </option>
+                                {% if s.value != "CANCELADA" %}
+                                <option value="{{ s.name }}" {% if est == s.value %}selected{% endif %}>{{ s.value }}</option>
+                                {% endif %}
                                 {% endfor %}
                             </select>
 
-                            <button type="submit"
-                                    class="ml-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold border border-slate-700/60">
+                            <button type="submit" {% if lock_actions %}disabled{% endif %}
+                                    class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                           bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60
+                                           disabled:opacity-60 disabled:cursor-not-allowed">
                                 Aplicar
                             </button>
                         </form>
+
+                        <div class="flex items-center gap-2">
+                            {% if not lock_actions %}
+                            <button type="button"
+                                    class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                           bg-rose-500/15 hover:bg-rose-500/20 text-rose-200 border-rose-500/20"
+                                    data-open-cancel="{{ c.id }}">
+                                Cancelar
+                            </button>
+                            {% endif %}
+
+                            {% if rx %}
+                            <a href="/inbound/recepciones/{{ rx.id }}"
+                               class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                      bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60">
+                                Ver recepción →
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
+
                 </div>
 
-                <div class="mt-3 text-[11px] text-slate-500">
-                    ID: {{ c.id }}
-                    {% if c.created_at %} · Creada: {{ c.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+                {# Modal cancelar #}
+                {% if not lock_actions %}
+                <div class="hidden" id="cancelModal-{{ c.id }}">
+                    <div class="fixed inset-0 z-50">
+                        <div class="absolute inset-0 bg-black/60" data-close-cancel="{{ c.id }}"></div>
+
+                        <div class="absolute inset-0 flex items-end sm:items-center justify-center p-3 sm:p-6">
+                            <div class="w-full max-w-lg rounded-2xl border border-slate-800/60 bg-slate-950 shadow-xl">
+                                <div class="p-4 border-b border-slate-800/60">
+                                    <div class="text-sm font-semibold text-slate-100">Cancelar cita</div>
+                                    <div class="text-[11px] text-slate-400 mt-1">
+                                        Esto marcará la cita como <span class="text-rose-200 font-semibold">CANCELADA</span>
+                                        y cancelará la recepción asociada (si existe).
+                                    </div>
+                                </div>
+
+                                <form method="post" action="/inbound/citas/{{ c.id }}/cancelar" class="p-4 space-y-3">
+                                    <div class="space-y-1">
+                                        <label class="block text-[11px] font-semibold text-slate-200">Motivo (opcional)</label>
+                                        <textarea name="motivo" rows="3"
+                                                  class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                                         text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                                         focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                  placeholder="Ej: proveedor reprograma, atraso crítico, documentación incompleta..."></textarea>
+                                    </div>
+
+                                    <div class="pt-1 flex items-center justify-end gap-2">
+                                        <button type="button"
+                                                class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                                       bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60"
+                                                data-close-cancel="{{ c.id }}">
+                                            Volver
+                                        </button>
+                                        <button type="submit"
+                                                class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                                       bg-rose-500/90 hover:bg-rose-500 text-rose-950 border-rose-400/40">
+                                            Confirmar cancelación
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                {% endif %}
+
             </div>
             {% endfor %}
 
             {% if not citas %}
-            <div class="p-8 text-center text-slate-400">
+            <div class="px-4 py-10 text-center text-slate-400 text-sm">
                 No hay citas programadas. Crea la primera arriba.
             </div>
             {% endif %}
         </div>
-    </div>
+    </section>
 
 </div>
+
+<script>
+    (function () {
+        // --- Filtrar plantillas por proveedor (usa hidden proveedor_id) ---
+        const inputProv = document.getElementById("proveedor_nombre");
+        const hidProvId = document.getElementById("proveedor_id");
+        const selTpl = document.getElementById("selPlantilla");
+
+        if (inputProv && hidProvId && selTpl) {
+            const allOpts = Array.from(selTpl.querySelectorAll("option"));
+
+            function applyTplFilter() {
+                const provId = (hidProvId.value || "").trim();
+
+                allOpts.forEach((opt, idx) => {
+                    if (idx === 0) { opt.hidden = false; return; }
+                    const p = (opt.getAttribute("data-proveedor") || "").trim();
+                    opt.hidden = !!provId && p !== provId;
+                });
+
+                const selected = selTpl.options[selTpl.selectedIndex];
+                if (selected && selected.hidden) selTpl.value = "";
+            }
+
+            inputProv.addEventListener("input", () => { setTimeout(applyTplFilter, 0); });
+            inputProv.addEventListener("change", () => { setTimeout(applyTplFilter, 0); });
+            applyTplFilter();
+        }
+
+        // --- Modales de cancelación ---
+        function openModal(id) {
+            const el = document.getElementById("cancelModal-" + id);
+            if (el) el.classList.remove("hidden");
+        }
+        function closeModal(id) {
+            const el = document.getElementById("cancelModal-" + id);
+            if (el) el.classList.add("hidden");
+        }
+
+        document.querySelectorAll("[data-open-cancel]").forEach(btn => {
+            btn.addEventListener("click", () => openModal(btn.getAttribute("data-open-cancel")));
+        });
+
+        document.querySelectorAll("[data-close-cancel]").forEach(btn => {
+            btn.addEventListener("click", () => closeModal(btn.getAttribute("data-close-cancel")));
+        });
+    })();
+</script>
+
 {% endblock %}

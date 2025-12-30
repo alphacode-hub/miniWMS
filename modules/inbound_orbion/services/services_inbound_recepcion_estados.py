@@ -1,4 +1,5 @@
-﻿from __future__ import annotations
+﻿# modules/inbound_orbion/services/services_inbound_recepcion_estados #
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict
@@ -11,6 +12,8 @@ from core.models.enums import RecepcionEstado
 from core.models.inbound.recepciones import InboundRecepcion
 from core.models.inbound.lineas import InboundLinea
 from core.models.inbound.pallets import InboundPallet, InboundPalletItem
+from modules.inbound_orbion.services.services_inbound_citas import sync_cita_desde_recepcion
+
 
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
 
@@ -158,9 +161,10 @@ def aplicar_accion_estado(
 ) -> InboundRecepcion:
     r = _obtener_recepcion_segura(db, negocio_id, recepcion_id)
 
-    # Ultra enterprise: cierre es definitivo (no cambios)
-    if r.estado == RecepcionEstado.CERRADO:
-        raise InboundDomainError("La recepción está cerrada. No se permiten cambios de estado.")
+    # Ultra enterprise: cierre y cancelado
+    if r.estado in (RecepcionEstado.CERRADO, RecepcionEstado.CANCELADO):
+        raise InboundDomainError("La recepción está cerrada/cancelada. No se permiten cambios de estado.")
+
 
     now = utcnow()
 
@@ -209,7 +213,8 @@ def aplicar_accion_estado(
 
     else:
         raise InboundDomainError("Acción no reconocida.")
-
+    # ✅ Sync cita (1:1) desde estado de recepción
+    sync_cita_desde_recepcion(db, r)
     db.commit()
     db.refresh(r)
     return r

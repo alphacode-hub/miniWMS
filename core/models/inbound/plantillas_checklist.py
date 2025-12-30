@@ -1,4 +1,5 @@
-﻿from __future__ import annotations
+﻿# core/models/inbound/plantillas_checklist.py
+from __future__ import annotations
 
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, UniqueConstraint, Boolean, Text
 from sqlalchemy.orm import relationship

@@ -97,6 +97,7 @@
     <Compile Include="modules\inbound_orbion\services\services_inbound_productos_bridge.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_proveedores.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_recepciones.py" />
+    <Compile Include="modules\inbound_orbion\services\services_inbound_recepciones_bridge.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_recepciones_cierre.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_recepcion_estados.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_reconciliacion.py" />

@@ -8,6 +8,10 @@ from sqlalchemy.orm import Session
 from core.models.inbound.recepciones import InboundRecepcion
 from core.models.inbound.lineas import InboundLinea
 
+from modules.inbound_orbion.services.services_inbound_recepciones_bridge import (
+    cerrar_recepcion_bridge,
+)
+
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
     obtener_recepcion_segura,
@@ -19,7 +23,6 @@ from modules.inbound_orbion.services.services_inbound_reconciliacion import (
     reconciliar_recepcion,
 )
 
-# Si tienes logger enterprise, úsalo
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_event,
     log_inbound_error,
@@ -27,23 +30,26 @@ from modules.inbound_orbion.services.services_inbound_logging import (
 
 
 # ============================================================
-#   Helpers de contrato enterprise (cierre)
+#   Helpers (opcional) - Preflight UX (no duplicar "verdad")
 # ============================================================
 
 def _has_text(v: Any) -> bool:
     return bool((v or "").strip())
 
+
 def _validar_documento_minimo(recepcion: InboundRecepcion) -> None:
-    # Enterprise: sin documento_ref no hay recepción cerrable
+    # Preflight UX: mensaje claro antes de ejecutar cierre
     if not _has_text(getattr(recepcion, "documento_ref", None)):
-        raise InboundDomainError("No puedes cerrar la recepción sin documento de respaldo (documento_ref).")
+        raise InboundDomainError(
+            "No puedes cerrar la recepción sin documento de respaldo (documento_ref)."
+        )
+
 
 def _validar_lineas_con_documento(lineas: List[InboundLinea]) -> None:
     """
-    Enterprise v1 (cierre):
-      - Debe existir al menos 1 línea.
-      - Cada línea debe tener objetivo de documento: cantidad_documento o peso_kg.
-      - Los objetivos deben ser > 0 si existen.
+    Preflight UX: valida que existan líneas y tengan objetivos doc.
+    OJO: el "motor oficial" (aplicar_accion_estado/cerrar_recepcion) también valida.
+    Esto es solo para entregar errores más amigables antes de correr procesos.
     """
     if not lineas:
         raise InboundDomainError("No puedes cerrar la recepción sin líneas.")
@@ -54,7 +60,9 @@ def _validar_lineas_con_documento(lineas: List[InboundLinea]) -> None:
         doc_kg = getattr(ln, "peso_kg", None)
 
         if doc_qty is None and doc_kg is None:
-            errores.append(f"Línea #{ln.id}: falta objetivo de documento (cantidad_documento o peso_kg).")
+            errores.append(
+                f"Línea #{ln.id}: falta objetivo de documento (cantidad_documento o peso_kg)."
+            )
             continue
 
         if doc_qty is not None:
@@ -72,20 +80,20 @@ def _validar_lineas_con_documento(lineas: List[InboundLinea]) -> None:
                 errores.append(f"Línea #{ln.id}: peso_kg (doc) inválido.")
 
     if errores:
-        # Devolvemos un mensaje legible (sin romper UI)
         msg = "No puedes cerrar: corrige estas líneas:\n- " + "\n- ".join(errores[:12])
         if len(errores) > 12:
             msg += f"\n- … y {len(errores) - 12} más."
         raise InboundDomainError(msg)
 
+
 def _validar_listo_para_cierre(
     db: Session,
+    *,
     negocio_id: int,
     recepcion: InboundRecepcion,
-) -> List[InboundLinea]:
+) -> None:
     """
-    Valida precondiciones enterprise para cerrar.
-    NO bloquea captura diaria; solo bloquea el acto de cerrar.
+    Preflight (UX). La verdad final está en el motor oficial.
     """
     _validar_documento_minimo(recepcion)
 
@@ -100,11 +108,10 @@ def _validar_listo_para_cierre(
     )
 
     _validar_lineas_con_documento(lineas)
-    return lineas
 
 
 # ============================================================
-#   API principal: Reconciliar + Cerrar
+#   API: Cerrar (delegando a la ÚNICA verdad)
 # ============================================================
 
 def reconciliar_y_cerrar_recepcion(
@@ -116,15 +123,17 @@ def reconciliar_y_cerrar_recepcion(
     user_email: str,
 ) -> Dict[str, Any]:
     """
-    ULTRA ENTERPRISE v1:
-      1) Valida recepción editable (config/estado)
-      2) Exige documento_ref (no se cierra sin respaldo)
-      3) Exige líneas con objetivo doc (cantidad_documento o peso_kg)
-      4) Ejecuta reconciliación: escribe físico real en lineas
-      5) Marca recepción como cerrada (fecha_cierre) y/o estado enterprise
-      6) Devuelve resumen listo para UI/auditoría
-    """
+    Servicio "UI-friendly" para cerrar una recepción.
+    La ÚNICA verdad de cierre vive en:
+      cerrar_recepcion_bridge() -> aplicar_accion_estado(..., "cerrar_recepcion")
 
+    Este service:
+      1) valida recepción segura
+      2) valida editable (config/estado)
+      3) (opcional) preflight UX
+      4) delega cierre al bridge (verdad)
+      5) log + respuesta
+    """
     # 1) Obtener recepción segura
     try:
         recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
@@ -152,9 +161,9 @@ def reconciliar_y_cerrar_recepcion(
         )
         raise
 
-    # 3) Validaciones enterprise (solo para cerrar)
+    # 3) Preflight UX (opcional, NO duplica commits ni estados)
     try:
-        _validar_listo_para_cierre(db, negocio_id, recepcion)
+        _validar_listo_para_cierre(db, negocio_id=negocio_id, recepcion=recepcion)
     except InboundDomainError as e:
         log_inbound_error(
             "recepcion_cierre_validation_failed",
@@ -165,49 +174,47 @@ def reconciliar_y_cerrar_recepcion(
         )
         raise
 
-    # 4) Reconciliar (escribe físico real + diferencias + estados)
-    resumen = reconciliar_recepcion(db=db, negocio_id=negocio_id, recepcion_id=recepcion_id)
-
-    # 5) Marcar cierre formal (sin inventario aún, eso es fase siguiente)
-    # - Tu modelo ya tiene fecha_cierre
-    # - Si además tienes estado enum, puedes setearlo aquí
-    from core.models.time import utcnow
-
-    recepcion.fecha_cierre = utcnow()
-
-    # Si existe estado en tu enum (ej: CERRADA/RECONCILIADA), setéalo sin romper baseline:
-    if hasattr(recepcion, "estado") and recepcion.estado is not None:
-        try:
-            # Intento suave: si el enum tiene "CERRADA" o "RECONCILIADA"
-            # (no asumimos nombres exactos para no romper)
-            estado_enum = type(recepcion.estado)
-            for candidate in ("RECONCILIADA", "CERRADA", "CERRADO"):
-                if hasattr(estado_enum, candidate):
-                    recepcion.estado = getattr(estado_enum, candidate)
-                    break
-        except Exception:
-            pass
-
-    db.commit()
-    db.refresh(recepcion)
+    # 4) ÚNICA VERDAD: cerrar (incluye reconciliación + estado + timestamps + sync cita + commit)
+    try:
+        recepcion_cerrada = cerrar_recepcion_bridge(
+            db,
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+        )
+    except InboundDomainError as e:
+        # El motor ya arma mensajes enterprise; solo registramos
+        log_inbound_error(
+            "recepcion_cierre_bridge_failed",
+            negocio_id=negocio_id,
+            user_email=user_email,
+            recepcion_id=recepcion_id,
+            error=e.message,
+        )
+        raise
 
     log_inbound_event(
-        "recepcion_reconciliada_y_cerrada",
+        "recepcion_cerrada",
         negocio_id=negocio_id,
         user_email=user_email,
         recepcion_id=recepcion_id,
         user_id=user_id,
-        lineas_total=resumen.get("lineas_total"),
-        resumen_estados=resumen.get("resumen_estados"),
+        estado=str(getattr(recepcion_cerrada, "estado", "")),
+        fecha_cierre=str(getattr(recepcion_cerrada, "fecha_cierre", None)),
     )
 
+    # Nota: si quieres "resumen" para UI, lo más seguro es que la UI recargue la vista.
+    # Evitamos recalcular reconciliación aquí para no duplicar escritura.
     return {
         "ok": True,
-        "recepcion_id": recepcion.id,
-        "fecha_cierre": str(getattr(recepcion, "fecha_cierre", None)),
-        "reconciliacion": resumen,
+        "recepcion_id": recepcion_cerrada.id,
+        "estado": str(getattr(recepcion_cerrada, "estado", "")),
+        "fecha_cierre": str(getattr(recepcion_cerrada, "fecha_cierre", None)),
     }
 
+
+# ============================================================
+#   API: Reconciliar sin cerrar (botón recalcular)
+# ============================================================
 
 def reconciliar_sin_cerrar(
     db: Session,
@@ -218,8 +225,8 @@ def reconciliar_sin_cerrar(
     user_email: str,
 ) -> Dict[str, Any]:
     """
-    Reconciliación enterprise sin gate de cierre.
-    Útil para botón 'Recalcular pendientes' sin bloquear nada.
+    Reconciliación enterprise sin cierre.
+    Útil para botón "Recalcular pendientes" sin bloquear nada.
     """
     try:
         recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
@@ -245,4 +252,9 @@ def reconciliar_sin_cerrar(
         user_id=user_id,
         lineas_total=resumen.get("lineas_total"),
     )
-    return {"ok": True, "recepcion_id": recepcion_id, "reconciliacion": resumen}
+
+    return {
+        "ok": True,
+        "recepcion_id": recepcion_id,
+        "reconciliacion": resumen,
+    }

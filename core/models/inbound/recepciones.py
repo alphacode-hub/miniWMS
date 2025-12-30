@@ -22,6 +22,8 @@ class InboundRecepcion(Base):
     __tablename__ = "inbound_recepciones"
     __table_args__ = (
         UniqueConstraint("negocio_id", "codigo_recepcion", name="uq_inbound_recepcion_codigo"),
+        # ✅ Regla negocio: 1 cita => 1 recepción (si cita_id no es null)
+        UniqueConstraint("negocio_id", "cita_id", name="uq_inbound_recepcion_cita_por_negocio"),
     )
 
     id = Column(Integer, primary_key=True)
@@ -30,17 +32,19 @@ class InboundRecepcion(Base):
     proveedor_id = Column(Integer, ForeignKey("proveedores.id"), index=True, nullable=True)
     cita_id = Column(Integer, ForeignKey("inbound_citas.id"), index=True, nullable=True)
 
+    # ✅ opcional: recordar desde qué plantilla nació (sin FK para no acoplarte al nombre de tabla)
+    plantilla_id = Column(Integer, nullable=True, index=True)
+
     # Folio interno
     codigo_recepcion = Column(String, nullable=False, index=True)
 
     # guía/factura/BL/OC
     documento_ref = Column(String, nullable=True, index=True)
 
-    # ✅ CAMPOS OPERATIVOS QUE PEDISTE
-    contenedor = Column(String, nullable=True, index=True)          # Ej: MSKU1234567
-    patente_camion = Column(String, nullable=True, index=True)      # Ej: AB-CD12
-    tipo_carga = Column(String, nullable=True, index=True)          # congelado|refrigerado|seco|palletizado|granel
-    fecha_estimada_llegada = Column(DateTime(timezone=True), nullable=True, index=True)  # ETA
+    contenedor = Column(String, nullable=True, index=True)
+    patente_camion = Column(String, nullable=True, index=True)
+    tipo_carga = Column(String, nullable=True, index=True)
+    fecha_estimada_llegada = Column(DateTime(timezone=True), nullable=True, index=True)
 
     estado = Column(
         SAEnum(RecepcionEstado, name="recepcion_estado"),
@@ -49,25 +53,24 @@ class InboundRecepcion(Base):
         index=True,
     )
 
-    # “fecha_recepcion” = fecha/hora real (arribo / recepción)
     fecha_recepcion = Column(DateTime(timezone=True), nullable=True, index=True)
     observaciones = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-    # ✅ TIMESTAMPS OPERATIVOS (para KPIs)
+    # Timestamps operativos
     fecha_arribo = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_inicio_descarga = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_fin_descarga = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_cierre = Column(DateTime(timezone=True), nullable=True, index=True)
 
-
-
     # Relaciones
     negocio = relationship("Negocio", back_populates="inbound_recepciones")
     proveedor = relationship("Proveedor", back_populates="recepciones")
-    cita = relationship("InboundCita", back_populates="recepciones")
+
+    # ✅ 1:1 back_populates con cita.recepcion
+    cita = relationship("InboundCita", back_populates="recepcion")
 
     lineas = relationship("InboundLinea", back_populates="recepcion", cascade="all, delete-orphan")
     pallets = relationship("InboundPallet", back_populates="recepcion", cascade="all, delete-orphan")
@@ -76,4 +79,4 @@ class InboundRecepcion(Base):
     fotos = relationship("InboundFoto", back_populates="recepcion", cascade="all, delete-orphan")
     checklist_respuestas = relationship("InboundChecklistRespuesta", back_populates="recepcion", cascade="all, delete-orphan")
     documentos = relationship("InboundDocumento", back_populates="recepcion", cascade="all, delete-orphan")
-    checklist = relationship("InboundChecklistRecepcion",back_populates="recepcion", uselist=False, cascade="all, delete-orphan")
+    checklist = relationship("InboundChecklistRecepcion", back_populates="recepcion", uselist=False, cascade="all, delete-orphan")
