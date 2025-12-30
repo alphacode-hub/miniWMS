@@ -1,0 +1,299 @@
+﻿{# modules/inbound_orbion/templates/inbound_proveedores_plantillas.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Plantillas de Proveedor{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Inbound · Proveedores · Plantillas
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                Plantillas por proveedor
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                Crea plantillas reutilizables por proveedor para acelerar citas/prealertas y estandarizar líneas sugeridas.
+            </p>
+
+            {% if proveedor is defined and proveedor %}
+            <div class="pt-2 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="text-slate-500 mr-1">Proveedor:</span>
+                    <span class="font-semibold text-slate-100">{{ proveedor.nombre }}</span>
+                </span>
+                {% if proveedor.rut %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/20 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="text-slate-500 mr-1">RUT:</span>{{ proveedor.rut }}
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="shrink-0 flex items-center gap-2">
+            <a href="/inbound/proveedores"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a proveedores
+            </a>
+        </div>
+    </header>
+
+    {# =========================
+    ALERTAS / MENSAJES
+    ========================= #}
+    {% set ok_msg = (ok if ok is defined else (request.query_params.get("ok") if request else None)) %}
+    {% set err_msg = (error if error is defined else (request.query_params.get("error") if request else None)) %}
+
+    {% if err_msg %}
+    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-rose-100 font-semibold">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ err_msg }}</p>
+    </div>
+    {% endif %}
+
+    {% if ok_msg %}
+    <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-emerald-100 font-semibold">Listo</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok_msg }}</p>
+    </div>
+    {% endif %}
+
+    {# =========================
+    NUEVA PLANTILLA
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <div class="px-4 py-4 sm:px-5 border-b border-slate-800/80">
+            <h2 class="text-sm font-semibold text-slate-100">Nueva plantilla</h2>
+            <p class="text-[11px] text-slate-400 mt-1">
+                Se crea asociada a este proveedor. Luego podrás agregar productos/atributos en el detalle.
+            </p>
+        </div>
+
+        {% if proveedor is defined and proveedor %}
+        <form method="post" action="/inbound/proveedores/{{ proveedor.id }}/plantillas/nueva" class="px-4 py-4 sm:px-5 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1 sm:col-span-2">
+                    <label class="block text-[11px] font-semibold text-slate-200">Nombre *</label>
+                    <input name="nombre" required
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                        text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                        focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: Frescos estándar / Contenedor 40ft / Proceso nocturno" />
+                    <p class="text-[10px] text-slate-500 pt-1">
+                        Tip: usa nombres “operativos” (tipo de carga / patrón de productos / flujo).
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-1 flex items-center justify-end gap-2">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full px-5 py-2
+                       text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                       hover:bg-cyan-300 active:scale-[0.97]
+                       transition-transform transition-colors">
+                    Crear plantilla
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="px-4 py-4 sm:px-5">
+            <p class="text-[11px] text-slate-400">
+                No hay proveedor seleccionado. Vuelve al listado de proveedores y entra desde un proveedor.
+            </p>
+        </div>
+        {% endif %}
+    </section>
+
+    {# =========================
+    LISTADO PLANTILLAS
+    ========================= #}
+    {% set total = (plantillas|length) if plantillas else 0 %}
+    {% set activos = 0 %}
+    {% set inactivos = 0 %}
+    {% for t in (plantillas or []) %}
+    {% if t.activo %}{% set activos = activos + 1 %}{% else %}{% set inactivos = inactivos + 1 %}{% endif %}
+    {% endfor %}
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <header class="px-4 py-4 sm:px-5 border-b border-slate-800/80">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="space-y-0.5">
+                    <h2 class="text-sm font-semibold text-slate-100">Plantillas</h2>
+                    <p class="text-[11px] text-slate-400">Activa/desactiva y entra al detalle para gestionar líneas.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                        Total: {{ total }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
+                        Activas: {{ activos }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/20 px-3 py-1 text-[11px] text-slate-300">
+                        Inactivas: {{ inactivos }}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        {# MOBILE cards #}
+        <div class="block sm:hidden divide-y divide-slate-800/70">
+            {% for t in (plantillas or []) %}
+            <div class="px-4 py-4 space-y-2">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold text-slate-100 truncate">{{ t.nombre }}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            <span class="text-slate-500">#{{ t.id }}</span>
+                            {% if t.created_at %}
+                            <span class="mx-2 text-slate-600">•</span>
+                            <span class="text-slate-500">Creada:</span>
+                            <span class="text-slate-300">
+                                {{ cl_date(t.created_at) if cl_date is defined else (t.created_at|string) }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="shrink-0">
+                        {% if t.activo %}
+                        <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
+                            Activa
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                            Inactiva
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <a href="/inbound/proveedores/plantillas/{{ t.id }}"
+                       class="px-3 py-2 rounded-lg text-[11px] font-semibold border bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60">
+                        Ver detalle
+                    </a>
+
+                    <form method="post" action="/inbound/proveedores/plantillas/{{ t.id }}/estado" class="inline">
+                        <input type="hidden" name="activo" value="{{ 'false' if t.activo else 'true' }}">
+                        <button type="submit"
+                                class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                           {% if t.activo %}
+                           bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60
+                           {% else %}
+                           bg-emerald-500/90 hover:bg-emerald-500 text-emerald-950 border-emerald-400/40
+                           {% endif %}">
+                            {% if t.activo %}Desactivar{% else %}Activar{% endif %}
+                        </button>
+                    </form>
+
+                    <form method="post" action="/inbound/proveedores/plantillas/{{ t.id }}/eliminar" class="inline">
+                        <button type="submit"
+                                class="px-3 py-2 rounded-lg text-[11px] font-semibold border bg-rose-500/10 hover:bg-rose-500/15 text-rose-200 border-rose-500/20">
+                            Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not plantillas %}
+            <div class="px-4 py-10 text-center text-slate-400 text-sm">
+                Aún no hay plantillas para este proveedor.
+            </div>
+            {% endif %}
+        </div>
+
+        {# TABLET/DESKTOP table #}
+        <div class="hidden sm:block overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="text-xs text-slate-400">
+                    <tr class="border-b border-slate-800/60">
+                        <th class="text-left font-semibold px-4 py-3">Plantilla</th>
+                        <th class="text-left font-semibold px-4 py-3">Estado</th>
+                        <th class="text-left font-semibold px-4 py-3 hidden lg:table-cell">Creada</th>
+                        <th class="text-right font-semibold px-4 py-3">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for t in (plantillas or []) %}
+                    <tr class="hover:bg-slate-950/30">
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-slate-100">{{ t.nombre }}</div>
+                            <div class="text-xs text-slate-400 mt-1">
+                                <span class="text-slate-500">#{{ t.id }}</span>
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-3">
+                            {% if t.activo %}
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
+                                Activa
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                                Inactiva
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3 hidden lg:table-cell text-slate-200">
+                            {% if t.created_at %}
+                            {{ cl_date(t.created_at) if cl_date is defined else (t.created_at|string) }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3 text-right">
+                            <div class="inline-flex items-center gap-2">
+                                <a href="/inbound/proveedores/plantillas/{{ t.id }}"
+                                   class="px-3 py-2 rounded-lg text-xs font-semibold border bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60">
+                                    Ver detalle
+                                </a>
+
+                                <form method="post" action="/inbound/proveedores/plantillas/{{ t.id }}/estado" class="inline">
+                                    <input type="hidden" name="activo" value="{{ 'false' if t.activo else 'true' }}">
+                                    <button type="submit"
+                                            class="px-3 py-2 rounded-lg text-xs font-semibold border
+                                 {% if t.activo %}
+                                 bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60
+                                 {% else %}
+                                 bg-emerald-500/90 hover:bg-emerald-500 text-emerald-950 border-emerald-400/40
+                                 {% endif %}">
+                                        {% if t.activo %}Desactivar{% else %}Activar{% endif %}
+                                    </button>
+                                </form>
+
+                                <form method="post" action="/inbound/proveedores/plantillas/{{ t.id }}/eliminar" class="inline">
+                                    <button type="submit"
+                                            class="px-3 py-2 rounded-lg text-xs font-semibold border bg-rose-500/10 hover:bg-rose-500/15 text-rose-200 border-rose-500/20">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not plantillas %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-10 text-center text-slate-400">
+                            Aún no hay plantillas para este proveedor.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

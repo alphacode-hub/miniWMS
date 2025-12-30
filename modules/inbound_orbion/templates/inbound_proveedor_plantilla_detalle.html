@@ -1,0 +1,373 @@
+﻿{# modules/inbound_orbion/templates/inbound_proveedor_plantilla_detalle.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}ORBION · Detalle Plantilla Proveedor{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    {# =========================
+    HEADER
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Inbound · Proveedores · Plantillas · Detalle
+            </p>
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ plantilla.nombre if plantilla else "Plantilla" }}
+            </h1>
+
+            <div class="pt-2 flex flex-wrap items-center gap-2">
+                {% if proveedor %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="text-slate-500 mr-1">Proveedor:</span>
+                    <span class="font-semibold text-slate-100">{{ proveedor.nombre }}</span>
+                </span>
+                {% endif %}
+
+                {% if plantilla %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/20 px-3 py-1 text-[11px] text-slate-300">
+                    <span class="text-slate-500 mr-1">#</span>{{ plantilla.id }}
+                </span>
+
+                {% if plantilla.activo %}
+                <span class="inline-flex items-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
+                    Activa
+                </span>
+                {% else %}
+                <span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/20 px-3 py-1 text-[11px] text-slate-300">
+                    Inactiva
+                </span>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl pt-1">
+                Define productos y mapeos del proveedor (SKU/EAN/unidad/descripcion) para reutilizarlos en flujos inbound.
+            </p>
+        </div>
+
+        <div class="shrink-0 flex items-center gap-2">
+            {% if proveedor %}
+            <a href="/inbound/proveedores/{{ proveedor.id }}/plantillas"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a plantillas
+            </a>
+            {% else %}
+            <a href="/inbound/proveedores"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a proveedores
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    {# =========================
+    ALERTAS / MENSAJES
+    ========================= #}
+    {% set ok_msg = (ok if ok is defined else (request.query_params.get("ok") if request else None)) %}
+    {% set err_msg = (error if error is defined else (request.query_params.get("error") if request else None)) %}
+
+    {% if err_msg %}
+    <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-rose-100 font-semibold">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ err_msg }}</p>
+    </div>
+    {% endif %}
+
+    {% if ok_msg %}
+    <div class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4">
+        <p class="text-[11px] text-emerald-100 font-semibold">Listo</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok_msg }}</p>
+    </div>
+    {% endif %}
+
+    {# =========================
+    AGREGAR LÍNEA
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <div class="px-4 py-4 sm:px-5 border-b border-slate-800/80">
+            <h2 class="text-sm font-semibold text-slate-100">Agregar producto a la plantilla</h2>
+            <p class="text-[11px] text-slate-400 mt-1">
+                Se creará una línea con mapeos del proveedor. Puedes dejar campos vacíos.
+                Si no tienes productos, crea uno rápido aquí mismo (Inbound).
+            </p>
+        </div>
+
+        {% if plantilla %}
+        <form method="post"
+              action="/inbound/proveedores/plantillas/{{ plantilla.id }}/lineas/nueva"
+              class="px-4 py-4 sm:px-5 space-y-4">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+                {# -------------------------
+                PRODUCTO (select)
+                ------------------------- #}
+                <div class="lg:col-span-6 rounded-2xl border border-slate-800 bg-slate-950/25 p-3 sm:p-4 space-y-2">
+                    <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Producto</p>
+
+                    {% if (productos or [])|length > 0 %}
+                    <label class="block text-[11px] font-semibold text-slate-200">Seleccionar producto</label>
+                    <select name="producto_id"
+                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                       text-xs sm:text-sm text-slate-100
+                                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                        <option value="">— Selecciona —</option>
+                        {% for pr in (productos or []) %}
+                        <option value="{{ pr.id }}">{{ pr.nombre }}{% if pr.sku %} · SKU {{ pr.sku }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-[10px] text-slate-500 pt-1">
+                        Si no seleccionas nada, puedes crear un producto rápido al lado.
+                    </p>
+                    {% else %}
+                    <div class="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-3">
+                        <p class="text-[11px] font-semibold text-amber-200">No hay productos aún</p>
+                        <p class="text-[11px] text-amber-200/90 mt-1">
+                            Crea el primero en “Producto rápido”. Quedará disponible para inbound y plantillas.
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# -------------------------
+                PRODUCTO RÁPIDO (bridge)
+                ------------------------- #}
+                <div class="lg:col-span-6 rounded-2xl border border-slate-800 bg-slate-950/25 p-3 sm:p-4 space-y-2">
+                    <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Producto rápido</p>
+                    <p class="text-[11px] text-slate-500">
+                        Completa esto solo si no seleccionaste un producto arriba.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-semibold text-slate-200">Nombre *</label>
+                            <input name="nuevo_producto_nombre"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                          text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                   placeholder="Ej: Harina 25kg" />
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="block text-[11px] font-semibold text-slate-200">Unidad base</label>
+                            <input name="nuevo_producto_unidad_base"
+                                   class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                          text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                          focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                   placeholder="Ej: saco / caja / unidad" />
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-slate-500 pt-1">
+                        Se crea activo en el negocio (multi-tenant) vía bridge inbound.
+                    </p>
+                </div>
+
+                {# -------------------------
+                CAMPOS MAPEOS
+                ------------------------- #}
+                <div class="lg:col-span-6 space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Descripción proveedor</label>
+                    <input name="descripcion"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: Caja 10kg / Formato exportación / etc." />
+                </div>
+
+                <div class="lg:col-span-3 space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">SKU proveedor</label>
+                    <input name="sku_proveedor"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Código del proveedor" />
+                </div>
+
+                <div class="lg:col-span-3 space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">EAN13</label>
+                    <input name="ean13"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: 7801234567890" />
+                </div>
+
+                <div class="lg:col-span-4 space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Unidad</label>
+                    <input name="unidad"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Ej: caja / saco / pallet / unidad" />
+                </div>
+
+                <div class="lg:col-span-8 flex items-center justify-between gap-3">
+                    <div>
+                        <input type="hidden" name="activo" value="false">
+                        <label class="inline-flex items-start gap-2 text-xs text-slate-200">
+                            <input type="checkbox" name="activo" value="true" checked
+                                   class="mt-[2px] rounded border-slate-500 text-cyan-400 bg-slate-900
+                                          focus:ring-cyan-500 focus:ring-offset-0" />
+                            <span>Crear línea como <span class="font-semibold">activa</span>.</span>
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                            class="inline-flex items-center justify-center rounded-full px-5 py-2
+                                   text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                                   hover:bg-cyan-300 active:scale-[0.97]
+                                   transition-transform transition-colors">
+                        Agregar a plantilla
+                    </button>
+                </div>
+
+            </div>
+        </form>
+        {% endif %}
+    </section>
+
+    {# =========================
+    LÍNEAS
+    ========================= #}
+    {% set total = (lineas|length) if lineas else 0 %}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <header class="px-4 py-4 sm:px-5 border-b border-slate-800/80">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="space-y-0.5">
+                    <h2 class="text-sm font-semibold text-slate-100">Líneas de la plantilla</h2>
+                    <p class="text-[11px] text-slate-400">Total: {{ total }}</p>
+                </div>
+            </div>
+        </header>
+
+        {# MOBILE cards #}
+        <div class="block sm:hidden divide-y divide-slate-800/70">
+            {% for l in (lineas or []) %}
+            <div class="px-4 py-4 space-y-2">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold text-slate-100 truncate">
+                            {{ l.producto.nombre if l.producto else ("Producto #" ~ l.producto_id) }}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            <span class="text-slate-500">#{{ l.id }}</span>
+                            <span class="mx-2 text-slate-600">•</span>
+                            {% if l.activo %}
+                            <span class="text-emerald-300 font-semibold">Activa</span>
+                            {% else %}
+                            <span class="text-slate-400">Inactiva</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="shrink-0">
+                        <form method="post" action="/inbound/proveedores/plantillas/lineas/{{ l.id }}/eliminar" class="inline">
+                            <input type="hidden" name="plantilla_id" value="{{ plantilla.id }}">
+                            <button type="submit"
+                                    class="px-3 py-2 rounded-lg text-[11px] font-semibold border
+                                           bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60">
+                                Quitar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-1 text-[11px] text-slate-300">
+                    <div><span class="text-slate-500">Descripción:</span> {{ l.descripcion or "—" }}</div>
+                    <div><span class="text-slate-500">SKU prov:</span> {{ l.sku_proveedor or "—" }}</div>
+                    <div><span class="text-slate-500">EAN13:</span> {{ l.ean13 or "—" }}</div>
+                    <div><span class="text-slate-500">Unidad:</span> {{ l.unidad or (l.producto.unidad if l.producto and l.producto.unidad else "—") }}</div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not lineas %}
+            <div class="px-4 py-10 text-center text-slate-400 text-sm">
+                Aún no hay líneas en esta plantilla.
+            </div>
+            {% endif %}
+        </div>
+
+        {# TABLET/DESKTOP table #}
+        <div class="hidden sm:block overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="text-xs text-slate-400">
+                    <tr class="border-b border-slate-800/60">
+                        <th class="text-left font-semibold px-4 py-3">Producto</th>
+                        <th class="text-left font-semibold px-4 py-3 hidden lg:table-cell">SKU prov.</th>
+                        <th class="text-left font-semibold px-4 py-3 hidden lg:table-cell">EAN13</th>
+                        <th class="text-left font-semibold px-4 py-3">Unidad</th>
+                        <th class="text-left font-semibold px-4 py-3">Estado</th>
+                        <th class="text-right font-semibold px-4 py-3">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for l in (lineas or []) %}
+                    <tr class="hover:bg-slate-950/30">
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-slate-100">
+                                {{ l.producto.nombre if l.producto else ("Producto #" ~ l.producto_id) }}
+                            </div>
+                            <div class="text-xs text-slate-400 mt-1">
+                                {{ l.descripcion or "—" }}
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-3 hidden lg:table-cell text-slate-200">
+                            {{ l.sku_proveedor or "—" }}
+                        </td>
+
+                        <td class="px-4 py-3 hidden lg:table-cell text-slate-200">
+                            {{ l.ean13 or "—" }}
+                        </td>
+
+                        <td class="px-4 py-3 text-slate-200">
+                            {{ l.unidad or (l.producto.unidad if l.producto and l.producto.unidad else "—") }}
+                        </td>
+
+                        <td class="px-4 py-3">
+                            {% if l.activo %}
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
+                                Activa
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
+                                Inactiva
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3 text-right">
+                            <form method="post" action="/inbound/proveedores/plantillas/lineas/{{ l.id }}/eliminar" class="inline">
+                                <input type="hidden" name="plantilla_id" value="{{ plantilla.id }}">
+                                <button type="submit"
+                                        class="px-3 py-2 rounded-lg text-xs font-semibold border
+                                               bg-slate-900/50 hover:bg-slate-900 text-slate-100 border-slate-700/60">
+                                    Quitar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not lineas %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-10 text-center text-slate-400">
+                            Aún no hay líneas en esta plantilla.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+    </section>
+
+</div>
+{% endblock %}

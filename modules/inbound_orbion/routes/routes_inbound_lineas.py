@@ -19,6 +19,9 @@ from modules.inbound_orbion.services.services_inbound_core import (
     obtener_recepcion_editable,
     obtener_recepcion_segura,
 )
+from modules.inbound_orbion.services.services_inbound_productos_bridge import (
+    crear_producto_rapido_inbound,
+)
 from modules.inbound_orbion.services.services_inbound_lineas import (
     crear_linea_inbound,
     eliminar_linea_inbound,
@@ -288,15 +291,12 @@ async def inbound_agregar_linea(
         nuevo_unidad = _to_str_or_none(nuevo_producto_unidad_base)
 
         if not producto_obj and nuevo_nombre:
-            # Producto “rápido” (enterprise-friendly: lo crea activo en el negocio)
-            producto_obj = Producto(
+            producto_obj = crear_producto_rapido_inbound(
+                db,
                 negocio_id=negocio_id,
                 nombre=nuevo_nombre,
-                unidad=(nuevo_unidad or "unidad"),
-                activo=1,
+                unidad=nuevo_unidad,
             )
-            db.add(producto_obj)
-            db.flush()
 
         if not producto_obj:
             raise InboundDomainError("Debes seleccionar un producto o ingresar un producto rápido.")

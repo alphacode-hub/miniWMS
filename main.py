@@ -32,7 +32,7 @@ from modules.basic_wms.routes.routes_alerts import router as alerts_router
 from modules.basic_wms.routes.routes_backups import router as backups_router
 from modules.basic_wms.routes.routes_export import router as export_router
 from core.middleware.auth_redirect import redirect_middleware
-from modules.inbound_orbion.routes import routes_inbound
+from modules.inbound_orbion.routes import routes_inbound 
 from core.middleware.audit_context import audit_context_middleware
 from core.routes.routes_app_planes import router as planes_router
 

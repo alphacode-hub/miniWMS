@@ -76,7 +76,7 @@ DEFAULT_LIMITS_BY_SEGMENT: dict[str, dict[str, dict[str, Any]]] = {
             "recepciones_mes": 100,
             "incidencias_mes": 10_000,
             "citas_mes": 3_000,
-            "proveedores": 200,
+            "proveedores": 100,
             "evidencias_mb": 10_240,
         },
         "analytics_plus": {},

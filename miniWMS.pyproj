@@ -94,6 +94,7 @@
     <Compile Include="modules\inbound_orbion\services\services_inbound_lineas.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_logging.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_pallets.py" />
+    <Compile Include="modules\inbound_orbion\services\services_inbound_productos_bridge.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_proveedores.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_recepciones.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_recepciones_cierre.py" />
@@ -156,6 +157,8 @@
     <Content Include="modules\inbound_orbion\templates\inbound_pallets.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_pallets_detalle.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_proveedores.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_proveedor_plantillas.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_proveedor_plantilla_detalle.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_recepciones_dashboard.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_recepcion_detalle.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_recepcion_form.html" />
