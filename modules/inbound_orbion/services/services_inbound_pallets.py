@@ -8,30 +8,31 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.models import Producto
+from core.models.enums import PalletEstado
 from core.models.inbound.lineas import InboundLinea
 from core.models.inbound.pallets import InboundPallet, InboundPalletItem
-from core.models.enums import PalletEstado
 from core.models.time import utcnow
 
 from modules.inbound_orbion.services.inbound_linea_contract import (
-    normalizar_linea,
-    InboundLineaModo,
     InboundLineaContractError,
+    InboundLineaModo,
+    normalizar_linea,
+)
+from modules.inbound_orbion.services.services_inbound_core import (
+    InboundDomainError,
+    obtener_recepcion_editable,
 )
 
-from .services_inbound_core import (
-    InboundDomainError,
-    obtener_recepcion_segura,
-    obtener_config_inbound,
-    validar_recepcion_editable,
-)
+# Reconciliación (hook enterprise)
+from modules.inbound_orbion.services.services_inbound_reconciliacion import reconciliar_recepcion
+
 
 # ============================
 # Constantes enterprise
 # ============================
 
 _EPS = 1e-9
-_TOL_REL = 0.02  # 2% tolerancia para consistencia si usuario ingresa ambos
+
 
 # ============================
 # Helpers parse/validación
@@ -59,7 +60,7 @@ def _to_float_or_none(v: Any) -> float | None:
 
 
 def _to_float_allow_zero_or_none(v: Any) -> float | None:
-    """Float >= 0, si vacío => None (para temperatura u otros campos que acepten 0)"""
+    """Float >= 0, permite 0. Vacío => None"""
     if v is None:
         return None
     if isinstance(v, str):
@@ -87,18 +88,29 @@ def _to_int_or_none(v: Any) -> int | None:
             raise InboundDomainError("Valor entero inválido.")
         return int(s)
     try:
-        return int(v)
+        n = int(v)
     except (TypeError, ValueError) as exc:
         raise InboundDomainError("Valor entero inválido.") from exc
+    if n < 0:
+        raise InboundDomainError("Este valor no puede ser negativo.")
+    return n
 
 
 def _calcular_peso_neto(peso_bruto_kg: float | None, peso_tara_kg: float | None) -> float | None:
     if peso_bruto_kg is None or peso_tara_kg is None:
         return None
-    # ✅ enterprise: tara no puede exceder bruto
     if peso_tara_kg > peso_bruto_kg + _EPS:
         raise InboundDomainError("La tara no puede ser mayor que el peso bruto.")
     return round(float(peso_bruto_kg) - float(peso_tara_kg), 3)
+
+
+# ============================
+# Guards enterprise (centralizados)
+# ============================
+
+def _assert_pallet_no_bloqueado(pallet: InboundPallet) -> None:
+    if pallet.estado == PalletEstado.BLOQUEADO:
+        raise InboundDomainError("Este pallet está BLOQUEADO y no admite modificaciones.")
 
 
 def _assert_pallet_editable(pallet: InboundPallet) -> None:
@@ -106,27 +118,38 @@ def _assert_pallet_editable(pallet: InboundPallet) -> None:
         raise InboundDomainError("Este pallet no se puede modificar porque ya está LISTO o BLOQUEADO.")
 
 
-def _sum_asignado_por_linea_en_recepcion(
+def obtener_pallet_seguro(
     db: Session,
     *,
     negocio_id: int,
     recepcion_id: int,
-    linea_id: int,
-) -> tuple[float, float]:
-    row = (
-        db.query(
-            func.coalesce(func.sum(InboundPalletItem.cantidad), 0),
-            func.coalesce(func.sum(InboundPalletItem.peso_kg), 0),
-        )
-        .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
+    pallet_id: int,
+) -> InboundPallet:
+    pallet = (
+        db.query(InboundPallet)
         .filter(
+            InboundPallet.id == pallet_id,
             InboundPallet.negocio_id == negocio_id,
             InboundPallet.recepcion_id == recepcion_id,
-            InboundPalletItem.linea_id == linea_id,
         )
         .first()
     )
-    return float(row[0] or 0), float(row[1] or 0)
+    if pallet is None:
+        raise InboundDomainError("Pallet inbound no encontrado para esta recepción.")
+    return pallet
+
+
+def obtener_pallet_editable(
+    db: Session,
+    *,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+) -> InboundPallet:
+    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+    _assert_pallet_editable(pallet)
+    return pallet
 
 
 # ============================
@@ -168,37 +191,61 @@ def _calc_cantidad_desde_kg(peso_kg: float, peso_unitario_kg: float) -> float:
     return round(float(peso_kg) / float(peso_unitario_kg), 3)
 
 
-def _check_consistencia_si_ambos(
+# ============================
+# Queries enterprise
+# ============================
+
+def _sum_asignado_por_linea_en_recepcion(
+    db: Session,
     *,
-    cantidad: float | None,
-    peso_kg: float | None,
-    peso_unitario_kg: float | None,
-) -> None:
+    negocio_id: int,
+    recepcion_id: int,
+    linea_id: int,
+    exclude_pallet_id: int | None = None,
+) -> tuple[float, float]:
     """
-    Si el usuario ingresa ambos, validamos que no sean absurdamente inconsistentes
-    cuando tenemos conversión.
+    Suma de asignación para validación de pendiente.
+    Regla: usamos el eje REAL oficial:
+    - Cantidad: suma(InboundPalletItem.cantidad)
+    - Peso: suma(InboundPalletItem.peso_kg)
     """
-    if cantidad is None or peso_kg is None or peso_unitario_kg is None:
-        return
-    if cantidad <= 0 or peso_kg <= 0:
-        return
-
-    esperado = _calc_kg_desde_cantidad(cantidad, peso_unitario_kg)
-    if esperado <= 0:
-        return
-
-    diff = abs(esperado - peso_kg)
-    if diff <= 0.5:  # tolerancia absoluta pequeña en kg
-        return
-    if diff / max(esperado, _EPS) > _TOL_REL:
-        raise InboundDomainError(
-            f"Inconsistencia: con {cantidad:g} unidades y {peso_unitario_kg:g} kg/u, "
-            f"esperamos ~{esperado:g} kg, pero ingresaste {peso_kg:g} kg."
+    q = (
+        db.query(
+            func.coalesce(func.sum(InboundPalletItem.cantidad), 0.0),
+            func.coalesce(func.sum(InboundPalletItem.peso_kg), 0.0),
         )
+        .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
+        .filter(
+            InboundPallet.negocio_id == negocio_id,
+            InboundPallet.recepcion_id == recepcion_id,
+            InboundPalletItem.linea_id == linea_id,
+        )
+    )
+    if exclude_pallet_id is not None:
+        q = q.filter(InboundPallet.id != exclude_pallet_id)
+
+    row = q.first()
+    return float(row[0] or 0.0), float(row[1] or 0.0)
+
+
+def _obtener_linea_segura(db: Session, *, negocio_id: int, recepcion_id: int, linea_id: int) -> InboundLinea:
+    linea = (
+        db.query(InboundLinea)
+        .filter(
+            InboundLinea.id == linea_id,
+            InboundLinea.negocio_id == negocio_id,
+            InboundLinea.recepcion_id == recepcion_id,
+            InboundLinea.activo == 1,
+        )
+        .first()
+    )
+    if linea is None:
+        raise InboundDomainError("Línea inbound no encontrada para este negocio o recepción.")
+    return linea
 
 
 # ============================
-# Crear pallet
+# Crear / Editar pallet (metadata)
 # ============================
 
 def crear_pallet_inbound(
@@ -214,20 +261,23 @@ def crear_pallet_inbound(
     observaciones: str | None = None,
     creado_por_id: int | None = None,
 ) -> InboundPallet:
-    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
+    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
 
     codigo_norm = (codigo_pallet or "").strip().upper()
     if not codigo_norm:
         raise InboundDomainError("El código del pallet es obligatorio.")
 
+    # Validaciones enterprise adicionales (antes de constraints DB)
+    if bultos is not None and int(bultos) < 0:
+        raise InboundDomainError("Bultos no puede ser negativo.")
+    if temperatura_promedio is not None:
+        _ = _to_float_allow_zero_or_none(temperatura_promedio)
+
     dup = (
         db.query(InboundPallet.id)
         .filter(
             InboundPallet.negocio_id == negocio_id,
-            InboundPallet.recepcion_id == recepcion.id,
+            InboundPallet.recepcion_id == recepcion_id,
             InboundPallet.codigo_pallet == codigo_norm,
         )
         .first()
@@ -235,12 +285,11 @@ def crear_pallet_inbound(
     if dup:
         raise InboundDomainError(f"El pallet con código '{codigo_norm}' ya existe en esta recepción.")
 
-    # ✅ peso neto enterprise (valida tara <= bruto)
     neto = _calcular_peso_neto(peso_bruto_kg, peso_tara_kg)
 
     pallet = InboundPallet(
         negocio_id=negocio_id,
-        recepcion_id=recepcion.id,
+        recepcion_id=recepcion_id,
         codigo_pallet=codigo_norm,
         estado=PalletEstado.ABIERTO,
         peso_bruto_kg=peso_bruto_kg,
@@ -253,37 +302,63 @@ def crear_pallet_inbound(
         updated_at=utcnow(),
     )
 
-    db.add(pallet)
+    try:
+        db.add(pallet)
+        db.commit()
+        db.refresh(pallet)
+        return pallet
+    except IntegrityError as exc:
+        db.rollback()
+        raise InboundDomainError("No se pudo crear el pallet. Verifica que el código no esté duplicado.") from exc
+
+
+def editar_pallet_inbound(
+    db: Session,
+    *,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+    bultos: int | None = None,
+    temperatura_promedio: float | None = None,
+    observaciones: str | None = None,
+    peso_bruto_kg: float | None = None,
+    peso_tara_kg: float | None = None,
+) -> InboundPallet:
+    pallet = obtener_pallet_editable(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
+    # ✅ Enterprise: soporta edición parcial (si mandas solo tara o solo bruto, conserva el otro)
+    new_bruto = peso_bruto_kg if peso_bruto_kg is not None else pallet.peso_bruto_kg
+    new_tara = peso_tara_kg if peso_tara_kg is not None else pallet.peso_tara_kg
+    neto = _calcular_peso_neto(new_bruto, new_tara)
+
+    pallet.bultos = bultos
+    pallet.temperatura_promedio = temperatura_promedio
+    pallet.observaciones = _clean_str(observaciones)
+    pallet.peso_bruto_kg = new_bruto
+    pallet.peso_tara_kg = new_tara
+    pallet.peso_neto_kg = neto
+    pallet.updated_at = utcnow()
+
     db.commit()
     db.refresh(pallet)
     return pallet
 
 
 # ============================
-# Agregar item (modo oficial + conversión persistida)
+# Agregar items (fuente de verdad)
 # ============================
 
 def agregar_items_a_pallet(
     db: Session,
     negocio_id: int,
+    recepcion_id: int,
     pallet_id: int,
     items: Iterable[dict[str, Any]],
 ) -> None:
-    pallet = db.get(InboundPallet, pallet_id)
-    if not pallet or pallet.negocio_id != negocio_id:
-        raise InboundDomainError("Pallet inbound no encontrado para este negocio.")
-
-    _assert_pallet_editable(pallet)
-
-    recepcion = obtener_recepcion_segura(db, pallet.recepcion_id, negocio_id)
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
+    pallet = obtener_pallet_editable(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
     try:
         for item_data in items:
-            # ----------------------------
-            # Validación de línea seleccionada
-            # ----------------------------
             linea_id_raw = item_data.get("linea_id")
             if linea_id_raw is None:
                 raise InboundDomainError("Cada ítem debe incluir 'linea_id'.")
@@ -293,17 +368,9 @@ def agregar_items_a_pallet(
             except (TypeError, ValueError) as exc:
                 raise InboundDomainError("Debes seleccionar una línea válida.") from exc
 
-            linea = (
-                db.query(InboundLinea)
-                .filter(InboundLinea.id == linea_id, InboundLinea.negocio_id == negocio_id)
-                .first()
-            )
-            if not linea:
-                raise InboundDomainError("Línea inbound no encontrada para este negocio.")
-            if linea.recepcion_id != recepcion.id:
-                raise InboundDomainError("La línea seleccionada no pertenece a esta recepción.")
+            linea = _obtener_linea_segura(db, negocio_id=negocio_id, recepcion_id=recepcion_id, linea_id=linea_id)
 
-            # No duplicar línea dentro del mismo pallet
+            # No duplicar línea dentro del mismo pallet (defensa + unique constraint)
             if (
                 db.query(InboundPalletItem.id)
                 .filter(InboundPalletItem.pallet_id == pallet.id, InboundPalletItem.linea_id == linea.id)
@@ -311,9 +378,7 @@ def agregar_items_a_pallet(
             ):
                 raise InboundDomainError("Esta línea ya está asignada a este pallet.")
 
-            # ----------------------------
-            # Contrato: determina modo oficial
-            # ----------------------------
+            # Contrato línea
             try:
                 view = normalizar_linea(linea, allow_draft=False)
             except InboundLineaContractError as exc:
@@ -321,123 +386,107 @@ def agregar_items_a_pallet(
 
             modo = view.modo
 
-            # ----------------------------
-            # Inputs (desde UI)
-            # ----------------------------
-            cantidad_in = item_data.get("cantidad")
-            peso_in = item_data.get("peso_kg")
+            # Inputs UI
+            cantidad_parsed = _to_float_or_none(item_data.get("cantidad"))
+            peso_parsed = _to_float_or_none(item_data.get("peso_kg"))
 
-            # Parse robusto (vacío/0 => None)
-            cantidad_parsed = _to_float_or_none(cantidad_in)
-            peso_parsed = _to_float_or_none(peso_in)
-
-            # Resolver conversión (override línea > producto)
             peso_unitario = _resolver_peso_unitario_kg(linea)
 
-            # ----------------------------
-            # ✅ REGLA ENTERPRISE: fuente oficial única
-            # ----------------------------
-            cantidad: float | None = None
-            peso_kg: float | None = None
+            # Regla enterprise:
+            # - REAL en el eje oficial (cantidad o peso_kg)
+            # - ESTIMADO en el eje derivado (peso_estimado_kg o cantidad_estimada)
+            cantidad_real: float | None = None
+            peso_real: float | None = None
+            cantidad_est: float | None = None
+            peso_est: float | None = None
 
             if modo == InboundLineaModo.CANTIDAD:
-                # En CANTIDAD: el usuario NO debe ingresar kg (evita divergencia)
                 if peso_parsed is not None:
                     raise InboundDomainError(
                         "Esta línea es por CANTIDAD: no ingreses Kg en el pallet. "
-                        "El sistema calcula el peso automáticamente según kg/u."
+                        "El sistema calcula el estimado automáticamente según kg/u."
                     )
-
                 if cantidad_parsed is None:
                     raise InboundDomainError("Esta línea es por CANTIDAD: debes ingresar cantidad (> 0).")
 
-                # Conversión obligatoria para mantener consistencia de peso
+                cantidad_real = float(cantidad_parsed)
+
                 if peso_unitario is None:
                     raise InboundDomainError(
                         "Esta línea es por CANTIDAD pero no tiene conversión configurada (kg/u). "
-                        "Corrige el dato maestro del producto o el override de la línea."
+                        "Corrige el maestro del producto o el override de la línea."
                     )
+                peso_est = _calc_kg_desde_cantidad(cantidad_real, float(peso_unitario))
 
-                cantidad = float(cantidad_parsed)
-                peso_kg = _calc_kg_desde_cantidad(cantidad, float(peso_unitario))
-
-            else:  # PESO
-                # En PESO: el usuario NO debe ingresar cantidad (evita divergencia)
-                if cantidad_parsed is not None:
-                    raise InboundDomainError(
-                        "Esta línea es por PESO: no ingreses Cantidad en el pallet. "
-                        "El sistema deriva la cantidad si existe kg/u."
-                    )
-
-                if peso_parsed is None:
-                    raise InboundDomainError("Esta línea es por PESO: debes ingresar Kg (> 0).")
-
-                peso_kg = float(peso_parsed)
-
-                # Derivación opcional (informativa / persistida si existe)
-                if peso_unitario is not None:
-                    cantidad = _calc_cantidad_desde_kg(peso_kg, float(peso_unitario))
-                else:
-                    cantidad = None
-
-            # Seguridad extra
-            if cantidad is None and peso_kg is None:
-                raise InboundDomainError("Debes ingresar una cantidad o un peso mayor a cero.")
-
-            # ----------------------------
-            # ✅ Validación de pendientes (según modo oficial)
-            # ----------------------------
-            cant_asig, kg_asig = _sum_asignado_por_linea_en_recepcion(
-                db,
-                negocio_id=negocio_id,
-                recepcion_id=recepcion.id,
-                linea_id=linea.id,
-            )
-
-            if modo == InboundLineaModo.CANTIDAD:
+                # Pendiente por cantidad (base documental)
                 base = view.base_cantidad
                 if base is None or base <= 0:
                     raise InboundDomainError("La línea no tiene cantidad base válida para asignar.")
+                cant_asig, _kg_asig = _sum_asignado_por_linea_en_recepcion(
+                    db,
+                    negocio_id=negocio_id,
+                    recepcion_id=recepcion_id,
+                    linea_id=linea.id,
+                )
                 pend = float(base) - float(cant_asig)
-
-                if cantidad is None:
-                    raise InboundDomainError("Debes ingresar cantidad.")
-                if cantidad > pend + _EPS:
-                    raise InboundDomainError(
-                        f"Cantidad supera el pendiente. Pendiente: {max(pend, 0):.3f}"
-                    )
+                if cantidad_real > pend + _EPS:
+                    raise InboundDomainError(f"Cantidad supera el pendiente. Pendiente: {max(pend, 0):.3f}")
 
             else:  # PESO
+                if cantidad_parsed is not None:
+                    raise InboundDomainError(
+                        "Esta línea es por PESO: no ingreses Cantidad en el pallet. "
+                        "El sistema deriva el estimado si existe kg/u."
+                    )
+                if peso_parsed is None:
+                    raise InboundDomainError("Esta línea es por PESO: debes ingresar Kg (> 0).")
+
+                peso_real = float(peso_parsed)
+
+                # Estimado de cantidad si existe conversión
+                if peso_unitario is not None:
+                    cantidad_est = _calc_cantidad_desde_kg(peso_real, float(peso_unitario))
+
+                # Pendiente por kg (base documental)
                 base = view.base_peso_kg
                 if base is None or base <= 0:
                     raise InboundDomainError("La línea no tiene peso base válido para asignar.")
+                _cant_asig, kg_asig = _sum_asignado_por_linea_en_recepcion(
+                    db,
+                    negocio_id=negocio_id,
+                    recepcion_id=recepcion_id,
+                    linea_id=linea.id,
+                )
                 pend = float(base) - float(kg_asig)
+                if peso_real > pend + _EPS:
+                    raise InboundDomainError(f"Peso supera el pendiente. Pendiente: {max(pend, 0):.3f} kg")
 
-                if peso_kg is None:
-                    raise InboundDomainError("Debes ingresar kg.")
-                if peso_kg > pend + _EPS:
-                    raise InboundDomainError(
-                        f"Peso supera el pendiente. Pendiente: {max(pend, 0):.3f} kg"
-                    )
+            if cantidad_real is None and peso_real is None:
+                raise InboundDomainError("Debes ingresar una cantidad o un peso mayor a cero.")
 
-            # ----------------------------
-            # ✅ Persistimos ambos (si están disponibles)
-            # ----------------------------
             item = InboundPalletItem(
                 negocio_id=negocio_id,
                 pallet_id=pallet.id,
                 linea_id=linea.id,
-                cantidad=(float(cantidad) if cantidad is not None else None),
-                peso_kg=(float(peso_kg) if peso_kg is not None else None),
+                # REAL
+                cantidad=(float(cantidad_real) if cantidad_real is not None else None),
+                peso_kg=(float(peso_real) if peso_real is not None else None),
+                # ESTIMADOS
+                cantidad_estimada=(float(cantidad_est) if cantidad_est is not None else None),
+                peso_estimado_kg=(float(peso_est) if peso_est is not None else None),
                 created_at=utcnow(),
+                updated_at=utcnow(),
             )
             db.add(item)
 
             try:
                 db.flush()
             except IntegrityError as exc:
-                db.rollback()
                 raise InboundDomainError("Esta línea ya está asignada a este pallet.") from exc
+
+        # Si agregamos items, marcamos EN_PROCESO automáticamente (mejor UX)
+        if pallet.estado == PalletEstado.ABIERTO:
+            pallet.estado = PalletEstado.EN_PROCESO
 
         pallet.updated_at = utcnow()
         db.commit()
@@ -445,29 +494,9 @@ def agregar_items_a_pallet(
     except InboundDomainError:
         db.rollback()
         raise
-
-
-
-def _get_linea_cantidad_base(linea: InboundLinea) -> float | None:
-    # ✅ Base oficial por cantidad viene del documento
-    v = getattr(linea, "cantidad_documento", None)
-    if v is None:
-        return None
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _get_linea_kg_base(linea: InboundLinea) -> float | None:
-    # ✅ Base oficial por peso viene del documento
-    v = getattr(linea, "peso_kg", None)
-    if v is None:
-        return None
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
+    except IntegrityError:
+        db.rollback()
+        raise InboundDomainError("No se pudo guardar el ítem. Verifica duplicados o datos inválidos.")
 
 
 # ============================
@@ -481,21 +510,26 @@ def quitar_item_de_pallet(
     pallet_id: int,
     pallet_item_id: int,
 ) -> None:
-    pallet = db.get(InboundPallet, pallet_id)
-    if not pallet or pallet.negocio_id != negocio_id or pallet.recepcion_id != recepcion_id:
-        raise InboundDomainError("Pallet inbound no encontrado para esta recepción.")
+    pallet = obtener_pallet_editable(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
-    _assert_pallet_editable(pallet)
-
-    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
-
-    item = db.get(InboundPalletItem, pallet_item_id)
-    if not item or item.pallet_id != pallet.id:
+    item = (
+        db.query(InboundPalletItem)
+        .filter(
+            InboundPalletItem.id == pallet_item_id,
+            InboundPalletItem.pallet_id == pallet.id,
+            InboundPalletItem.negocio_id == negocio_id,
+        )
+        .first()
+    )
+    if not item:
         raise InboundDomainError("Ítem no encontrado para este pallet.")
 
     db.delete(item)
+
+    existe = db.query(InboundPalletItem.id).filter(InboundPalletItem.pallet_id == pallet.id).first()
+    if not existe:
+        pallet.estado = PalletEstado.ABIERTO
+
     pallet.updated_at = utcnow()
     db.commit()
 
@@ -504,16 +538,13 @@ def quitar_item_de_pallet(
 # Eliminar pallet
 # ============================
 
-def eliminar_pallet_inbound(db: Session, negocio_id: int, recepcion_id: int, pallet_id: int) -> None:
-    pallet = db.get(InboundPallet, pallet_id)
-    if not pallet or pallet.negocio_id != negocio_id or pallet.recepcion_id != recepcion_id:
-        raise InboundDomainError("Pallet inbound no encontrado para esta recepción.")
-
-    _assert_pallet_editable(pallet)
-
-    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
+def eliminar_pallet_inbound(
+    db: Session,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+) -> None:
+    pallet = obtener_pallet_editable(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
     db.query(InboundPalletItem).filter(InboundPalletItem.pallet_id == pallet.id).delete()
     db.delete(pallet)
@@ -521,59 +552,141 @@ def eliminar_pallet_inbound(db: Session, negocio_id: int, recepcion_id: int, pal
 
 
 # ============================
-# Cerrar / Reabrir
+# Estado: listo / reabrir / bloquear
 # ============================
 
-def marcar_pallet_listo(db: Session, negocio_id: int, recepcion_id: int, pallet_id: int, user_id: int) -> None:
-    pallet = (
-        db.query(InboundPallet)
-        .filter(
-            InboundPallet.id == pallet_id,
-            InboundPallet.negocio_id == negocio_id,
-            InboundPallet.recepcion_id == recepcion_id,
-        )
-        .first()
-    )
-    if not pallet:
-        raise InboundDomainError("Pallet no encontrado.")
+def marcar_pallet_listo(
+    db: Session,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+    user_id: int,
+    *,
+    reconciliar_soft: bool = True,
+) -> None:
+    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
-    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
+    _assert_pallet_no_bloqueado(pallet)
+
+    if pallet.estado == PalletEstado.LISTO:
+        return
 
     if not (pallet.observaciones or "").strip():
-        raise InboundDomainError("Para cerrar el pallet debes ingresar observaciones (mínimo algo descriptivo).")
+        raise InboundDomainError("Para marcar LISTO debes ingresar observaciones (mínimo algo descriptivo).")
 
     tiene_items = db.query(InboundPalletItem.id).filter(InboundPalletItem.pallet_id == pallet.id).first()
     if not tiene_items:
-        raise InboundDomainError("No puedes cerrar un pallet sin líneas asignadas.")
+        raise InboundDomainError("No puedes marcar LISTO un pallet sin líneas asignadas.")
 
     pallet.estado = PalletEstado.LISTO
     pallet.cerrado_por_id = user_id
     pallet.cerrado_at = utcnow()
     pallet.updated_at = utcnow()
+
+    if reconciliar_soft:
+        _ = reconciliar_recepcion(
+            db,
+            negocio_id,
+            recepcion_id,
+            strict=False,
+            require_editable=False,
+            include_lineas=False,
+            commit=False,
+        )
+
     db.commit()
 
 
-def reabrir_pallet(db: Session, negocio_id: int, recepcion_id: int, pallet_id: int) -> None:
-    pallet = (
-        db.query(InboundPallet)
-        .filter(
-            InboundPallet.id == pallet_id,
-            InboundPallet.negocio_id == negocio_id,
-            InboundPallet.recepcion_id == recepcion_id,
-        )
-        .first()
-    )
-    if not pallet:
-        raise InboundDomainError("Pallet no encontrado.")
+def reabrir_pallet(
+    db: Session,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+) -> None:
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+    _assert_pallet_no_bloqueado(pallet)
 
-    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    cfg = obtener_config_inbound(db, negocio_id)
-    validar_recepcion_editable(recepcion, cfg)
+    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
 
-    pallet.estado = PalletEstado.ABIERTO
+    # ✅ Enterprise: si tiene ítems, queda EN_PROCESO; si no, ABIERTO
+    tiene_items = db.query(InboundPalletItem.id).filter(InboundPalletItem.pallet_id == pallet.id).first()
+    pallet.estado = PalletEstado.EN_PROCESO if tiene_items else PalletEstado.ABIERTO
+
     pallet.cerrado_por_id = None
     pallet.cerrado_at = None
     pallet.updated_at = utcnow()
     db.commit()
+
+
+def bloquear_pallet(
+    db: Session,
+    negocio_id: int,
+    recepcion_id: int,
+    pallet_id: int,
+    *,
+    motivo: str | None = None,
+) -> None:
+    _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
+    if pallet.estado == PalletEstado.BLOQUEADO:
+        return
+
+    pallet.estado = PalletEstado.BLOQUEADO
+    if motivo:
+        obs = (pallet.observaciones or "").strip()
+        add = f"[BLOQUEADO] {motivo.strip()}"
+        pallet.observaciones = (obs + "\n" + add).strip() if obs else add
+
+    pallet.updated_at = utcnow()
+    db.commit()
+
+
+# ============================
+# Resumen para UI (lista)
+# ============================
+
+def construir_resumen_pallets(
+    db: Session,
+    *,
+    negocio_id: int,
+    recepcion_id: int,
+) -> dict[int, dict[str, float]]:
+    """
+    Devuelve resumen por pallet:
+    - n_items
+    - cant: suma(coalesce(cantidad, cantidad_estimada))
+    - kg:   suma(coalesce(peso_kg, peso_estimado_kg))
+
+    Esto mantiene la UI coherente incluso si el eje real va en None
+    (porque guardamos estimados en columnas separadas).
+    """
+    rows = (
+        db.query(
+            InboundPalletItem.pallet_id.label("pallet_id"),
+            func.count(InboundPalletItem.id).label("n_items"),
+            func.coalesce(
+                func.sum(func.coalesce(InboundPalletItem.cantidad, InboundPalletItem.cantidad_estimada)), 0.0
+            ).label("cant"),
+            func.coalesce(
+                func.sum(func.coalesce(InboundPalletItem.peso_kg, InboundPalletItem.peso_estimado_kg)), 0.0
+            ).label("kg"),
+        )
+        .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
+        .filter(
+            InboundPallet.negocio_id == negocio_id,
+            InboundPallet.recepcion_id == recepcion_id,
+        )
+        .group_by(InboundPalletItem.pallet_id)
+        .all()
+    )
+
+    out: dict[int, dict[str, float]] = {}
+    for r in rows:
+        out[int(r.pallet_id)] = {
+            "n_items": float(r.n_items or 0),
+            "cant": float(r.cant or 0.0),
+            "kg": float(r.kg or 0.0),
+        }
+    return out

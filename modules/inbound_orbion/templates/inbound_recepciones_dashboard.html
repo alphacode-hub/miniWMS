@@ -237,13 +237,13 @@
                             text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                                 Pallets
                             </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/checklist"
+                            <a href="/inbound/recepciones/{{ r.id }}/incidencias"
                                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                            text-[10px] font-semibold text-slate-300
-                            hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Checklist
+                              text-[10px] font-semibold text-slate-300
+                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Incidencias
                             </a>
+
 
                             <a href="/inbound/recepciones/{{ r.id }}/documentos"
                                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
@@ -259,11 +259,12 @@
                                 Fotos
                             </a>
 
-                            <a href="/inbound/recepciones/{{ r.id }}/incidencias"
+
+                            <a href="/inbound/recepciones/{{ r.id }}/checklist"
                                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                              text-[10px] font-semibold text-slate-300
-                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Incidencias
+                                text-[10px] font-semibold text-slate-300
+                                hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                                Checklist
                             </a>
                         </div>
                     </div>
@@ -299,7 +300,7 @@
 
                         <p class="text-[10px] text-slate-400 whitespace-nowrap">
                             {% if r.created_at %}
-                            {{ r.created_at.strftime('%d-%m-%Y %H:%M') }}
+                            {{ r.created_at|cl_datetime(short=True, no_tz=True) }}
                             {% else %}
                             —
                             {% endif %}
@@ -317,7 +318,7 @@
                 <div class="mt-2 flex flex-wrap gap-2">
                     {% if contenedor %}
                     <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        Contenedor: <span class="ml-1 text-slate-100">{{ contenedor }}</span>
+                        Contenedor: <span class="ml-1 text-slate-100">{{ contenedor|upper }}</span>
                     </span>
                     {% endif %}
                     {% if patente %}
@@ -327,7 +328,7 @@
                     {% endif %}
                     {% if tipo_carga %}
                     <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        Tipo: <span class="ml-1 text-slate-100">{{ tipo_carga }}</span>
+                        Tipo: <span class="ml-1 text-slate-100">{{ tipo_carga|capitalize }}</span>
                     </span>
                     {% endif %}
                     {% if eta %}
@@ -335,9 +336,9 @@
                         ETA:
                         <span class="ml-1 text-slate-100">
                             {% if eta.strftime is defined %}
-                            {{ eta.strftime('%d-%m-%Y') }}
+                            {{ eta|cl_datetime(short=True, no_tz=True) }}
                             {% else %}
-                            {{ eta }}
+                            {{ eta|cl_datetime(short=True, no_tz=True) }}
                             {% endif %}
                         </span>
                     </span>

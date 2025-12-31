@@ -159,6 +159,7 @@
     <Content Include="modules\inbound_orbion\templates\inbound_linea_form.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_pallets.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_pallets_detalle.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_pallet_editar.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_proveedores.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_proveedor_plantillas.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_proveedor_plantilla_detalle.html" />

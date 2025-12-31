@@ -4,38 +4,45 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
+from sqlalchemy.orm import Session, selectinload
 
 from core.database import get_db
-from core.models.inbound.pallets import InboundPallet, InboundPalletItem
 from core.models.inbound.lineas import InboundLinea
+from core.models.inbound.pallets import InboundPallet, InboundPalletItem
 
-from modules.inbound_orbion.services.services_inbound_logging import (
-    log_inbound_event,
-    log_inbound_error,
-)
+from modules.inbound_orbion.services.inbound_linea_contract import normalizar_linea
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
-    obtener_recepcion_segura,
     obtener_recepcion_editable,
+    obtener_recepcion_segura,
+)
+from modules.inbound_orbion.services.services_inbound_logging import (
+    log_inbound_error,
+    log_inbound_event,
 )
 from modules.inbound_orbion.services.services_inbound_pallets import (
-    crear_pallet_inbound,
-    eliminar_pallet_inbound,
     agregar_items_a_pallet,
-    quitar_item_de_pallet,
+    construir_resumen_pallets,
+    crear_pallet_inbound,
+    editar_pallet_inbound,
+    eliminar_pallet_inbound,
     marcar_pallet_listo,
+    obtener_pallet_seguro,
+    quitar_item_de_pallet,
     reabrir_pallet,
 )
-from modules.inbound_orbion.services.inbound_linea_contract import normalizar_linea
 
-from .inbound_common import templates, inbound_roles_dep
+from .inbound_common import inbound_roles_dep, templates
 
 router = APIRouter()
 
+
+# ============================================================
+# Utils
+# ============================================================
 
 def _qp(msg: str) -> str:
     return quote_plus((msg or "").strip())
@@ -81,6 +88,7 @@ def _to_float_or_none(v: Any) -> float | None:
 def _to_float_allow_zero_or_none(v: Any) -> float | None:
     """
     Temperatura: 0 sí es válido.
+    Enterprise actual: no permite negativos (si quieres permitir negativos después, ajustamos aquí).
     """
     if v is None:
         return None
@@ -97,40 +105,9 @@ def _to_float_allow_zero_or_none(v: Any) -> float | None:
     return n
 
 
-def _assert_pallet_pertenece(db: Session, negocio_id: int, recepcion_id: int, pallet_id: int) -> InboundPallet:
-    pallet = db.get(InboundPallet, pallet_id)
-    if not pallet or pallet.negocio_id != negocio_id or pallet.recepcion_id != recepcion_id:
-        raise InboundDomainError("Pallet inválido para esta recepción.")
-    return pallet
-
-
-def _resolver_peso_unitario_kg_ui(linea: InboundLinea) -> float | None:
-    """
-    UI helper (misma regla enterprise):
-    1) override en línea
-    2) producto.peso_unitario_kg
-    """
-    v = getattr(linea, "peso_unitario_kg_override", None)
-    if v is not None:
-        try:
-            n = float(v)
-            if n > 0:
-                return n
-        except (TypeError, ValueError):
-            pass
-
-    prod = getattr(linea, "producto", None)
-    if prod is not None:
-        v2 = getattr(prod, "peso_unitario_kg", None)
-        if v2 is not None:
-            try:
-                n2 = float(v2)
-                if n2 > 0:
-                    return n2
-            except (TypeError, ValueError):
-                pass
-
-    return None
+def _pallet_estado_up(pallet: InboundPallet) -> str:
+    estado_txt = (pallet.estado.value if pallet.estado is not None else str(pallet.estado))
+    return str(estado_txt).replace("PalletEstado.", "").upper()
 
 
 # ============================================================
@@ -152,36 +129,16 @@ async def inbound_pallets_lista(
 
     pallets = (
         db.query(InboundPallet)
-        .filter(InboundPallet.negocio_id == negocio_id, InboundPallet.recepcion_id == recepcion_id)
+        .filter(
+            InboundPallet.negocio_id == negocio_id,
+            InboundPallet.recepcion_id == recepcion_id,
+        )
         .order_by(InboundPallet.id.asc())
         .all()
     )
 
-    pallet_ids = [p.id for p in pallets]
-    resumen: dict[int, dict[str, float]] = {}
-
-    if pallet_ids:
-        rows = (
-            db.query(
-                InboundPalletItem.pallet_id.label("pallet_id"),
-                func.count(InboundPalletItem.id).label("n_items"),
-                func.coalesce(func.sum(InboundPalletItem.cantidad), 0).label("cant_total"),
-                func.coalesce(func.sum(InboundPalletItem.peso_kg), 0).label("kg_total"),
-                func.coalesce(func.sum(InboundPalletItem.cantidad_estimada), 0).label("cant_est"),
-                func.coalesce(func.sum(InboundPalletItem.peso_estimado_kg), 0).label("kg_est"),
-            )
-            .filter(InboundPalletItem.pallet_id.in_(pallet_ids))
-            .group_by(InboundPalletItem.pallet_id)
-            .all()
-        )
-        for r in rows:
-            resumen[int(r.pallet_id)] = {
-                "n_items": int(r.n_items or 0),
-                "cant": float(r.cant_total or 0),
-                "kg": float(r.kg_total or 0),
-                "cant_est": float(r.cant_est or 0),
-                "kg_est": float(r.kg_est or 0),
-            }
+    # Enterprise: resumen coalesce(real, estimado) para que UI no quede en 0
+    resumen = construir_resumen_pallets(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
     log_inbound_event(
         "pallets_lista_view",
@@ -219,7 +176,15 @@ async def inbound_pallet_detalle(
 ):
     negocio_id = user["negocio_id"]
     recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
-    pallet = _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+
+    # ✅ Baseline: el detalle puede ser lectura si recepción cerrada
+    recepcion_editable = True
+    try:
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    except InboundDomainError:
+        recepcion_editable = False
+
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
     ok = request.query_params.get("success")
     error = request.query_params.get("error")
@@ -227,7 +192,10 @@ async def inbound_pallet_detalle(
     pallet_items = (
         db.query(InboundPalletItem)
         .options(selectinload(InboundPalletItem.linea).selectinload(InboundLinea.producto))
-        .filter(InboundPalletItem.pallet_id == pallet.id)
+        .filter(
+            InboundPalletItem.pallet_id == pallet.id,
+            InboundPalletItem.negocio_id == negocio_id,
+        )
         .order_by(InboundPalletItem.id.asc())
         .all()
     )
@@ -235,59 +203,70 @@ async def inbound_pallet_detalle(
     lineas = (
         db.query(InboundLinea)
         .options(selectinload(InboundLinea.producto))
-        .filter(InboundLinea.negocio_id == negocio_id, InboundLinea.recepcion_id == recepcion_id)
+        .filter(
+            InboundLinea.negocio_id == negocio_id,
+            InboundLinea.recepcion_id == recepcion_id,
+            InboundLinea.activo == 1,
+        )
         .order_by(InboundLinea.id.asc())
         .all()
     )
 
-    # Construimos una vista UI (modo + pendientes + kg/u)
+    # ✅ Enterprise perf: sumas por línea en UNA query (REAL oficiales)
+    sums = (
+        db.query(
+            InboundPalletItem.linea_id.label("linea_id"),
+            func.coalesce(func.sum(InboundPalletItem.cantidad), 0.0).label("cant_asig"),
+            func.coalesce(func.sum(InboundPalletItem.peso_kg), 0.0).label("kg_asig"),
+        )
+        .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
+        .filter(
+            InboundPallet.negocio_id == negocio_id,
+            InboundPallet.recepcion_id == recepcion_id,
+        )
+        .group_by(InboundPalletItem.linea_id)
+        .all()
+    )
+    sums_by_linea = {int(r.linea_id): (float(r.cant_asig or 0.0), float(r.kg_asig or 0.0)) for r in sums}
+
+    # UI: vista (modo + pendientes + unidad + conv) — ocultamos líneas inválidas
     lineas_ui: list[dict[str, Any]] = []
     for l in lineas:
         try:
             v = normalizar_linea(l, allow_draft=False)
-            modo = v.modo.value
+            modo = v.modo.value  # "CANTIDAD" | "PESO"
             base = v.base_cantidad if modo == "CANTIDAD" else v.base_peso_kg
         except Exception:
-            # si alguna línea está mala, la ocultamos del selector para evitar errores operativos
             continue
 
-        # asignado en recepción
-        cant_asig = (
-            db.query(func.coalesce(func.sum(InboundPalletItem.cantidad), 0))
-            .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
-            .filter(
-                InboundPallet.negocio_id == negocio_id,
-                InboundPallet.recepcion_id == recepcion_id,
-                InboundPalletItem.linea_id == l.id,
-            )
-            .scalar()
-            or 0
-        )
-        kg_asig = (
-            db.query(func.coalesce(func.sum(InboundPalletItem.peso_kg), 0))
-            .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
-            .filter(
-                InboundPallet.negocio_id == negocio_id,
-                InboundPallet.recepcion_id == recepcion_id,
-                InboundPalletItem.linea_id == l.id,
-            )
-            .scalar()
-            or 0
-        )
+        cant_asig, kg_asig = sums_by_linea.get(int(l.id), (0.0, 0.0))
 
         if modo == "CANTIDAD":
-            pend = float(base or 0) - float(cant_asig or 0)
-            pend = max(pend, 0.0)
+            pend = float(base or 0.0) - float(cant_asig or 0.0)
         else:
-            pend = float(base or 0) - float(kg_asig or 0)
-            pend = max(pend, 0.0)
+            pend = float(base or 0.0) - float(kg_asig or 0.0)
+
+        pend = max(pend, 0.0)
 
         prod = getattr(l, "producto", None)
         nombre = getattr(prod, "nombre", None) if prod is not None else None
         if not nombre:
             nombre = f"Línea #{l.id}"
 
-        peso_unitario_kg = _resolver_peso_unitario_kg_ui(l)
+        # conv kg/u (solo informativo para UI)
+        peso_unitario_kg = None
+        try:
+            v1 = getattr(l, "peso_unitario_kg_override", None)
+            if v1 is not None and float(v1) > 0:
+                peso_unitario_kg = float(v1)
+            elif prod is not None:
+                v2 = getattr(prod, "peso_unitario_kg", None)
+                if v2 is not None and float(v2) > 0:
+                    peso_unitario_kg = float(v2)
+        except Exception:
+            peso_unitario_kg = None
+
+        unidad = getattr(l, "unidad", None) or (getattr(prod, "unidad", None) if prod else None) or "unidad"
 
         lineas_ui.append(
             {
@@ -295,10 +274,20 @@ async def inbound_pallet_detalle(
                 "nombre": nombre,
                 "modo": modo,
                 "pendiente": round(pend, 3),
-                "unidad": getattr(l, "unidad", None) or (getattr(prod, "unidad", None) if prod else None) or "unidad",
-                "peso_unitario_kg": peso_unitario_kg,  # <- clave para autocompletar kg/u en UX
+                "unidad": unidad,
+                "peso_unitario_kg": peso_unitario_kg,
             }
         )
+
+    log_inbound_event(
+        "pallet_detalle_view",
+        negocio_id=negocio_id,
+        user_email=user.get("email"),
+        recepcion_id=recepcion_id,
+        pallet_id=pallet_id,
+        items=len(pallet_items),
+        lineas=len(lineas_ui),
+    )
 
     return templates.TemplateResponse(
         "inbound_pallets_detalle.html",
@@ -308,12 +297,125 @@ async def inbound_pallet_detalle(
             "recepcion": recepcion,
             "pallet": pallet,
             "pallet_items": pallet_items,
-            "lineas": lineas,
             "lineas_ui": lineas_ui,
             "qs_success": ok,
             "qs_error": error,
+            "recepcion_editable": recepcion_editable,
         },
     )
+
+
+# ============================================================
+# EDITAR PALLET (GET/POST)
+# ============================================================
+
+@router.get("/recepciones/{recepcion_id}/pallets/{pallet_id}/editar", response_class=HTMLResponse)
+async def inbound_pallet_editar_get(
+    recepcion_id: int,
+    pallet_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+):
+    negocio_id = user["negocio_id"]
+
+    recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
+
+    # ✅ Editar solo si recepción editable
+    try:
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    except InboundDomainError as e:
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
+
+    pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
+    # ✅ Enterprise UX: si pallet LISTO/BLOQUEADO, no se edita metadata
+    estado_up = _pallet_estado_up(pallet)
+    if estado_up in {"LISTO", "BLOQUEADO"}:
+        return _redirect(
+            f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}",
+            error="Pallet en estado solo lectura.",
+        )
+
+    ok = request.query_params.get("success")
+    error = request.query_params.get("error")
+
+    log_inbound_event(
+        "pallet_editar_view",
+        negocio_id=negocio_id,
+        user_email=user.get("email"),
+        recepcion_id=recepcion_id,
+        pallet_id=pallet_id,
+    )
+
+    return templates.TemplateResponse(
+        "inbound_pallet_editar.html",
+        {
+            "request": request,
+            "user": user,
+            "recepcion": recepcion,
+            "pallet": pallet,
+            "qs_success": ok,
+            "qs_error": error,
+            "recepcion_editable": True,
+        },
+    )
+
+
+@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/editar", response_class=HTMLResponse)
+async def inbound_pallet_editar_post(
+    recepcion_id: int,
+    pallet_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+    peso_bruto_kg: str = Form(""),
+    peso_tara_kg: str = Form(""),
+    bultos: str = Form(""),
+    temperatura_promedio: str = Form(""),
+    observaciones: str = Form(""),
+):
+    negocio_id = user["negocio_id"]
+
+    try:
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
+        estado_up = _pallet_estado_up(pallet)
+        if estado_up in {"LISTO", "BLOQUEADO"}:
+            raise InboundDomainError("Pallet en estado solo lectura.")
+
+        editar_pallet_inbound(
+            db=db,
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            bultos=_to_int_or_none(bultos),
+            temperatura_promedio=_to_float_allow_zero_or_none(temperatura_promedio),
+            observaciones=(observaciones or "").strip() or None,
+            peso_bruto_kg=_to_float_or_none(peso_bruto_kg),
+            peso_tara_kg=_to_float_or_none(peso_tara_kg),
+        )
+
+        log_inbound_event(
+            "pallet_editado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+        )
+
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet actualizado.")
+
+    except InboundDomainError as e:
+        log_inbound_error(
+            "pallet_editar_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            error=e.message,
+        )
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}/editar", error=e.message)
 
 
 # ============================================================
@@ -333,9 +435,8 @@ async def inbound_pallet_nuevo(
     observaciones: str = Form(""),
 ):
     negocio_id = user["negocio_id"]
-
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
 
         pallet = crear_pallet_inbound(
             db=db,
@@ -347,7 +448,7 @@ async def inbound_pallet_nuevo(
             bultos=_to_int_or_none(bultos),
             temperatura_promedio=_to_float_allow_zero_or_none(temperatura_promedio),
             observaciones=(observaciones or "").strip() or None,
-            creado_por_id=user["id"],
+            creado_por_id=user.get("id"),
         )
 
         log_inbound_event(
@@ -388,8 +489,8 @@ async def inbound_pallet_item_agregar(
     negocio_id = user["negocio_id"]
 
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         linea_id_i = _to_int_or_none(linea_id)
         if not linea_id_i:
@@ -401,8 +502,18 @@ async def inbound_pallet_item_agregar(
         agregar_items_a_pallet(
             db=db,
             negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
             pallet_id=pallet_id,
             items=[{"linea_id": linea_id_i, "cantidad": cant_f, "peso_kg": kg_f}],
+        )
+
+        log_inbound_event(
+            "pallet_item_agregado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            linea_id=linea_id_i,
         )
 
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Ítem agregado.")
@@ -434,8 +545,8 @@ async def inbound_pallet_item_quitar(
     negocio_id = user["negocio_id"]
 
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         quitar_item_de_pallet(
             db=db,
@@ -445,9 +556,26 @@ async def inbound_pallet_item_quitar(
             pallet_item_id=pallet_item_id,
         )
 
+        log_inbound_event(
+            "pallet_item_quitado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            pallet_item_id=pallet_item_id,
+        )
+
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Ítem removido.")
 
     except InboundDomainError as e:
+        log_inbound_error(
+            "pallet_item_quitar_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            error=e.message,
+        )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
 
 
@@ -455,7 +583,7 @@ async def inbound_pallet_item_quitar(
 # CERRAR / REABRIR / ELIMINAR
 # ============================================================
 
-@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/cerrar")
+@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/cerrar", response_class=HTMLResponse)
 async def inbound_pallet_cerrar(
     recepcion_id: int,
     pallet_id: int,
@@ -464,15 +592,35 @@ async def inbound_pallet_cerrar(
 ):
     negocio_id = user["negocio_id"]
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
         marcar_pallet_listo(db, negocio_id, recepcion_id, pallet_id, user["id"])
-        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", ok="Pallet cerrado.")
+
+        log_inbound_event(
+            "pallet_cerrado_listo",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+        )
+
+        # ✅ UX: vuelves al detalle para ver estado + acciones
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet marcado LISTO.")
+
     except InboundDomainError as e:
+        log_inbound_error(
+            "pallet_cerrar_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            error=e.message,
+        )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
 
 
-@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/reabrir")
+@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/reabrir", response_class=HTMLResponse)
 async def inbound_pallet_reabrir(
     recepcion_id: int,
     pallet_id: int,
@@ -481,15 +629,34 @@ async def inbound_pallet_reabrir(
 ):
     negocio_id = user["negocio_id"]
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
         reabrir_pallet(db, negocio_id, recepcion_id, pallet_id)
+
+        log_inbound_event(
+            "pallet_reabierto",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+        )
+
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet reabierto.")
+
     except InboundDomainError as e:
+        log_inbound_error(
+            "pallet_reabrir_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            error=e.message,
+        )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
 
 
-@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/eliminar")
+@router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/eliminar", response_class=HTMLResponse)
 async def inbound_pallet_eliminar(
     recepcion_id: int,
     pallet_id: int,
@@ -498,9 +665,28 @@ async def inbound_pallet_eliminar(
 ):
     negocio_id = user["negocio_id"]
     try:
-        obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _assert_pallet_pertenece(db, negocio_id, recepcion_id, pallet_id)
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+
         eliminar_pallet_inbound(db, negocio_id, recepcion_id, pallet_id)
+
+        log_inbound_event(
+            "pallet_eliminado",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+        )
+
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", ok="Pallet eliminado.")
+
     except InboundDomainError as e:
+        log_inbound_error(
+            "pallet_eliminar_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            pallet_id=pallet_id,
+            error=e.message,
+        )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", error=e.message)

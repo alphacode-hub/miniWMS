@@ -34,8 +34,9 @@ class InboundLinea(Base):
     # ======================================
     # OBJETIVO DOC (oficial: contrato)
     # ======================================
+    
     cantidad_documento = Column(Float, nullable=True)
-    cantidad_recibida = Column(Float, default=0, nullable=False)
+    
 
     unidad = Column(String, nullable=True)
 
@@ -45,7 +46,13 @@ class InboundLinea(Base):
     # KG DOC (oficial si modo PESO)
     peso_kg = Column(Float, nullable=True)
 
+    # ======================================
+    # RECIBIDO REAL (DERIVADO)
+    # ======================================
+    # ⚠️ Enterprise: estos campos NO se editan desde UI.
+    # Se recalculan por reconciliación desde pallets (InboundPalletItem).
     # KG RECIBIDO REAL (reconciliación desde pallets)
+    cantidad_recibida = Column(Float, default=0, nullable=False)
     peso_recibido_kg = Column(Float, nullable=True)
 
     temperatura_objetivo = Column(Float, nullable=True)

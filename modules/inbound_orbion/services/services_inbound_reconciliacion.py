@@ -3,17 +3,30 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from core.models.enums import PalletEstado
 from core.models.inbound.lineas import InboundLinea
-from core.models.inbound.pallets import InboundPalletItem, InboundPallet
+from core.models.inbound.pallets import InboundPallet, InboundPalletItem
 
+from modules.inbound_orbion.services.services_inbound_core import (
+    InboundDomainError,
+    obtener_config_inbound,
+    obtener_recepcion_editable,
+    obtener_recepcion_segura,
+)
+
+
+# =========================================================
+# Helpers internos
+# =========================================================
 
 def _r3(v: float | None) -> float | None:
     if v is None:
         return None
     return round(float(v), 3)
+
 
 def _to_float_or_none(v: Any) -> float | None:
     if v is None:
@@ -23,10 +36,12 @@ def _to_float_or_none(v: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
+
 def _diff(fisico: float | None, doc: float | None) -> float | None:
     if fisico is None or doc is None:
         return None
     return float(fisico) - float(doc)
+
 
 def _clasificar_eje(doc: float | None, fisico: float | None, tol: float) -> str:
     if doc is None:
@@ -39,7 +54,14 @@ def _clasificar_eje(doc: float | None, fisico: float | None, tol: float) -> str:
         return "FALTANTE"
     return "SOBRANTE"
 
-def _clasificar_linea(doc_qty: float | None, doc_kg: float | None, fis_qty: float, fis_kg: float, tol: float) -> str:
+
+def _clasificar_linea(
+    doc_qty: float | None,
+    doc_kg: float | None,
+    fis_qty: float,
+    fis_kg: float,
+    tol: float,
+) -> str:
     if doc_qty is None and doc_kg is None:
         return "SIN_DOCUMENTO"
 
@@ -60,21 +82,70 @@ def _clasificar_linea(doc_qty: float | None, doc_kg: float | None, fis_qty: floa
     return "OK"
 
 
+# =========================================================
+# Fuente de verdad: pallets -> líneas
+# =========================================================
+
 def reconciliar_recepcion(
     db: Session,
     negocio_id: int,
     recepcion_id: int,
     *,
+    # tolerancia para clasificar OK vs SOBRANTE/FALTANTE
     tol: float = 1e-6,
+    # incluir detalle por línea en el retorno (para UI)
     include_lineas: bool = True,
+    # escribir campos opcionales si existen (estado_reconciliacion, diferencias, etc.)
     write_optional_fields: bool = True,
+    # fuente de verdad: qué pallets cuentan
+    # - "soft": ABIERTO + EN_PROCESO + LISTO (excluye BLOQUEADO)
+    # - "strict": solo LISTO (excluye BLOQUEADO)
+    strict: bool = False,
+    # guard editable (True por defecto; en lectura puedes desactivarlo)
+    require_editable: bool = True,
+    # commit controlado por caller (por defecto True para mantener tu comportamiento)
+    commit: bool = True,
 ) -> Dict[str, Any]:
+    """
+    Reconciliación enterprise:
+    - Fuente de verdad: InboundPalletItem (cantidad/peso real)
+    - Derivados: InboundLinea.cantidad_recibida y InboundLinea.peso_recibido_kg
+    - Clasifica estado por eje (cantidad/kg) y resumen por línea.
+
+    Guards:
+    - Multi-tenant por negocio_id
+    - (Opcional) requiere recepción editable según InboundConfig
+    - Excluye pallets BLOQUEADO siempre
+    - Modo strict: solo pallets LISTO cuentan para el físico
+    """
+
+    # Guard de recepción (segura + editable si corresponde)
+    if require_editable:
+        _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
+    else:
+        _ = obtener_recepcion_segura(db, recepcion_id, negocio_id)
+
+    # (Opcional) config inbound por si en el futuro tomas tolerancias desde ahí
+    _cfg = obtener_config_inbound(db, negocio_id)
+
+    # Estados de pallets que cuentan para la reconciliación
+    if strict:
+        estados_ok = {PalletEstado.LISTO.value}
+    else:
+        estados_ok = {
+            PalletEstado.ABIERTO.value,
+            PalletEstado.EN_PROCESO.value,
+            PalletEstado.LISTO.value,
+        }
+    # BLOQUEADO queda fuera siempre
+    estados_excluidos = {PalletEstado.BLOQUEADO.value}
 
     lineas: List[InboundLinea] = (
         db.query(InboundLinea)
         .filter(
             InboundLinea.negocio_id == negocio_id,
             InboundLinea.recepcion_id == recepcion_id,
+            InboundLinea.activo == 1,
         )
         .order_by(InboundLinea.id.asc())
         .all()
@@ -86,11 +157,13 @@ def reconciliar_recepcion(
             "lineas_actualizadas": 0,
             "totales": {"fisico_cantidad": 0.0, "fisico_kg": 0.0},
             "resumen_estados": {},
+            "pallets_considerados": {"strict": strict, "estados": sorted(list(estados_ok))},
             "lineas": [] if include_lineas else None,
         }
 
-    linea_ids = [l.id for l in lineas]
+    linea_ids = [int(l.id) for l in lineas]
 
+    # SUM físico desde pallet_items (join a pallets para filtrar por estado/recepción/tenant)
     rows = (
         db.query(
             InboundPalletItem.linea_id.label("linea_id"),
@@ -101,6 +174,8 @@ def reconciliar_recepcion(
         .filter(
             InboundPallet.negocio_id == negocio_id,
             InboundPallet.recepcion_id == recepcion_id,
+            InboundPallet.estado.in_(list(estados_ok)),
+            ~InboundPallet.estado.in_(list(estados_excluidos)),
             InboundPalletItem.negocio_id == negocio_id,
             InboundPalletItem.linea_id.in_(linea_ids),
         )
@@ -130,7 +205,8 @@ def reconciliar_recepcion(
         doc_qty = _to_float_or_none(getattr(ln, "cantidad_documento", None))
         doc_kg = _to_float_or_none(getattr(ln, "peso_kg", None))
 
-        ln.cantidad_recibida = _r3(fis_qty)
+        # ✅ DERIVADOS (snapshot) — no editables por UI
+        ln.cantidad_recibida = float(_r3(fis_qty) or 0.0)
         if hasattr(ln, "peso_recibido_kg"):
             setattr(ln, "peso_recibido_kg", _r3(fis_kg))
 
@@ -167,12 +243,21 @@ def reconciliar_recepcion(
                 }
             )
 
-    db.commit()
+    # En enterprise preferimos que el caller controle la transacción;
+    # pero mantenemos commit opcional para compatibilidad.
+    if commit:
+        db.commit()
+    else:
+        db.flush()
 
     return {
         "lineas_total": len(lineas),
         "lineas_actualizadas": actualizadas,
-        "totales": {"fisico_cantidad": _r3(total_fis_qty) or 0.0, "fisico_kg": _r3(total_fis_kg) or 0.0},
+        "totales": {
+            "fisico_cantidad": float(_r3(total_fis_qty) or 0.0),
+            "fisico_kg": float(_r3(total_fis_kg) or 0.0),
+        },
         "resumen_estados": resumen_estados,
+        "pallets_considerados": {"strict": strict, "estados": sorted(list(estados_ok))},
         "lineas": lineas_out if include_lineas else None,
     }

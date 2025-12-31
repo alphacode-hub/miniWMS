@@ -1,0 +1,274 @@
+﻿{# modules/inbound_orbion/templates/inbound_pallet_editar.html #}
+{% extends "base/base_app.html" %}
+
+{% block title %}
+ORBION · Pallet · Editar · {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{# Recepción editable viene desde backend (baseline). Si no viene, asumimos True. #}
+{% set recepcion_editable = (recepcion_editable if recepcion_editable is defined else True) %}
+{% set es_cerrada = (not recepcion_editable) %}
+
+{# Compat: si ruta no envía qs_success/qs_error, usamos query_params #}
+{% set qs_success = (qs_success if qs_success is defined else (request.query_params.get("success") if request and request.query_params else None)) %}
+{% set qs_error = (qs_error if qs_error is defined else (request.query_params.get("error") if request and request.query_params else None)) %}
+
+{% set pallet_codigo = pallet.codigo_pallet if pallet and pallet.codigo_pallet else ("Pallet #" ~ pallet.id) %}
+
+{# Estado pallet (Enum/string) #}
+{% set estado_txt = (pallet.estado.value if pallet.estado is not none and pallet.estado.value is defined else (pallet.estado|string)) %}
+{% set estado_txt = estado_txt.replace("PalletEstado.", "") %}
+{% set estado_up = (estado_txt or '')|upper %}
+
+{# Reglas UI enterprise #}
+{% set pallet_bloquea_edicion = (estado_up in ['LISTO', 'BLOQUEADO']) %}
+{% set bloqueado_total = (es_cerrada or pallet_bloquea_edicion) %}
+
+{% macro estado_badge(estado_txt) -%}
+  {% set e = (estado_txt or '')|upper %}
+  {% if e == 'ABIERTO' %}
+<span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-[11px] font-semibold text-slate-200">
+    ABIERTO
+</span>
+  {% elif e == 'EN_PROCESO' %}
+<span class="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-200">
+    EN PROCESO
+</span>
+  {% elif e == 'LISTO' %}
+<span class="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-200">
+    LISTO
+</span>
+  {% elif e == 'BLOQUEADO' %}
+<span class="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] font-semibold text-rose-200">
+    BLOQUEADO
+</span>
+  {% else %}
+<span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-[11px] font-semibold text-slate-200">
+    {{ e if e else 'ESTADO' }}
+</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Recepción · Pallet · Editar
+            </p>
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+                <span class="text-slate-500 font-normal">
+                    · {{ pallet_codigo }}
+                </span>
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl truncate">
+                {% if recepcion and recepcion.proveedor %}Proveedor: {{ recepcion.proveedor.nombre }}{% else %}Sin proveedor{% endif %}
+                {% if recepcion and recepcion.documento_ref %} · Ref: {{ recepcion.documento_ref }}{% endif %}
+            </p>
+        </div>
+
+        <div class="flex flex-col items-end gap-2 shrink-0">
+            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}"
+               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
+                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver al pallet
+            </a>
+
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                {{ estado_badge(estado_txt) }}
+                <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-[11px] font-semibold
+                  text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Ir a pallets
+                </a>
+            </div>
+        </div>
+    </header>
+
+    {% if qs_success %}
+    <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Operación realizada</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_success }}</p>
+    </section>
+    {% endif %}
+
+    {% if qs_error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ qs_error }}</p>
+    </section>
+    {% endif %}
+
+    {% if es_cerrada %}
+    <section class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] text-emerald-200">
+            Recepción cerrada: <span class="font-semibold">solo lectura</span>. No se permiten cambios.
+        </p>
+    </section>
+    {% endif %}
+
+    {% if pallet_bloquea_edicion %}
+    <section class="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] text-amber-200">
+            Pallet en estado <span class="font-semibold">{{ estado_up }}</span>: metadata bloqueada (enterprise).
+        </p>
+    </section>
+    {% endif %}
+
+    <!-- Form editar -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Editar metadata</p>
+                <p class="text-[11px] text-slate-500">
+                    Ajusta bruto/tara/temp/bultos/observaciones. Neto se deriva/valida (tara ≤ bruto).
+                </p>
+            </div>
+
+            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-300">
+                {{ pallet_codigo }}
+            </span>
+        </div>
+
+        {% if bloqueado_total %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+            <p class="text-[11px] text-slate-300 font-semibold">Edición deshabilitada.</p>
+            <p class="text-[11px] text-slate-500 mt-1">
+                {% if es_cerrada %}
+                Recepción cerrada (solo lectura).
+                {% else %}
+                Pallet en estado {{ estado_up }}.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+
+        <form method="post"
+              action="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/editar"
+              class="space-y-3">
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+
+                <div class="sm:col-span-3">
+                    <label class="block text-[10px] text-slate-500 mb-1">Bruto (kg)</label>
+                    <input name="peso_bruto_kg"
+                           placeholder="Ej: 120.500"
+                           inputmode="decimal"
+                           value="{% if pallet.peso_bruto_kg is not none %}{{ '%.3f'|format(pallet.peso_bruto_kg) }}{% endif %}"
+                           class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                                  {% if bloqueado_total %}opacity-60{% endif %}"
+                           {% if bloqueado_total %}disabled{% endif %} />
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-[10px] text-slate-500 mb-1">Tara (kg)</label>
+                    <input name="peso_tara_kg"
+                           placeholder="Ej: 20.000"
+                           inputmode="decimal"
+                           value="{% if pallet.peso_tara_kg is not none %}{{ '%.3f'|format(pallet.peso_tara_kg) }}{% endif %}"
+                           class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                                  {% if bloqueado_total %}opacity-60{% endif %}"
+                           {% if bloqueado_total %}disabled{% endif %} />
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-[10px] text-slate-500 mb-1">Temperatura (°C)</label>
+                    <input name="temperatura_promedio"
+                           placeholder="Ej: 0.0"
+                           inputmode="decimal"
+                           value="{% if pallet.temperatura_promedio is not none %}{{ '%.1f'|format(pallet.temperatura_promedio) }}{% endif %}"
+                           class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                                  {% if bloqueado_total %}opacity-60{% endif %}"
+                           {% if bloqueado_total %}disabled{% endif %} />
+                    <p class="mt-1 text-[10px] text-slate-500">0°C es válido.</p>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label class="block text-[10px] text-slate-500 mb-1">Bultos</label>
+                    <input name="bultos"
+                           placeholder="Ej: 40"
+                           inputmode="numeric"
+                           value="{% if pallet.bultos is not none %}{{ pallet.bultos }}{% endif %}"
+                           class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                                  {% if bloqueado_total %}opacity-60{% endif %}"
+                           {% if bloqueado_total %}disabled{% endif %} />
+                </div>
+
+                <div class="sm:col-span-1">
+                    <label class="block text-[10px] text-slate-500 mb-1">&nbsp;</label>
+                    <button type="submit"
+                            class="w-full h-10 inline-flex items-center justify-center rounded-xl px-4 text-[12px] font-semibold
+                                   text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.99]
+                                   transition-transform transition-colors
+                                   {% if bloqueado_total %}opacity-50 cursor-not-allowed pointer-events-none{% endif %}">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">
+                    Observaciones <span class="text-slate-600">(obligatorio para marcar LISTO)</span>
+                </label>
+                <textarea name="observaciones"
+                          rows="3"
+                          placeholder="Ej: Pallet armado por proveedor, sin daños visibles..."
+                          class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[12px] text-slate-100 placeholder:text-slate-600
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
+                                 {% if bloqueado_total %}opacity-60{% endif %}"
+                          {% if bloqueado_total %}disabled{% endif %}>{{ (pallet.observaciones or '') }}</textarea>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p class="text-[10px] text-slate-500">
+                    Tip enterprise: tara no puede superar bruto. Si pasa, el guardado se bloquea.
+                </p>
+                <p class="text-[10px] text-slate-500">
+                    Tip operativo: si ya estás <span class="text-emerald-200 font-semibold">LISTO</span>, usa Reabrir para permitir cambios.
+                </p>
+            </div>
+        </form>
+    </section>
+
+    <!-- Atajos -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Atajos</p>
+                <p class="text-[11px] text-slate-500">Navegación rápida sin perder contexto.</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}"
+               class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-[11px] font-semibold text-slate-200
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Ver detalle
+            </a>
+
+            <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+               class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-[11px] font-semibold text-slate-200
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Lista pallets
+            </a>
+
+            <a href="/inbound/recepciones/{{ recepcion.id }}"
+               class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-[11px] font-semibold text-slate-200
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                Ir a recepción
+            </a>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
