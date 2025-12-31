@@ -155,6 +155,7 @@
     <Content Include="modules\inbound_orbion\templates\inbound_fotos_recepcion.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_incidencias.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_lineas_lista.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_linea_editar.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_linea_form.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_pallets.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_pallets_detalle.html" />

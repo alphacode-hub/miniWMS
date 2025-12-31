@@ -101,7 +101,7 @@ def _resolver_conversion_desde_linea_y_producto(linea: Any) -> tuple[float | Non
     peso_unit_override = _to_float(_get_attr(linea, "peso_unitario_kg_override"))
     unid_bulto_override = _to_int(_get_attr(linea, "unidades_por_bulto_override"))
     peso_bulto_override = _to_float(_get_attr(linea, "peso_por_bulto_kg_override"))
-    bulto_nombre_override = _to_str(_get_attr(linea, "bulto_nombre_override"))
+    bulto_nombre_override = _to_str(_get_attr(linea, "nombre_bulto_override"))
 
     peso_unit_prod = _to_float(_get_attr(prod, "peso_unitario_kg")) if prod is not None else None
     unid_bulto_prod = _to_int(_get_attr(prod, "unidades_por_bulto")) if prod is not None else None

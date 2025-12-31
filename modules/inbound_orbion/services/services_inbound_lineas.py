@@ -22,7 +22,6 @@ from modules.inbound_orbion.services.inbound_linea_contract import (
     InboundLineaContractError,
 )
 
-
 MAX_LEN_LOTE: Final[int] = 120
 MAX_LEN_UNIDAD: Final[int] = 40
 MAX_LEN_OBS: Final[int] = 1500
@@ -84,17 +83,6 @@ def _to_date(v: Any) -> date | None:
     raise InboundDomainError("Fecha de vencimiento inválida.")
 
 
-def _require_positive(name: str, v: float | None, *, allow_zero: bool = False) -> None:
-    if v is None:
-        return
-    if allow_zero:
-        if v < 0:
-            raise InboundDomainError(f"{name} no puede ser negativo.")
-    else:
-        if v <= 0:
-            raise InboundDomainError(f"{name} debe ser mayor a 0.")
-
-
 def _ensure_linea_belongs(negocio_id: int, linea: InboundLinea) -> None:
     if int(getattr(linea, "negocio_id", 0)) != int(negocio_id):
         raise InboundDomainError("Línea inbound no pertenece a este negocio.")
@@ -117,7 +105,7 @@ def _get_config_flags(db: Session, negocio_id: int) -> dict[str, bool]:
     )
 
     if not cfg:
-        return {"require_lote": False, "require_fecha_vencimiento": False, "require_temperatura": True}
+        return {"require_lote": False, "require_fecha_vencimiento": False, "require_temperatura": False}
 
     return {
         "require_lote": bool(getattr(cfg, "require_lote", False)),
@@ -153,9 +141,6 @@ def listar_lineas_recepcion(
     negocio_id: int,
     recepcion_id: int,
 ) -> list[InboundLinea]:
-    print("DEBUG services_lineas InboundLinea:", InboundLinea.__module__, InboundLinea.__tablename__)
-    print("DEBUG services_lineas negocio/recepcion:", negocio_id, recepcion_id)
-
     """
     Lista líneas de una recepción (multi-tenant segura).
     """
@@ -163,11 +148,18 @@ def listar_lineas_recepcion(
 
     stmt = select(InboundLinea).where(InboundLinea.recepcion_id == recepcion.id)
 
-    # refuerza multi-tenant si existe negocio_id
     if hasattr(InboundLinea, "negocio_id"):
         stmt = stmt.where(InboundLinea.negocio_id == negocio_id)
 
-    stmt = stmt.order_by(InboundLinea.id.desc())
+    if hasattr(InboundLinea, "activo"):
+        stmt = stmt.where(InboundLinea.activo == 1)
+
+    # drafts primero
+    if hasattr(InboundLinea, "es_draft"):
+        stmt = stmt.order_by(InboundLinea.es_draft.desc(), InboundLinea.id.desc())
+    else:
+        stmt = stmt.order_by(InboundLinea.id.desc())
+
     return list(db.execute(stmt).scalars().all())
 
 
@@ -204,8 +196,6 @@ def crear_linea_inbound(
     observaciones: str | None = None,
     peso_kg: float | str | None = None,
     bultos: int | str | None = None,
-
-    # ✅ overrides de conversión (solo estimados UI)
     peso_unitario_kg_override: float | str | None = None,
     unidades_por_bulto_override: int | str | None = None,
     peso_por_bulto_kg_override: float | str | None = None,
@@ -240,9 +230,7 @@ def crear_linea_inbound(
         temperatura_recibida=temp_rec,
     )
 
-    # =========================================================
-    # ✅ CONTRATO: objetivo doc (modo oficial)
-    # =========================================================
+    # objetivo doc
     tiene_cant = (cant_doc is not None and cant_doc > 0)
     tiene_kg = (kg_doc is not None and kg_doc > 0)
 
@@ -263,11 +251,9 @@ def crear_linea_inbound(
             raise InboundDomainError("Peso (kg) debe ser > 0 para líneas por peso.")
         if cant_rec_norm is not None and cant_rec_norm < 0:
             raise InboundDomainError("Cantidad recibida no puede ser negativa.")
-        cant_rec_norm = None  # enterprise: no aplica
+        cant_rec_norm = 0.0  # DB: no-null
 
-    # =========================================================
-    # ✅ Overrides (validaciones enterprise)
-    # =========================================================
+    # overrides
     pu_ov = _to_float(peso_unitario_kg_override)
     ub_ov = _to_int(unidades_por_bulto_override)
     pb_ov = _to_float(peso_por_bulto_kg_override)
@@ -287,19 +273,19 @@ def crear_linea_inbound(
         lote=lote_norm,
         fecha_vencimiento=fv,
         cantidad_documento=(float(cant_doc) if tiene_cant else None),
-        cantidad_recibida=(float(cant_rec_norm) if (modo == InboundLineaModo.CANTIDAD and cant_rec_norm is not None) else None),
+        cantidad_recibida=(float(cant_rec_norm) if cant_rec_norm is not None else 0.0),
         unidad=unidad_norm,
         temperatura_objetivo=temp_obj,
         temperatura_recibida=temp_rec,
         observaciones=obs_norm,
         peso_kg=(float(kg_doc) if tiene_kg else None),
         bultos=bult,
-
-        # overrides
         peso_unitario_kg_override=pu_ov,
         unidades_por_bulto_override=ub_ov,
         peso_por_bulto_kg_override=pb_ov,
         nombre_bulto_override=nb_ov,
+        es_draft=0,
+        activo=1,
     )
 
     if hasattr(linea, "peso_recibido_kg"):
@@ -326,13 +312,15 @@ def actualizar_linea_inbound(
     *,
     negocio_id: int,
     linea_id: int,
+    allow_draft: bool = False,
+    finalize: bool = False,
     **updates: Any,
 ) -> InboundLinea:
     """
     Update enterprise-safe:
     - Solo si la recepción está editable
-    - Revalida requeridos (config)
-    - Revalida contrato
+    - allow_draft=True permite guardar parcialmente sin exigir contrato/requeridos.
+    - finalize=True fuerza validación completa (contrato + requeridos) y marca es_draft=0.
     """
     linea = obtener_linea(db, negocio_id=negocio_id, linea_id=linea_id)
 
@@ -341,16 +329,24 @@ def actualizar_linea_inbound(
 
     flags = _get_config_flags(db, negocio_id)
 
-    # producto_id
-    if "producto_id" in updates and updates["producto_id"] is not None:
-        producto = validar_producto_para_negocio(db, int(updates["producto_id"]), negocio_id)
-        linea.producto_id = producto.id
+    # producto_id (permitimos asignar producto en draft)
+    if "producto_id" in updates:
+        pid = updates.get("producto_id")
+        if pid is not None and str(pid).strip() != "":
+            producto = validar_producto_para_negocio(db, int(pid), negocio_id)
+            linea.producto_id = producto.id
+        else:
+            # permitir limpiar producto solo si draft y se quiere
+            if allow_draft:
+                linea.producto_id = None
 
     # Compat: frontend → DB
     if "cantidad_esperada" in updates:
         updates["cantidad_documento"] = updates.pop("cantidad_esperada")
 
     for field, value in list(updates.items()):
+        if field == "producto_id":
+            continue
         if not hasattr(linea, field):
             continue
 
@@ -372,6 +368,8 @@ def actualizar_linea_inbound(
             "peso_por_bulto_kg_override",
         ):
             value = _to_float(value)
+            if field == "cantidad_recibida" and value is None:
+                value = 0.0
         elif field in ("bultos", "unidades_por_bulto_override"):
             value = _to_int(value)
         elif field == "nombre_bulto_override":
@@ -379,21 +377,10 @@ def actualizar_linea_inbound(
 
         setattr(linea, field, value)
 
-    # requeridos por config
-    _enforce_required_fields(
-        require_lote=flags["require_lote"],
-        require_fecha_vencimiento=flags["require_fecha_vencimiento"],
-        require_temperatura=flags["require_temperatura"],
-        lote=_clean_str(getattr(linea, "lote", None), max_len=MAX_LEN_LOTE),
-        fecha_vencimiento=getattr(linea, "fecha_vencimiento", None),
-        temperatura_recibida=getattr(linea, "temperatura_recibida", None),
-    )
-
-    # validaciones numéricas
+    # Siempre validamos negativos básicos (incluso en draft)
     if getattr(linea, "bultos", None) is not None and getattr(linea, "bultos") < 0:
         raise InboundDomainError("Bultos no puede ser negativo.")
 
-    # Overrides: si vienen, deben ser > 0
     pu_ov = getattr(linea, "peso_unitario_kg_override", None)
     ub_ov = getattr(linea, "unidades_por_bulto_override", None)
     pb_ov = getattr(linea, "peso_por_bulto_kg_override", None)
@@ -405,11 +392,43 @@ def actualizar_linea_inbound(
     if pb_ov is not None and pb_ov <= 0:
         raise InboundDomainError("Override peso por bulto (kg) debe ser > 0.")
 
-    # Revalida contrato final
-    try:
-        _ = normalizar_linea(linea, allow_draft=False)
-    except InboundLineaContractError as exc:
-        raise InboundDomainError(f"Línea inválida según contrato: {str(exc)}") from exc
+    # Si es finalize, exigimos todo
+    if finalize:
+        allow_draft = False
+
+    if not allow_draft:
+        # requeridos por config (solo si no estamos guardando borrador)
+        _enforce_required_fields(
+            require_lote=flags["require_lote"],
+            require_fecha_vencimiento=flags["require_fecha_vencimiento"],
+            require_temperatura=flags["require_temperatura"],
+            lote=_clean_str(getattr(linea, "lote", None), max_len=MAX_LEN_LOTE),
+            fecha_vencimiento=getattr(linea, "fecha_vencimiento", None),
+            temperatura_recibida=getattr(linea, "temperatura_recibida", None),
+        )
+
+        # contrato final
+        try:
+            _ = normalizar_linea(linea, allow_draft=False)
+        except InboundLineaContractError as exc:
+            raise InboundDomainError(f"Línea inválida según contrato: {str(exc)}") from exc
+
+        # si finaliza, baja el flag draft
+        if hasattr(linea, "es_draft"):
+            linea.es_draft = 0
+
+    else:
+        # borrador: contrato tolerante (si algo está mal, preferimos no romper guardado)
+        # pero sí podemos intentar normalizar para detectar negativos / incoherencias graves
+        try:
+            _ = normalizar_linea(linea, allow_draft=True)
+        except Exception:
+            # no bloqueamos guardado de borrador por contrato
+            pass
+
+        # mantener es_draft=1 si existe
+        if hasattr(linea, "es_draft"):
+            linea.es_draft = 1
 
     try:
         db.commit()

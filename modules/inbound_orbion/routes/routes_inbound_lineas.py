@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.models import Producto
 from core.models.inbound.recepciones import InboundRecepcion
-from core.services.services_audit import audit, AuditAction
 
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
@@ -26,6 +25,8 @@ from modules.inbound_orbion.services.services_inbound_lineas import (
     crear_linea_inbound,
     eliminar_linea_inbound,
     listar_lineas_recepcion,
+    obtener_linea,
+    actualizar_linea_inbound,
 )
 from modules.inbound_orbion.services.services_inbound_logging import (
     log_inbound_error,
@@ -49,9 +50,6 @@ def _qp(msg: str) -> str:
 
 
 def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> RedirectResponse:
-    """
-    Redirección consistente para UI (mensajes por querystring).
-    """
     if ok:
         sep = "&" if "?" in url else "?"
         url = f"{url}{sep}success={_qp(ok)}"
@@ -79,11 +77,6 @@ def _to_str_or_none(v: Any) -> str | None:
 
 
 def _to_float_or_none(v: Any) -> float | None:
-    """
-    - None / "" => None
-    - "10,5" => 10.5
-    - 0 => 0.0 (lo dejamos pasar; el service decide si lo acepta)
-    """
     if v is None:
         return None
     if isinstance(v, str):
@@ -138,6 +131,16 @@ def _listar_productos_activos(db: Session, negocio_id: int) -> list[Producto]:
     )
 
 
+def _recepcion_editable_bool(recepcion: InboundRecepcion) -> bool:
+    # baseline: considera "CERRADO" como no editable, pero si cambias enums,
+    # lo correcto es que obtener_recepcion_editable sea fuente de verdad.
+    try:
+        est = recepcion.estado.name if recepcion.estado is not None else None
+    except Exception:
+        est = None
+    return (est != "CERRADO")
+
+
 # ============================================================
 # LISTA
 # ============================================================
@@ -157,6 +160,8 @@ async def inbound_lineas_lista(
         recepcion = obtener_recepcion_segura(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
         lineas = listar_lineas_recepcion(db=db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
+        recepcion_editable = _recepcion_editable_bool(recepcion)
+
         log_inbound_event(
             "lineas_lista_view",
             negocio_id=negocio_id,
@@ -174,6 +179,7 @@ async def inbound_lineas_lista(
                 "lineas": lineas,
                 "qs_success": ok,
                 "qs_error": error,
+                "recepcion_editable": recepcion_editable,
             },
         )
 
@@ -229,9 +235,8 @@ async def inbound_nueva_linea_form(
 
 
 # ============================================================
-# CREAR LINEA (UI libre, reglas en service)
+# CREAR LINEA
 # ============================================================
-
 
 @router.post("/recepciones/{recepcion_id}/lineas", response_class=HTMLResponse)
 async def inbound_agregar_linea(
@@ -239,25 +244,19 @@ async def inbound_agregar_linea(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
-    # Producto
     producto_id: str = Form(""),
     nuevo_producto_nombre: str = Form(""),
     nuevo_producto_unidad_base: str = Form(""),
-    # Campos línea
     lote: str = Form(""),
     fecha_vencimiento: str = Form(""),
     unidad: str = Form(""),
     observaciones: str = Form(""),
     bultos: str = Form(""),
-    # Documento / objetivo
     cantidad_documento: str = Form(""),
     kilos: str = Form(""),
-    # Lecturas / recibidos (opcional)
     cantidad_recibida: str = Form(""),
     temperatura_objetivo: str = Form(""),
     temperatura_recibida: str = Form(""),
-
-    # ✅ NUEVO: Overrides conversión (solo estimados UI)
     peso_unitario_kg_override: str = Form(""),
     unidades_por_bulto_override: str = Form(""),
     peso_por_bulto_kg_override: str = Form(""),
@@ -265,9 +264,7 @@ async def inbound_agregar_linea(
 ):
     negocio_id = user["negocio_id"]
 
-
     try:
-        # ✅ Coherencia enterprise: si no es editable, no creamos
         obtener_recepcion_editable(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
 
         # Resolver producto
@@ -311,7 +308,6 @@ async def inbound_agregar_linea(
         temp_rec = _to_float_or_none(temperatura_recibida)
         bultos_i = _to_int_or_none(bultos)
 
-        # ✅ overrides parse
         pu_ov = _to_float_or_none(peso_unitario_kg_override)
         ub_ov = _to_int_or_none(unidades_por_bulto_override)
         pb_ov = _to_float_or_none(peso_por_bulto_kg_override)
@@ -332,23 +328,10 @@ async def inbound_agregar_linea(
             observaciones=_to_str_or_none(observaciones),
             peso_kg=kg_doc,
             bultos=bultos_i,
-
-            # ✅ overrides
             peso_unitario_kg_override=pu_ov,
             unidades_por_bulto_override=ub_ov,
             peso_por_bulto_kg_override=pb_ov,
             nombre_bulto_override=nb_ov,
-        )
-
-        registrar_auditoria(
-            db=db,
-            user=user,
-            accion="INBOUND_AGREGAR_LINEA",
-            detalle={
-                "recepcion_id": recepcion_id,
-                "linea_id": linea.id,
-                "producto_id": producto_obj.id,
-            },
         )
 
         log_inbound_event(
@@ -387,6 +370,206 @@ async def inbound_agregar_linea(
 
 
 # ============================================================
+# EDITAR (GET)
+# ============================================================
+
+@router.get("/recepciones/{recepcion_id}/lineas/{linea_id}/editar", response_class=HTMLResponse)
+async def inbound_editar_linea_form(
+    recepcion_id: int,
+    linea_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+):
+    negocio_id = user["negocio_id"]
+    error = request.query_params.get("error")
+    ok = request.query_params.get("success")
+
+    recepcion = _load_recepcion_or_404(db, negocio_id, recepcion_id)
+
+    # multi-tenant + existencia
+    linea = obtener_linea(db, negocio_id=negocio_id, linea_id=linea_id)
+    if int(linea.recepcion_id) != int(recepcion_id):
+        raise HTTPException(status_code=404, detail="Línea no pertenece a esta recepción")
+
+    recepcion_editable = _recepcion_editable_bool(recepcion)
+    es_draft = bool(getattr(linea, "es_draft", 0) == 1)
+
+    # Nota: NO listamos productos aquí (editar no permite cambiar producto).
+    return templates.TemplateResponse(
+        "inbound_linea_editar.html",
+        {
+            "request": request,
+            "user": user,
+            "recepcion": recepcion,
+            "linea": linea,
+            "error": error,
+            "qs_success": ok,
+            "recepcion_editable": recepcion_editable,
+            "es_draft": es_draft,
+            "form_action": f"/inbound/recepciones/{recepcion_id}/lineas/{linea_id}/editar",
+        },
+    )
+
+
+# ============================================================
+# EDITAR (POST) - guarda borrador o finaliza
+# ============================================================
+
+@router.post("/recepciones/{recepcion_id}/lineas/{linea_id}/editar", response_class=HTMLResponse)
+async def inbound_editar_linea_submit(
+    recepcion_id: int,
+    linea_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(inbound_roles_dep()),
+    # acción
+    save_mode: str = Form("final"),  # "draft" o "final"
+    # Línea
+    lote: str = Form(""),
+    fecha_vencimiento: str = Form(""),
+    unidad: str = Form(""),
+    observaciones: str = Form(""),
+    bultos: str = Form(""),
+    cantidad_documento: str = Form(""),
+    kilos: str = Form(""),
+    # cantidad_recibida: IGNORADO (reconciliación)
+    cantidad_recibida: str = Form(""),
+    temperatura_objetivo: str = Form(""),
+    temperatura_recibida: str = Form(""),
+    # overrides
+    peso_unitario_kg_override: str = Form(""),
+    unidades_por_bulto_override: str = Form(""),
+    peso_por_bulto_kg_override: str = Form(""),
+    nombre_bulto_override: str = Form(""),
+):
+    negocio_id = user["negocio_id"]
+
+    try:
+        # Fuente de verdad: si está cerrada, NO se puede editar
+        obtener_recepcion_editable(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
+
+        linea = obtener_linea(db, negocio_id=negocio_id, linea_id=linea_id)
+        if int(linea.recepcion_id) != int(recepcion_id):
+            raise HTTPException(status_code=404, detail="Línea no pertenece a esta recepción")
+
+        es_draft = bool(getattr(linea, "es_draft", 0) == 1)
+
+        want_draft = (save_mode or "").strip().lower() == "draft"
+        want_final = not want_draft
+
+        fecha_ven_dt = _parse_date_iso(fecha_vencimiento)
+
+        # ✅ Base updates (sin producto, sin cantidad_recibida)
+        updates: dict[str, Any] = {
+            "lote": _to_str_or_none(lote),
+            "fecha_vencimiento": fecha_ven_dt,
+            "unidad": _to_str_or_none(unidad),
+            "observaciones": _to_str_or_none(observaciones),
+            "bultos": _to_int_or_none(bultos),
+            "cantidad_documento": _to_float_or_none(cantidad_documento),
+            "peso_kg": _to_float_or_none(kilos),
+            # "cantidad_recibida": IGNORADO
+            "temperatura_objetivo": _to_float_or_none(temperatura_objetivo),
+            "temperatura_recibida": _to_float_or_none(temperatura_recibida),
+            "peso_unitario_kg_override": _to_float_or_none(peso_unitario_kg_override),
+            "unidades_por_bulto_override": _to_int_or_none(unidades_por_bulto_override),
+            "peso_por_bulto_kg_override": _to_float_or_none(peso_por_bulto_kg_override),
+            "nombre_bulto_override": _to_str_or_none(nombre_bulto_override),
+        }
+
+        # ============================================================
+        # DRAFT SAVE (suave): solo permitido si ES draft
+        # - No cambia producto
+        # - No fuerza contrato
+        # ============================================================
+        if want_draft:
+            if not es_draft:
+                raise InboundDomainError("Esta línea ya es oficial. No se puede guardar como borrador.")
+
+            for k, v in updates.items():
+                if hasattr(linea, k):
+                    setattr(linea, k, v)
+
+            db.commit()
+            db.refresh(linea)
+
+            log_inbound_event(
+                "linea_draft_guardada",
+                negocio_id=negocio_id,
+                user_email=user.get("email"),
+                recepcion_id=recepcion_id,
+                linea_id=linea_id,
+            )
+
+            return _redirect(
+                f"/inbound/recepciones/{recepcion_id}/lineas/{linea_id}/editar",
+                ok="Borrador guardado.",
+            )
+
+        # ============================================================
+        # FINAL SAVE (estricto): contrato + requeridos
+        # - Producto SIEMPRE bloqueado
+        # - Guard rail: draft sin producto NO puede finalizar
+        # - Si finaliza draft: es_draft pasa a 0 en la misma operación
+        # ============================================================
+
+        if es_draft and not getattr(linea, "producto_id", None):
+            raise InboundDomainError(
+                "Este borrador no tiene producto asignado. Elimina la línea y crea una nueva con producto válido."
+            )
+
+        # si se finaliza un draft, lo marcamos antes de validar/committear
+        if es_draft and hasattr(linea, "es_draft"):
+            setattr(linea, "es_draft", 0)
+
+        _ = actualizar_linea_inbound(
+            db=db,
+            negocio_id=negocio_id,
+            linea_id=linea_id,
+            **updates,
+        )
+
+        log_inbound_event(
+            "linea_actualizada",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            linea_id=linea_id,
+        )
+
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/lineas", ok="Línea actualizada.")
+
+    except InboundDomainError as e:
+        log_inbound_error(
+            "linea_editar_domain_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            linea_id=linea_id,
+            error=e.message,
+        )
+        return _redirect(
+            f"/inbound/recepciones/{recepcion_id}/lineas/{linea_id}/editar",
+            error=e.message,
+        )
+
+    except Exception as e:
+        log_inbound_error(
+            "linea_editar_unhandled",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            recepcion_id=recepcion_id,
+            linea_id=linea_id,
+            error=str(e),
+        )
+        return _redirect(
+            f"/inbound/recepciones/{recepcion_id}/lineas/{linea_id}/editar",
+            error="Error inesperado al editar. Revisa logs.",
+        )
+
+
+# ============================================================
 # ELIMINAR
 # ============================================================
 
@@ -404,13 +587,6 @@ async def inbound_eliminar_linea(
         obtener_recepcion_editable(db=db, recepcion_id=recepcion_id, negocio_id=negocio_id)
 
         eliminar_linea_inbound(db=db, negocio_id=negocio_id, linea_id=linea_id)
-
-        registrar_auditoria(
-            db=db,
-            user=user,
-            accion="INBOUND_ELIMINAR_LINEA",
-            detalle={"recepcion_id": recepcion_id, "linea_id": linea_id},
-        )
 
         log_inbound_event(
             "linea_eliminada",
@@ -462,14 +638,17 @@ async def inbound_lineas_reconciliar(
     negocio_id = user["negocio_id"]
 
     try:
-        # valida multi-tenant + existencia
         _ = obtener_recepcion_segura(db=db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
         resumen = reconciliar_recepcion(db=db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
+        tot = (resumen.get("totales") or {})
+        kg = tot.get("fisico_kg", 0.0)
+        qty = tot.get("fisico_cantidad", 0.0)
+
         msg = (
             f"Reconciliación OK · líneas {resumen.get('lineas_actualizadas', 0)}/{resumen.get('lineas_total', 0)}"
-            f" · kg {resumen.get('total_peso_kg', 0)} · cant {resumen.get('total_cantidad', 0)}"
+            f" · kg {kg} · cant {qty}"
         )
 
         log_inbound_event(

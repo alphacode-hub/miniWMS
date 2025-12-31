@@ -1,10 +1,20 @@
 ﻿# core/models/inbound/lineas.py
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, Text
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    ForeignKey,
+    Float,
+    Text,
+    DateTime,
+)
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from core.models.time import utcnow
 
 
 class InboundLinea(Base):
@@ -45,12 +55,22 @@ class InboundLinea(Base):
     # =========================================================
     # ✅ ENTERPRISE: Overrides de conversión (solo estimados UI)
     # =========================================================
-    # Si el documento/realidad del proveedor difiere del maestro de producto
     peso_unitario_kg_override = Column(Float, nullable=True)
     unidades_por_bulto_override = Column(Integer, nullable=True)
     peso_por_bulto_kg_override = Column(Float, nullable=True)
     nombre_bulto_override = Column(String, nullable=True)
 
+    # =========================================================
+    # ✅ ENTERPRISE: Origen + lifecycle
+    # =========================================================
+    # DRAFT: precargada desde plantilla/cita
+    es_draft = Column(Integer, default=0, nullable=False, index=True)  # 0/1 (SQLite-friendly)
+    activo = Column(Integer, default=1, nullable=False, index=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    # Relaciones
     recepcion = relationship("InboundRecepcion", back_populates="lineas")
     producto = relationship("Producto")
 
