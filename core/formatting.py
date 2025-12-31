@@ -1,8 +1,8 @@
 ﻿from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime,timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any 
 
 try:
     from zoneinfo import ZoneInfo
@@ -26,6 +26,39 @@ def to_cl_tz(dt: datetime | None) -> datetime | None:
         return dt.astimezone(_CL_TZ)
 
     return dt
+
+
+
+def assume_cl_local_to_utc(dt: datetime | None) -> datetime | None:
+    """
+    Si dt viene naive, lo interpretamos como hora local Chile y lo convertimos a UTC tz-aware.
+    Si viene aware, lo convertimos a UTC.
+    """
+    if dt is None:
+        return None
+
+    if dt.tzinfo is None:
+        if _CL_TZ:
+            dt_local = dt.replace(tzinfo=_CL_TZ)
+            return dt_local.astimezone(timezone.utc)
+        # fallback sin zoneinfo: asumimos UTC
+        return dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(timezone.utc)
+
+
+def ensure_utc_aware(dt: datetime | None) -> datetime | None:
+    """
+    Asegura tz-aware en UTC.
+    - naive => UTC
+    - aware => UTC
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 
 
 def cl_datetime(

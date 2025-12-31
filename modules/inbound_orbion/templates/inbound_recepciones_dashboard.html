@@ -33,6 +33,26 @@
     </header>
 
     {# =========================
+    ALERTAS (querystring ok/error)
+    ========================= #}
+    {% set qs_ok = ok if ok is defined else (request.query_params.get("ok") if request and request.query_params is defined else None) %}
+    {% set qs_error = error if error is defined else (request.query_params.get("error") if request and request.query_params is defined else None) %}
+
+    {% if qs_ok %}
+    <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Listo</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_ok }}</p>
+    </section>
+    {% endif %}
+
+    {% if qs_error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ qs_error }}</p>
+    </section>
+    {% endif %}
+
+    {# =========================
     ACCIONES RÁPIDAS
     ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-3">
@@ -55,6 +75,7 @@
                     Configuración
                 </a>
                 {% endif %}
+
                 <a href="/inbound/proveedores"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
                   text-[11px] font-medium text-slate-200 bg-slate-900
@@ -62,7 +83,6 @@
                     Proveedores
                 </a>
 
-                {# Si aún no tienes citas, mejor no romper UX: #}
                 <a href="/inbound/citas"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
                   text-[11px] font-medium text-slate-200 bg-slate-900
@@ -76,8 +96,6 @@
                   active:scale-[0.97] transition-transform transition-colors">
                     Nueva recepción
                 </a>
-
-
 
                 {% if inbound_analytics_enabled %}
                 <a href="/inbound/analytics"
@@ -186,6 +204,7 @@
         <div class="space-y-3">
             {% for r in recepciones %}
             {% set estado_name = r.estado.name if r.estado is not none and r.estado.name is defined else (r.estado|string) %}
+            {% set origen_name = r.origen.name if r.origen is not none and r.origen.name is defined else (r.origen|string if r.origen is defined else None) %}
 
             <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
                           hover:border-cyan-400/60 hover:bg-slate-900/80 transition-colors">
@@ -203,7 +222,7 @@
                         </a>
 
                         <p class="text-[11px] text-slate-400 truncate">
-                            {{ r.documento_ref or "Sin documento / referencia" }}
+                            {{ r.documento_ref or "Sin documento / referencia (se exige al cerrar)" }}
                         </p>
 
                         <div class="mt-2 flex flex-wrap gap-2">
@@ -225,7 +244,6 @@
                             hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                                 Checklist
                             </a>
-
 
                             <a href="/inbound/recepciones/{{ r.id }}/documentos"
                                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
@@ -251,20 +269,33 @@
                     </div>
 
                     <div class="flex flex-col items-end gap-1 shrink-0">
-                        <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                  {% if estado_name == 'CERRADO' %}
-                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-                  {% elif estado_name == 'EN_DESCARGA' %}
-                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-                  {% elif estado_name == 'EN_CONTROL_CALIDAD' %}
-                    bg-amber-500/10 text-amber-200 border-amber-500/40
-                  {% elif estado_name == 'EN_ESPERA' %}
-                    bg-sky-500/10 text-sky-200 border-sky-500/40
-                  {% else %}
-                    bg-slate-700/40 text-slate-100 border-slate-600
-                  {% endif %}">
-                            {{ estado_name.replace('_', ' ') }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            {% if origen_name %}
+                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                                {% if origen_name == 'CITA' %}
+                                    bg-sky-500/10 text-sky-200 border-sky-500/40
+                                {% else %}
+                                    bg-slate-700/40 text-slate-100 border-slate-600
+                                {% endif %}">
+                                {{ origen_name }}
+                            </span>
+                            {% endif %}
+
+                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                                {% if estado_name == 'CERRADO' %}
+                                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
+                                {% elif estado_name == 'EN_DESCARGA' %}
+                                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
+                                {% elif estado_name == 'EN_CONTROL_CALIDAD' %}
+                                    bg-amber-500/10 text-amber-200 border-amber-500/40
+                                {% elif estado_name == 'EN_ESPERA' %}
+                                    bg-sky-500/10 text-sky-200 border-sky-500/40
+                                {% else %}
+                                    bg-slate-700/40 text-slate-100 border-slate-600
+                                {% endif %}">
+                                {{ estado_name.replace('_', ' ') }}
+                            </span>
+                        </div>
 
                         <p class="text-[10px] text-slate-400 whitespace-nowrap">
                             {% if r.created_at %}

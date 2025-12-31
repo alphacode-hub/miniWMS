@@ -17,6 +17,9 @@ from core.models.inbound.plantillas import (
 )
 from core.models.inbound.proveedores import Proveedor
 
+# ✅ TZ helpers (enterprise)
+from core.formatting import assume_cl_local_to_utc, to_cl_tz
+
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
 
 
@@ -27,6 +30,15 @@ from modules.inbound_orbion.services.services_inbound_core import InboundDomainE
 def _strip(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
     return s or None
+
+
+def _as_utc_from_user(dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Enterprise rule:
+    - UI (form) manda naive => interpretamos como Chile local y guardamos UTC aware.
+    - Si viene aware => la convertimos a UTC.
+    """
+    return assume_cl_local_to_utc(dt)
 
 
 def _get_proveedor_opcional(db: Session, negocio_id: int, proveedor_id: Optional[int]) -> Optional[Proveedor]:
@@ -47,13 +59,12 @@ def obtener_cita_segura(db: Session, negocio_id: int, cita_id: int) -> InboundCi
             joinedload(InboundCita.proveedor),
             joinedload(InboundCita.recepcion),
         )
-        .filter(InboundCita.id == cita_id, InboundCita.negocio_id == negocio_id)
+        .filter(InboundCita.id == int(cita_id), InboundCita.negocio_id == int(negocio_id))
         .first()
     )
     if not cita:
         raise InboundDomainError("Cita no encontrada para este negocio.")
     return cita
-
 
 
 def _obtener_plantilla_segura(db: Session, negocio_id: int, plantilla_id: int) -> InboundPlantillaProveedor:
@@ -72,6 +83,7 @@ def _obtener_plantilla_segura(db: Session, negocio_id: int, plantilla_id: int) -
         raise InboundDomainError("La plantilla seleccionada está inactiva.")
     return tpl
 
+
 def listar_citas(
     db: Session,
     negocio_id: int,
@@ -80,46 +92,89 @@ def listar_citas(
     estado: Optional[CitaEstado] = None,
     limit: int = 200,
 ) -> List[InboundCita]:
+    """
+    Listado de citas.
+    Nota: los filtros desde/hasta normalmente vienen desde UI (naive),
+    por lo que normalizamos a UTC-aware antes de comparar con DB.
+    """
+    d_desde = _as_utc_from_user(desde) if desde else None
+    d_hasta = _as_utc_from_user(hasta) if hasta else None
+
     q = (
         db.query(InboundCita)
         .options(
             joinedload(InboundCita.proveedor),
             joinedload(InboundCita.recepcion),
         )
-        .filter(InboundCita.negocio_id == negocio_id)
+        .filter(InboundCita.negocio_id == int(negocio_id))
     )
 
-    if desde:
-        q = q.filter(InboundCita.fecha_programada >= desde)
-    if hasta:
-        q = q.filter(InboundCita.fecha_programada <= hasta)
+    if d_desde:
+        q = q.filter(InboundCita.fecha_programada >= d_desde)
+    if d_hasta:
+        q = q.filter(InboundCita.fecha_programada <= d_hasta)
     if estado:
         q = q.filter(InboundCita.estado == estado)
 
-    return q.order_by(InboundCita.fecha_programada.asc()).limit(limit).all()
+    return q.order_by(InboundCita.fecha_programada.asc()).limit(int(limit)).all()
+
 
 # ==========================================================
 # Estado sincronizado: recepción -> cita
 # ==========================================================
+# ⚠️ IMPORTANTE:
+# La CITA representa planificación logística.
+# La RECEPCIÓN representa ejecución operativa.
+# Por eso:
+# - ARRIBADO se activa al primer contacto físico (EN_ESPERA).
+# - La descarga y control no cambian el estado de la cita.
 
 def estado_cita_desde_recepcion(estado_recepcion: RecepcionEstado) -> CitaEstado:
-    if estado_recepcion in (RecepcionEstado.PRE_REGISTRADO, RecepcionEstado.EN_ESPERA):
-        return CitaEstado.PROGRAMADA
-    if estado_recepcion in (RecepcionEstado.EN_DESCARGA, RecepcionEstado.EN_CONTROL_CALIDAD):
-        return CitaEstado.ARRIBADO
-    if estado_recepcion == RecepcionEstado.CERRADO:
-        return CitaEstado.COMPLETADA
+    """
+    Regla oficial (enterprise):
+
+    RECEPCIÓN → CITA
+    -----------------
+    PRE_REGISTRADO        → PROGRAMADA
+    EN_ESPERA             → ARRIBADO
+    EN_DESCARGA           → ARRIBADO
+    EN_CONTROL_CALIDAD    → ARRIBADO
+    CERRADO               → COMPLETADA
+    CANCELADO             → CANCELADA
+    """
+
     if estado_recepcion == RecepcionEstado.CANCELADO:
         return CitaEstado.CANCELADA
+
+    if estado_recepcion == RecepcionEstado.CERRADO:
+        return CitaEstado.COMPLETADA
+
+    if estado_recepcion in (
+        RecepcionEstado.EN_ESPERA,
+        RecepcionEstado.EN_DESCARGA,
+        RecepcionEstado.EN_CONTROL_CALIDAD,
+    ):
+        return CitaEstado.ARRIBADO
+
+    if estado_recepcion == RecepcionEstado.PRE_REGISTRADO:
+        return CitaEstado.PROGRAMADA
+
+    # Fallback seguro (nunca debería ocurrir)
     return CitaEstado.PROGRAMADA
 
 
 def sync_cita_desde_recepcion(db: Session, recepcion: InboundRecepcion) -> None:
-    if not recepcion.cita_id:
+    """
+    Sincroniza estado de cita basado en estado de recepción.
+    Importante: NO hace commit (se llama dentro de transacciones existentes).
+    """
+    if not getattr(recepcion, "cita_id", None):
         return
+
     cita = db.get(InboundCita, int(recepcion.cita_id))
     if not cita:
         return
+
     nuevo = estado_cita_desde_recepcion(recepcion.estado)
     if cita.estado != nuevo:
         cita.estado = nuevo
@@ -142,11 +197,11 @@ def _aplicar_plantilla_a_recepcion(
     Idempotente: si se llama 2 veces, deja el mismo resultado.
     """
 
-    # ✅ idempotencia: evitamos duplicados por reintentos/doble submit
+    # ✅ idempotencia: eliminamos líneas previas de esa recepción
     db.query(InboundLinea).filter(
         InboundLinea.negocio_id == int(negocio_id),
         InboundLinea.recepcion_id == int(recepcion_id),
-    ).delete()
+    ).delete(synchronize_session=False)
 
     lineas_tpl = (
         db.query(InboundPlantillaProveedorLinea)
@@ -167,13 +222,10 @@ def _aplicar_plantilla_a_recepcion(
             descripcion=_strip(getattr(lt, "descripcion", None)),
             unidad=_strip(getattr(lt, "unidad", None)),
         )
-
-        # Nota: lt tiene sku_proveedor/ean13 pero InboundLinea no los tiene -> no intentamos setear.
         db.add(ln)
         creadas += 1
 
     return creadas
-
 
 
 def crear_cita_y_recepcion(
@@ -192,42 +244,57 @@ def crear_cita_y_recepcion(
     if not fecha_programada:
         raise InboundDomainError("La fecha programada es obligatoria.")
 
+    # ✅ Guardamos en UTC aware (naive UI => Chile local => UTC)
+    fecha_programada_utc = _as_utc_from_user(fecha_programada)
+    if not fecha_programada_utc:
+        raise InboundDomainError("Fecha programada inválida.")
+
+    # ✅ Código basado en hora Chile (para que INB-...-1200 sea la hora real del negocio)
+    fp_local = to_cl_tz(fecha_programada_utc) or fecha_programada_utc
+    codigo = f"INB-{fp_local.strftime('%Y%m%d-%H%M')}"
+
     ref = _strip(referencia)
     nt = _strip(notas)
 
-    prov = _get_proveedor_opcional(db, negocio_id, proveedor_id)
+    # Validación proveedor (si viene)
+    _get_proveedor_opcional(db, negocio_id, proveedor_id)
 
-    plantilla: InboundPlantillaProveedor | None = None
+    # Plantilla (si viene) puede inferir proveedor
     if plantilla_id:
         plantilla = _obtener_plantilla_segura(db, negocio_id, int(plantilla_id))
         if not proveedor_id:
             proveedor_id = int(plantilla.proveedor_id)
-            prov = _get_proveedor_opcional(db, negocio_id, proveedor_id)
+            _get_proveedor_opcional(db, negocio_id, proveedor_id)
         if int(plantilla.proveedor_id) != int(proveedor_id):
             raise InboundDomainError("La plantilla seleccionada no pertenece al proveedor elegido.")
 
-    codigo = f"INB-{fecha_programada.strftime('%Y%m%d-%H%M')}"
-
+    # 1) Crear cita
     cita = InboundCita(
         negocio_id=int(negocio_id),
         proveedor_id=int(proveedor_id) if proveedor_id else None,
-        fecha_programada=fecha_programada,
+        fecha_programada=fecha_programada_utc,  # ✅ UTC aware
         referencia=ref,
         notas=nt,
         estado=CitaEstado.PROGRAMADA,
     )
 
+    # 2) Crear recepción 1:1
     recepcion = InboundRecepcion(
         negocio_id=int(negocio_id),
         proveedor_id=int(proveedor_id) if proveedor_id else None,
         cita=cita,
         codigo_recepcion=codigo,
         documento_ref=ref,
-        fecha_estimada_llegada=fecha_programada,
+
+        # ✅ ETA se guarda en UTC aware (representa la hora programada real)
+        fecha_estimada_llegada=fecha_programada_utc,
+
+        # ✅ Copiar notas de la cita a observaciones iniciales
+        observaciones=nt,
+
         estado=RecepcionEstado.PRE_REGISTRADO,
         plantilla_id=int(plantilla_id) if plantilla_id else None,
 
-        # ✅ Transporte (ya existe en tu modelo)
         contenedor=_strip(contenedor),
         patente_camion=_strip(patente_camion),
         tipo_carga=_strip(tipo_carga),
@@ -236,7 +303,7 @@ def crear_cita_y_recepcion(
     try:
         db.add(cita)
         db.add(recepcion)
-        db.flush()
+        db.flush()  # asegura IDs
 
         if plantilla_id:
             _aplicar_plantilla_a_recepcion(
@@ -297,10 +364,13 @@ def cancelar_cita_y_recepcion(
     # 1) cancelar cita
     cita.estado = CitaEstado.CANCELADA
 
-    # 2) cancelar recepción 1:1 (sin depender de lazy-load)
+    # 2) cancelar recepción 1:1
     recep = (
         db.query(InboundRecepcion)
-        .filter(InboundRecepcion.negocio_id == int(negocio_id), InboundRecepcion.cita_id == int(cita.id))
+        .filter(
+            InboundRecepcion.negocio_id == int(negocio_id),
+            InboundRecepcion.cita_id == int(cita.id),
+        )
         .first()
     )
 
@@ -316,6 +386,7 @@ def cancelar_cita_y_recepcion(
             if m:
                 recep.observaciones = (obs + "\n" if obs else "") + f"[CANCELACIÓN CITA] {m}"
 
+        # sincroniza estado (aunque ya quedó cancelada, mantenemos la regla)
         sync_cita_desde_recepcion(db, recep)
 
     try:

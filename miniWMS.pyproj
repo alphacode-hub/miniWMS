@@ -86,6 +86,7 @@
     <Compile Include="modules\inbound_orbion\services\services_inbound_analytics.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_checklist.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_citas.py" />
+    <Compile Include="modules\inbound_orbion\services\services_inbound_citas_sync.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_config.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_core.py" />
     <Compile Include="modules\inbound_orbion\services\services_inbound_documentos.py" />

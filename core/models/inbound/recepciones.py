@@ -15,14 +15,13 @@ from sqlalchemy.types import Enum as SAEnum
 
 from core.database import Base
 from core.models.time import utcnow
-from core.models.enums import RecepcionEstado
+from core.models.enums import RecepcionEstado, RecepcionOrigen
 
 
 class InboundRecepcion(Base):
     __tablename__ = "inbound_recepciones"
     __table_args__ = (
         UniqueConstraint("negocio_id", "codigo_recepcion", name="uq_inbound_recepcion_codigo"),
-        # ✅ Regla negocio: 1 cita => 1 recepción (si cita_id no es null)
         UniqueConstraint("negocio_id", "cita_id", name="uq_inbound_recepcion_cita_por_negocio"),
     )
 
@@ -30,15 +29,20 @@ class InboundRecepcion(Base):
 
     negocio_id = Column(Integer, ForeignKey("negocios.id"), index=True, nullable=False)
     proveedor_id = Column(Integer, ForeignKey("proveedores.id"), index=True, nullable=True)
+
+    # ✅ FK real hacia inbound_citas.id
     cita_id = Column(Integer, ForeignKey("inbound_citas.id"), index=True, nullable=True)
 
-    # ✅ opcional: recordar desde qué plantilla nació (sin FK para no acoplarte al nombre de tabla)
+    origen = Column(
+        SAEnum(RecepcionOrigen, name="recepcion_origen"),
+        nullable=False,
+        default=RecepcionOrigen.CITA,
+        index=True,
+    )
+
     plantilla_id = Column(Integer, nullable=True, index=True)
 
-    # Folio interno
     codigo_recepcion = Column(String, nullable=False, index=True)
-
-    # guía/factura/BL/OC
     documento_ref = Column(String, nullable=True, index=True)
 
     contenedor = Column(String, nullable=True, index=True)
@@ -59,7 +63,6 @@ class InboundRecepcion(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
-    # Timestamps operativos
     fecha_arribo = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_inicio_descarga = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_fin_descarga = Column(DateTime(timezone=True), nullable=True, index=True)
@@ -69,8 +72,13 @@ class InboundRecepcion(Base):
     negocio = relationship("Negocio", back_populates="inbound_recepciones")
     proveedor = relationship("Proveedor", back_populates="recepciones")
 
-    # ✅ 1:1 back_populates con cita.recepcion
-    cita = relationship("InboundCita", back_populates="recepcion")
+    # ✅ 1:1 explícito (foreign_keys + back_populates)
+    cita = relationship(
+        "InboundCita",
+        back_populates="recepcion",
+        foreign_keys=[cita_id],
+        uselist=False,
+    )
 
     lineas = relationship("InboundLinea", back_populates="recepcion", cascade="all, delete-orphan")
     pallets = relationship("InboundPallet", back_populates="recepcion", cascade="all, delete-orphan")

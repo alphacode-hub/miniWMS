@@ -165,13 +165,11 @@ async def inbound_recepciones_lista(
     snapshot = get_entitlements_snapshot(db, negocio_id)
     inbound_cfg = _get_inbound_from_snapshot(snapshot)
 
-    # Flag UI
     inbound_analytics_enabled = _flag(inbound_cfg, "enable_inbound_analytics", default=False)
 
     d_desde = _parse_date_iso(desde)
     d_hasta = _parse_date_iso(hasta)
 
-    # Service = source of truth para filtros/tenant
     recepciones = listar_recepciones(
         db=db,
         negocio_id=negocio_id,
@@ -208,20 +206,12 @@ async def inbound_recepciones_lista(
             "request": request,
             "user": user,
             "recepciones": recepciones,
-            "filtros": {
-                "q": q or "",
-                "estado": estado or "",
-                "desde": desde or "",
-                "hasta": hasta or "",
-            },
-
-            # ✅ Baseline: disponibilidad para UI (si quieres mostrar límites)
+            "filtros": {"q": q or "", "estado": estado or "", "desde": desde or "", "hasta": hasta or ""},
             "inbound_enabled": inbound_cfg.get("enabled", False),
             "inbound_status": inbound_cfg.get("status", "unknown"),
             "inbound_limits": inbound_cfg.get("limits", {}),
             "inbound_remaining": inbound_cfg.get("remaining", {}),
             "snapshot": snapshot,
-
             "inbound_analytics_enabled": inbound_analytics_enabled,
             "modulo_nombre": "Orbion Inbound",
             "ok": request.query_params.get("ok"),
@@ -285,11 +275,7 @@ async def inbound_recepcion_nueva_submit(
     negocio_id = _negocio_id_from_user(user)
 
     try:
-        # ✅ Enterprise UX: permitimos ingresar todo, pero algunos mínimos se validan.
-        # Mantengo "documento_ref" como mínimo documental (puedes relajar si quieres).
-        if not (documento_ref or "").strip():
-            raise InboundDomainError("Debes ingresar Documento Ref (guía/factura/BL/OC) para crear la recepción.")
-
+        # ✅ Regla oficial: documento_ref NO es obligatorio para crear (solo para cerrar).
         r = crear_recepcion(
             db=db,
             negocio_id=negocio_id,
@@ -305,6 +291,7 @@ async def inbound_recepcion_nueva_submit(
                 "fecha_recepcion": fecha_recepcion,
                 "observaciones": observaciones,
                 "estado": "PRE_REGISTRADO",
+                # origen se resuelve en service
             },
         )
 
@@ -384,7 +371,6 @@ async def inbound_recepcion_detalle(
     error = request.query_params.get("error")
 
     try:
-        # ✅ Enterprise eager-load (sin romper: usamos unique() por colecciones)
         stmt = (
             select(InboundRecepcion)
             .options(
@@ -518,10 +504,7 @@ async def inbound_recepcion_recalcular(
             recepcion_id=recepcion_id,
             error=str(e),
         )
-        return _redirect(
-            f"/inbound/recepciones/{recepcion_id}",
-            error="Error inesperado al recalcular. Revisa logs.",
-        )
+        return _redirect(f"/inbound/recepciones/{recepcion_id}", error="Error inesperado al recalcular. Revisa logs.")
 
 
 # ============================================================
@@ -635,10 +618,7 @@ async def inbound_recepcion_editar_submit(
     negocio_id = _negocio_id_from_user(user)
 
     try:
-        # ✅ Enterprise mínimo: no permitir dejar documento_ref vacío si llega en el form
-        if documento_ref is not None and not documento_ref.strip():
-            raise InboundDomainError("Documento Ref no puede quedar vacío.")
-
+        # ✅ Permitir vacío: documento_ref no es hard-rule para editar/crear; hard-rule al cerrar.
         r = actualizar_recepcion(
             db=db,
             negocio_id=negocio_id,

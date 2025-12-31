@@ -1,26 +1,12 @@
-﻿{# =========================================================
-   ORBION · INBOUND · RECEPCIÓN · DETALLE (ULTRA ENTERPRISE)
-   - Header dentro del content (igual a dashboard y form)
-   - Estado normalizado (Enum/string)
-   - Stepper workflow
-   - Datos básicos
-   - Timeline + KPIs (no rompe si faltan campos)
-   - Acciones de estado (POST /inbound/recepciones/{id}/estado)
-   - Preview de líneas (top 5) + link a lista + crear
-   ========================================================= #}
-
+﻿{# modules/inbound_orbion/templates/inbound_recepcion_detalle.html #}
 {% extends "base/base_app.html" %}
 
 {% block title %}
 ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontrada" }}
 {% endblock %}
 
-{# 🚫 No usamos page_header para que el layout sea idéntico al dashboard y forms #}
 {% block page_header %}{% endblock %}
 
-{# =========================================================
-ESTADO NORMALIZADO (Enum o string)
-========================================================= #}
 {% if recepcion %}
   {% set _estado_raw =
         recepcion.estado.name
@@ -39,16 +25,12 @@ ESTADO NORMALIZADO (Enum o string)
 {% set estado_label = estado_recepcion.replace('_', ' ') %}
 {% set es_cerrada = (estado_recepcion == 'CERRADO') %}
 
-{# helper: orden de estados para stepper #}
 {% set steps = ['PRE_REGISTRADO','EN_ESPERA','EN_DESCARGA','EN_CONTROL_CALIDAD','CERRADO'] %}
 {% set step_index = steps.index(estado_recepcion) if estado_recepcion in steps else 0 %}
 
 {% block content %}
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
-    {# =====================================================
-    HEADER ÚNICO (mobile-first, consistente con dashboard/form)
-    ===================================================== #}
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -67,7 +49,7 @@ ESTADO NORMALIZADO (Enum o string)
                 {% if recepcion.documento_ref %}
                 Ref: {{ recepcion.documento_ref }}
                 {% else %}
-                Sin documento de referencia
+                Sin documento de referencia (se exige al cerrar)
                 {% endif %}
             </p>
             {% else %}
@@ -81,6 +63,18 @@ ESTADO NORMALIZADO (Enum o string)
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+            {% if recepcion and recepcion.origen is defined %}
+            {% set origen_name = recepcion.origen.name if recepcion.origen is not none and recepcion.origen.name is defined else (recepcion.origen|string) %}
+            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                  {% if origen_name == 'CITA' %}
+                      bg-sky-500/10 text-sky-200 border-sky-500/40
+                  {% else %}
+                      bg-slate-700/40 text-slate-100 border-slate-600
+                  {% endif %}">
+                {{ origen_name }}
+            </span>
+            {% endif %}
+
             <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
                 {% if estado_recepcion == 'CERRADO' %}
                     bg-emerald-500/10 text-emerald-200 border-emerald-500/40
@@ -104,9 +98,6 @@ ESTADO NORMALIZADO (Enum o string)
         </div>
     </header>
 
-    {# =====================================================
-    ALERTAS (ok/error)
-    ===================================================== #}
     {% if ok %}
     <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-emerald-200">Listo</p>
@@ -123,9 +114,6 @@ ESTADO NORMALIZADO (Enum o string)
 
     {% if recepcion %}
 
-    {# =====================================================
-    STEPPER (workflow)
-    ===================================================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
         <div class="flex items-start justify-between gap-3">
             <div class="space-y-1">
@@ -167,9 +155,6 @@ ESTADO NORMALIZADO (Enum o string)
         </div>
     </section>
 
-    {# =====================================================
-    OPERACIÓN (accesos rápidos)
-    ===================================================== #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-2">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="space-y-0.5">
@@ -203,21 +188,21 @@ ESTADO NORMALIZADO (Enum o string)
                     Checklist
                 </a>
 
-                <a href="/inbound/recepciones/{{ r.id }}/documentos"
+                <a href="/inbound/recepciones/{{ recepcion.id }}/documentos"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
                           text-[10px] font-semibold text-slate-300
                           hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Documentos
                 </a>
 
-                <a href="/inbound/recepciones/{{ r.id }}/fotos"
+                <a href="/inbound/recepciones/{{ recepcion.id }}/fotos"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
                           text-[10px] font-semibold text-slate-300
                           hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Fotos
                 </a>
 
-                <a href="/inbound/recepciones/{{ r.id }}/incidencias"
+                <a href="/inbound/recepciones/{{ recepcion.id }}/incidencias"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
                       text-[10px] font-semibold text-slate-300
                       hover:border-cyan-400 hover:text-cyan-300 transition-colors">
@@ -235,16 +220,26 @@ ESTADO NORMALIZADO (Enum o string)
         {% endif %}
     </section>
 
-    {# =====================================================
-    DATOS BÁSICOS (no rompe si cambian nombres de campos)
-    ===================================================== #}
+    {# Panel faltantes para cerrar (UX, no reemplaza validación backend) #}
+    {% if estado_recepcion == 'EN_CONTROL_CALIDAD' and not es_cerrada %}
+    {% set doc_missing = (not recepcion.documento_ref) %}
+    {% if doc_missing %}
+    <section class="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-amber-200">Antes de cerrar</p>
+        <p class="text-[11px] text-amber-200/90 mt-1">
+            Falta <span class="font-semibold">Documento Ref</span> (guía/factura/BL/OC). Se exige al cerrar.
+        </p>
+    </section>
+    {% endif %}
+    {% endif %}
+
     {% set contenedor = (recepcion.contenedor if recepcion.contenedor is defined else None) %}
     {% set patente = (recepcion.patente_camion if recepcion.patente_camion is defined else None) %}
     {% set tipo_carga = (recepcion.tipo_carga if recepcion.tipo_carga is defined else None) %}
     {% set eta = (recepcion.fecha_estimada_llegada if recepcion.fecha_estimada_llegada is defined else None) %}
     {% set fecha_real = (recepcion.fecha_recepcion if recepcion.fecha_recepcion is defined else None) %}
-    {% set created_at = (recepcion.created_at if recepcion.created_at is defined else (recepcion.creado_en if recepcion.creado_en is defined else None)) %}
-    {% set updated_at = (recepcion.updated_at if recepcion.updated_at is defined else (recepcion.actualizado_en if recepcion.actualizado_en is defined else None)) %}
+    {% set created_at = (recepcion.created_at if recepcion.created_at is defined else None) %}
+    {% set updated_at = (recepcion.updated_at if recepcion.updated_at is defined else None) %}
     {% set obs = (recepcion.observaciones if recepcion.observaciones is defined else None) %}
 
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
@@ -252,13 +247,13 @@ ESTADO NORMALIZADO (Enum o string)
             <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-1.5">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Datos de transporte</p>
                 <p class="text-xs text-slate-200">
-                    <span class="font-semibold text-slate-300">Contenedor:</span> {{ contenedor or 'No registrado' }}
+                    <span class="font-semibold text-slate-300">Contenedor:</span> {{ contenedor|upper or 'No registrado' }}
                 </p>
                 <p class="text-xs text-slate-200">
                     <span class="font-semibold text-slate-300">Patente:</span> {% if patente %}{{ patente|upper }}{% else %}No registrada{% endif %}
                 </p>
                 <p class="text-xs text-slate-200">
-                    <span class="font-semibold text-slate-300">Tipo carga:</span> {{ tipo_carga or 'No definido' }}
+                    <span class="font-semibold text-slate-300">Tipo carga:</span> {{ tipo_carga|capitalize or 'No definido' }}
                 </p>
             </div>
 
@@ -266,19 +261,19 @@ ESTADO NORMALIZADO (Enum o string)
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Fechas clave</p>
                 <p class="text-xs text-slate-200">
                     <span class="font-semibold text-slate-300">ETA:</span>
-                    {% if eta and eta.strftime is defined %}{{ eta.strftime('%d-%m-%Y') }}{% elif eta %}{{ eta }}{% else %}No definida{% endif %}
+                    {% if eta and eta.strftime is defined %}{{ eta|cl_datetime(short=True, no_tz=True) }}{% elif eta %}{{ eta|cl_datetime(short=True, no_tz=True) }}{% else %}No definida{% endif %}
                 </p>
                 <p class="text-xs text-slate-200">
                     <span class="font-semibold text-slate-300">Recepción real:</span>
-                    {% if fecha_real and fecha_real.strftime is defined %}{{ fecha_real.strftime('%d-%m-%Y') }}{% elif fecha_real %}{{ fecha_real }}{% else %}—{% endif %}
+                    {% if fecha_real and fecha_real.strftime is defined %}{{ fecha_real|cl_datetime(short=True, no_tz=True) }}{% elif fecha_real %}{{ fecha_real|cl_datetime(short=True, no_tz=True) }}{% else %}—{% endif %}
                 </p>
                 <p class="text-xs text-slate-200">
                     <span class="font-semibold text-slate-300">Creado:</span>
-                    {% if created_at and created_at.strftime is defined %}{{ created_at.strftime('%d-%m-%Y %H:%M') }}{% elif created_at %}{{ created_at }}{% else %}—{% endif %}
+                    {% if created_at and created_at.strftime is defined %}{{ created_at|cl_datetime(short=True, no_tz=True) }}{% elif created_at %}{{ created_at|cl_datetime(short=True, no_tz=True) }}{% else %}—{% endif %}
                 </p>
                 <p class="text-xs text-slate-200">
                     <span class="font-semibold text-slate-300">Actualizado:</span>
-                    {% if updated_at and updated_at.strftime is defined %}{{ updated_at.strftime('%d-%m-%Y %H:%M') }}{% elif updated_at %}{{ updated_at }}{% else %}—{% endif %}
+                    {% if updated_at and updated_at.strftime is defined %}{{ updated_at|cl_datetime(short=True, no_tz=True) }}{% elif updated_at %}{{ updated_at|cl_datetime(short=True, no_tz=True) }}{% else %}—{% endif %}
                 </p>
             </div>
         </div>
@@ -291,9 +286,6 @@ ESTADO NORMALIZADO (Enum o string)
         </div>
     </section>
 
-    {# =====================================================
-    TIMELINE + MÉTRICAS (no rompe si faltan)
-    ===================================================== #}
     {% set fecha_arribo = (recepcion.fecha_arribo if recepcion.fecha_arribo is defined else None) %}
     {% set fecha_inicio_descarga = (recepcion.fecha_inicio_descarga if recepcion.fecha_inicio_descarga is defined else None) %}
     {% set fecha_fin_descarga = (recepcion.fecha_fin_descarga if recepcion.fecha_fin_descarga is defined else None) %}
@@ -308,7 +300,7 @@ ESTADO NORMALIZADO (Enum o string)
                     <div>
                         <p class="font-semibold text-slate-100">Arribo al recinto</p>
                         <p class="text-[11px] text-slate-400">
-                            {% if fecha_arribo and fecha_arribo.strftime is defined %}{{ fecha_arribo.strftime('%d-%m-%Y %H:%M') }}
+                            {% if fecha_arribo and fecha_arribo.strftime is defined %}{{ fecha_arribo|cl_datetime(short=True, no_tz=True) }}
                             {% elif fecha_arribo %}{{ fecha_arribo }}
                             {% else %}Aún no registrado.{% endif %}
                         </p>
@@ -320,8 +312,8 @@ ESTADO NORMALIZADO (Enum o string)
                     <div>
                         <p class="font-semibold text-slate-100">Inicio de descarga</p>
                         <p class="text-[11px] text-slate-400">
-                            {% if fecha_inicio_descarga and fecha_inicio_descarga.strftime is defined %}{{ fecha_inicio_descarga.strftime('%d-%m-%Y %H:%M') }}
-                            {% elif fecha_inicio_descarga %}{{ fecha_inicio_descarga }}
+                            {% if fecha_inicio_descarga and fecha_inicio_descarga.strftime is defined %}{{ fecha_inicio_descarga|cl_datetime(short=True, no_tz=True) }}
+                            {% elif fecha_inicio_descarga %}{{ fecha_inicio_descarga|cl_datetime(short=True, no_tz=True) }}
                             {% else %}Aún no registrado.{% endif %}
                         </p>
                     </div>
@@ -332,8 +324,8 @@ ESTADO NORMALIZADO (Enum o string)
                     <div>
                         <p class="font-semibold text-slate-100">Fin de descarga</p>
                         <p class="text-[11px] text-slate-400">
-                            {% if fecha_fin_descarga and fecha_fin_descarga.strftime is defined %}{{ fecha_fin_descarga.strftime('%d-%m-%Y %H:%M') }}
-                            {% elif fecha_fin_descarga %}{{ fecha_fin_descarga }}
+                            {% if fecha_fin_descarga and fecha_fin_descarga.strftime is defined %}{{ fecha_fin_descarga|cl_datetime(short=True, no_tz=True) }}
+                            {% elif fecha_fin_descarga %}{{ fecha_fin_descarga|cl_datetime(short=True, no_tz=True) }}
                             {% else %}Aún no registrado.{% endif %}
                         </p>
                     </div>
@@ -358,7 +350,7 @@ ESTADO NORMALIZADO (Enum o string)
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de espera</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_espera_min is not none %}{{ metrics.tiempo_espera_min|round(1) }} min{% else %}—{% endif %}
+                        {% if metrics and metrics.tiempo_espera_min is not none %}{{ metrics.tiempo_espera_min|cl_num }} min{% else %}—{% endif %}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Arribo → inicio descarga.</p>
                 </div>
@@ -366,7 +358,7 @@ ESTADO NORMALIZADO (Enum o string)
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de descarga</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_descarga_min is not none %}{{ metrics.tiempo_descarga_min|round(1) }} min{% else %}—{% endif %}
+                        {% if metrics and metrics.tiempo_descarga_min is not none %}{{ metrics.tiempo_descarga_min|cl_num }} min{% else %}—{% endif %}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Inicio → fin descarga.</p>
                 </div>
@@ -374,7 +366,7 @@ ESTADO NORMALIZADO (Enum o string)
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo total</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_total_hasta_fin_descarga_min is not none %}{{ metrics.tiempo_total_hasta_fin_descarga_min|round(1) }} min{% else %}—{% endif %}
+                        {% if metrics and metrics.tiempo_total_hasta_fin_descarga_min is not none %}{{ metrics.tiempo_total_hasta_fin_descarga_min|cl_num }} min{% else %}—{% endif %}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Arribo → fin descarga.</p>
                 </div>
@@ -382,10 +374,6 @@ ESTADO NORMALIZADO (Enum o string)
         </div>
     </section>
 
-    {# =====================================================
-    ACCIONES DE ESTADO (alineado a servicio aplicar_accion_estado)
-    POST /inbound/recepciones/{id}/estado
-    ===================================================== #}
     {% if not es_cerrada %}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-2">
         <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
@@ -455,7 +443,7 @@ ESTADO NORMALIZADO (Enum o string)
     </section>
     {% endif %}
 
-    
     {% endif %}
 </div>
+
 {% endblock %}

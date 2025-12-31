@@ -297,7 +297,7 @@
 
                         <div class="flex flex-wrap items-center gap-2">
                             <div class="text-sm font-semibold text-slate-100">
-                                {{ c.fecha_programada.strftime("%Y-%m-%d %H:%M") if c.fecha_programada else "Sin fecha" }}
+                                {{ c.fecha_programada|cl_datetime(short=True, no_tz=True) if c.fecha_programada else "Sin fecha" }}
                             </div>
 
                             {% if est in ["PROGRAMADA"] %}

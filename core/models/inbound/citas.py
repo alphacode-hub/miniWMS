@@ -25,7 +25,6 @@ class InboundCita(Base):
         index=True,
     )
 
-    # Fecha/hora planificada
     fecha_programada = Column(DateTime(timezone=True), nullable=False, index=True)
 
     referencia = Column(String, nullable=True, index=True)
@@ -37,5 +36,10 @@ class InboundCita(Base):
     negocio = relationship("Negocio", back_populates="inbound_citas")
     proveedor = relationship("Proveedor", back_populates="citas")
 
-    # ✅ 1:1 con recepción (no lista)
-    recepcion = relationship("InboundRecepcion", back_populates="cita", uselist=False)
+    # ✅ 1:1 explícito, y le decimos cuál FK manda (InboundRecepcion.cita_id)
+    recepcion = relationship(
+        "InboundRecepcion",
+        back_populates="cita",
+        uselist=False,
+        foreign_keys="InboundRecepcion.cita_id",
+    )

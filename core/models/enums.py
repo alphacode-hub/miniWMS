@@ -7,6 +7,11 @@ import enum
 # Operación WMS / Inbound
 # =========================
 
+class RecepcionOrigen(str, enum.Enum):
+    CITA = "CITA"
+    MANUAL = "MANUAL"
+
+
 class RecepcionEstado(str, enum.Enum):
     PRE_REGISTRADO = "PRE_REGISTRADO"
     EN_ESPERA = "EN_ESPERA"
