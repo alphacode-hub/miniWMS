@@ -336,9 +336,9 @@
                         ETA:
                         <span class="ml-1 text-slate-100">
                             {% if eta.strftime is defined %}
-                            {{ eta|cl_datetime(short=True, no_tz=True) }}
+                            {{ eta|cl_date }}
                             {% else %}
-                            {{ eta|cl_datetime(short=True, no_tz=True) }}
+                            {{ eta|cl_date }}
                             {% endif %}
                         </span>
                     </span>

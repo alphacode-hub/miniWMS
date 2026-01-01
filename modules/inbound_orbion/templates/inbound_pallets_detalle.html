@@ -361,22 +361,32 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
 
                         <p class="text-[11px] text-slate-300 mt-2">
                             <span class="inline-flex items-center rounded-full border border-slate-700 px-2 py-[2px] text-[10px] font-semibold text-slate-200">REAL</span>
+
                             <span class="ml-2">
                                 Cant:
-                                {% if it.cantidad is not none %}
-                                <span class="font-semibold text-slate-100">{{ it.cantidad|cl_num }}</span> {{ (l.unidad if l and l.unidad else "u") }}
+                                {% set cant_ui = (it.cantidad if it.cantidad is not none else it.cantidad_estimada) %}
+                                {% if cant_ui is not none %}
+                                <span class="font-semibold text-slate-100">{{ cant_ui|cl_num }}</span> {{ (l.unidad if l and l.unidad else "u") }}
+                                {% if it.cantidad is none and it.cantidad_estimada is not none %}
+                                {% endif %}
                                 {% else %}
                                 <span class="text-slate-500">—</span>
                                 {% endif %}
+
                                 <span class="text-slate-600">·</span>
+
                                 Kg:
-                                {% if it.peso_kg is not none %}
-                                <span class="font-semibold text-slate-100">{{ it.peso_kg|cl_num }}</span>
+                                {% set kg_ui = (it.peso_kg if it.peso_kg is not none else it.peso_estimado_kg) %}
+                                {% if kg_ui is not none %}
+                                <span class="font-semibold text-slate-100">{{ kg_ui|cl_num }}</span>
+                                {% if it.peso_kg is none and it.peso_estimado_kg is not none %}
+                                {% endif %}
                                 {% else %}
-                                <span class="text-slate-500">—</span>
+                                <span class="font-semibold text-slate-500">—</span>
                                 {% endif %}
                             </span>
                         </p>
+
 
                         <p class="text-[11px] text-slate-500 mt-2">
                             Línea: #{{ l.id if l else "—" }}

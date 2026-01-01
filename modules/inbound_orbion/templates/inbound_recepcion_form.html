@@ -1,413 +1,313 @@
-﻿<!-- modules/inbound_orbion/templates/inbound_recepciones_dashboard.html -->
+﻿{# modules/inbound_orbion/templates/inbound_recepcion_form.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}ORBION · Inbound{% endblock %}
+{% block title %}
+ORBION · {% if recepcion %}Editar recepción inbound{% else %}Nueva recepción inbound{% endif %}
+{% endblock %}
+
+{# ✅ No usamos page_header para que el layout sea idéntico al dashboard (header dentro del content) #}
+{% block page_header %}{% endblock %}
 
 {% block content %}
+
+{# =========================
+Compat: detectar origen (CITA vs MANUAL)
+- recepcion.origen puede ser Enum o string
+- recepcion.cita_id define "viene de cita"
+========================= #}
+{% set origen_val = None %}
+{% if recepcion and recepcion.origen %}
+  {% if recepcion.origen.value is defined %}
+    {% set origen_val = recepcion.origen.value %}
+  {% else %}
+    {% set origen_val = recepcion.origen %}
+  {% endif %}
+{% endif %}
+{% set viene_de_cita = (recepcion and recepcion.cita_id) or (origen_val == "CITA") %}
+
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     {# =========================
-    HEADER (mobile-first, 1 solo)
+    HEADER (1 solo, mobile-first)
     ========================= #}
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
             <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Módulo inbound
+                Módulo inbound · {% if recepcion %}Edición{% else %}Nueva recepción{% endif %}
             </p>
+
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
-                Orbion Inbound
+                {% if recepcion %}Editar recepción inbound{% else %}Registrar nueva recepción inbound{% endif %}
             </h1>
+
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
-                Panel de recepciones: control de documentos, tiempos y pallets para tu operación.
+                Pre-registro del contenedor/camión + ETA para control operativo.
+                {% if viene_de_cita %}
+                <span class="text-slate-600">·</span>
+                <span class="text-cyan-300 font-semibold">Origen: Cita</span>
+                {% endif %}
             </p>
         </div>
 
         <div class="shrink-0">
-            <a href="/app"
+            <a href="/inbound/recepciones"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
-                transition-colors">
-                ← Hub
+                      text-[11px] font-medium text-slate-300
+                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                ← Volver a recepciones
             </a>
         </div>
     </header>
 
     {# =========================
+    ALERTAS (backend render)
+    ========================= #}
+    {% if error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo guardar la recepción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ error }}</p>
+    </section>
+    {% endif %}
+
+    {# =========================
     ALERTAS (querystring ok/error)
     ========================= #}
-    {% set qs_ok = ok if ok is defined else (request.query_params.get("ok") if request and request.query_params is defined else None) %}
-    {% set qs_error = error if error is defined else (request.query_params.get("error") if request and request.query_params is defined else None) %}
+    {% set qs_ok = request.query_params.get("ok") if request and request.query_params is defined else None %}
+    {% set qs_error = request.query_params.get("error") if request and request.query_params is defined else None %}
 
     {% if qs_ok %}
     <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
-        <p class="text-xs font-semibold text-emerald-200">Listo</p>
+        <p class="text-xs font-semibold text-emerald-200">Acción completada</p>
         <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_ok }}</p>
     </section>
     {% endif %}
 
-    {% if qs_error %}
+    {% if qs_error and not error %}
     <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
-        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ qs_error }}</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ qs_error }}</p>
     </section>
     {% endif %}
 
-    {# =========================
-    ACCIONES RÁPIDAS
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4 space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="space-y-0.5">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Acciones rápidas
-                </p>
-                <p class="text-[11px] text-slate-400 max-w-md">
-                    Configura el módulo, revisa analítica (si tu plan lo permite) y crea nuevas recepciones.
-                </p>
-            </div>
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <form method="post" action="{{ form_action }}" class="space-y-5">
 
-            <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
-                {% if user and user["rol"] == "admin" %}
-                <a href="/inbound/config"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                      text-[11px] font-medium text-slate-200 bg-slate-900
-                      hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Configuración
-                </a>
-                {% endif %}
+            {# =========================
+            Hidden compat (origen/cita_id)
+            - ayuda a que el POST sea robusto
+            ========================= #}
+            {% if viene_de_cita %}
+            <input type="hidden" name="origen" value="CITA">
+            {% if recepcion and recepcion.cita_id %}
+            <input type="hidden" name="cita_id" value="{{ recepcion.cita_id }}">
+            {% endif %}
+            {% else %}
+            <input type="hidden" name="origen" value="MANUAL">
+            {% endif %}
 
-                <a href="/inbound/proveedores"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Proveedores
-                </a>
-
-                <a href="/inbound/citas"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Cita / Agenda
-                </a>
-
-                <a href="/inbound/recepciones/nueva"
-                   class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                  text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
-                  active:scale-[0.97] transition-transform transition-colors">
-                    Nueva recepción
-                </a>
-
-                {% if inbound_analytics_enabled %}
-                <a href="/inbound/analytics"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Ver analítica
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </section>
-
-    {# =========================
-    FILTROS
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
-        <header class="space-y-1">
-            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                Filtros de recepciones
-            </p>
-            <p class="text-[11px] text-slate-400 max-w-md">
-                Filtra por estado y rango de fechas para concentrarte en las recepciones relevantes.
-            </p>
-        </header>
-
-        <form method="get"
-              class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
-
+            {# =========================
+            PROVEEDOR (combo libre robusto)
+            ========================= #}
             <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Estado</label>
-                <select name="estado"
-                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                       text-xs sm:text-sm text-slate-100
-                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <option value="" {% if filtros is defined and (filtros.estado or '' )= ='' %}selected{% endif %}>Todos</option>
-                    <option value="PRE_REGISTRADO" {% if filtros is defined and filtros.estado= ='PRE_REGISTRADO' %}selected{% endif %}>Pre-registrado</option>
-                    <option value="EN_ESPERA" {% if filtros is defined and filtros.estado= ='EN_ESPERA' %}selected{% endif %}>En espera</option>
-                    <option value="EN_DESCARGA" {% if filtros is defined and filtros.estado= ='EN_DESCARGA' %}selected{% endif %}>En descarga</option>
-                    <option value="EN_CONTROL_CALIDAD" {% if filtros is defined and filtros.estado= ='EN_CONTROL_CALIDAD' %}selected{% endif %}>En control de calidad</option>
-                    <option value="CERRADO" {% if filtros is defined and filtros.estado= ='CERRADO' %}selected{% endif %}>Cerrado</option>
-                </select>
-            </div>
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Proveedor <span class="text-rose-400">*</span>
+                </label>
 
-            <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Desde</label>
-                <input type="date" name="desde"
-                       value="{{ filtros.desde if filtros is defined and filtros.desde is not none else '' }}"
+                <input type="hidden" name="proveedor_id" id="proveedor_id"
+                       value="{% if recepcion and recepcion.proveedor_id %}{{ recepcion.proveedor_id }}{% endif %}">
+
+                <input type="text"
+                       name="proveedor_nombre"
+                       id="proveedor_nombre"
+                       required
+                       autocomplete="off"
+                       list="proveedores_list"
+                       value="{% if recepcion and recepcion.proveedor %}{{ recepcion.proveedor.nombre }}{% endif %}"
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                              text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                       placeholder="Escribe un proveedor o elige uno existente…">
+
+                <datalist id="proveedores_list">
+                    {% if proveedores %}
+                    {% for p in proveedores %}
+                    <option value="{{ p.nombre }}"></option>
+                    {% endfor %}
+                    {% endif %}
+                </datalist>
+
+                <p class="text-[10px] text-slate-500">
+                    Puedes seleccionar uno existente o escribir uno nuevo. Si coincide exactamente, se vincula automáticamente.
+                </p>
+
+                <script>
+                  (function () {
+                    const input = document.getElementById("proveedor_nombre");
+                    const hiddenId = document.getElementById("proveedor_id");
+
+                    const proveedores = [
+                      {% if proveedores %}
+                        {% for p in proveedores %}
+                          { id: {{ p.id }}, nombre: {{ p.nombre|tojson }} },
+                        {% endfor %}
+                      {% endif %}
+                    ];
+
+                    function norm(s) { return (s || "").trim().toLowerCase(); }
+
+                    function sync() {
+                      const val = norm(input.value);
+                      const match = proveedores.find(p => norm(p.nombre) === val);
+                      hiddenId.value = match ? String(match.id) : "";
+                    }
+
+                    input.addEventListener("input", sync);
+                    input.addEventListener("change", sync);
+                    sync();
+                  })();
+                </script>
+            </div>
+
+            {# CÓDIGO + DOC #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Código recepción</label>
+                    <input type="text" name="codigo_recepcion"
+                           value="{{ recepcion.codigo_recepcion if recepcion else '' }}"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="Vacío = autogenerado">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">
+                        Documento ref <span class="text-rose-400">*</span>
+                    </label>
+                    <input type="text" name="documento_ref"
+                           {% if not recepcion %}required{% endif %}
+                           value="{{ recepcion.documento_ref if recepcion else '' }}"
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                           placeholder="OC / BL / Guía / Factura">
+                    <p class="text-[10px] text-slate-500">
+                        Obligatorio para crear la recepción (el backend lo exige).
+                    </p>
+                </div>
+            </div>
+
+            {# CONTENEDOR / PATENTE #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Nº contenedor</label>
+                    <input type="text" name="contenedor"
+                           value="{{ recepcion.contenedor if recepcion else '' }}"
+                           {% if viene_de_cita %}readonly{% endif %}
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500 uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                                  {% if viene_de_cita %}opacity-70 cursor-not-allowed{% endif %}"
+                           placeholder="Ej: MSKU1234567">
+                    {% if viene_de_cita %}
+                    <p class="text-[10px] text-slate-500">
+                        Viene desde la cita.
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Patente camión</label>
+                    <input type="text" name="patente_camion"
+                           value="{{ recepcion.patente_camion if recepcion else '' }}"
+                           {% if viene_de_cita %}readonly{% endif %}
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100 placeholder-slate-500 uppercase tracking-wide
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                                  {% if viene_de_cita %}opacity-70 cursor-not-allowed{% endif %}"
+                           placeholder="Ej: AB-CD12">
+                </div>
+            </div>
+
+            <p class="text-[10px] text-slate-500">
+                Recomendado: ingresa al menos <span class="text-slate-200 font-semibold">contenedor</span> o
+                <span class="text-slate-200 font-semibold">patente</span>.
+            </p>
+
+            {# TIPO CARGA + ETA #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">Tipo de carga</label>
+                    <select name="tipo_carga"
+                            {% if viene_de_cita %}disabled{% endif %}
+                            class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                   text-xs sm:text-sm text-slate-100
+                                   focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                                   {% if viene_de_cita %}opacity-70 cursor-not-allowed{% endif %}">
+                        <option value="" {% if not recepcion or not recepcion.tipo_carga %}selected{% endif %}>Selecciona tipo</option>
+                        <option value="congelado" {% if recepcion and recepcion.tipo_carga=='congelado' %}selected{% endif %}>Congelado</option>
+                        <option value="refrigerado" {% if recepcion and recepcion.tipo_carga=='refrigerado' %}selected{% endif %}>Refrigerado</option>
+                        <option value="seco" {% if recepcion and recepcion.tipo_carga=='seco' %}selected{% endif %}>Seco</option>
+                        <option value="palletizado" {% if recepcion and recepcion.tipo_carga=='palletizado' %}selected{% endif %}>Palletizado</option>
+                        <option value="granel" {% if recepcion and recepcion.tipo_carga=='granel' %}selected{% endif %}>Granel</option>
+                    </select>
+
+                    {# disabled no postea: mandamos hidden compat #}
+                    {% if viene_de_cita %}
+                    <input type="hidden" name="tipo_carga" value="{{ recepcion.tipo_carga if recepcion and recepcion.tipo_carga else '' }}">
+                    {% endif %}
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-semibold text-slate-200">ETA (fecha estimada)</label>
+                    <input type="date" name="fecha_estimada_llegada"
+                           value="{% if recepcion and recepcion.fecha_estimada_llegada %}{{ recepcion.fecha_estimada_llegada.strftime('%Y-%m-%d') }}{% endif %}"
+                           {% if viene_de_cita %}readonly{% endif %}
+                           class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                  text-xs sm:text-sm text-slate-100
+                                  focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none
+                                  {% if viene_de_cita %}opacity-70 cursor-not-allowed{% endif %}">
+                </div>
+            </div>
+
+            {# FECHA REAL + OBS #}
+            <div class="space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">Fecha recepción real (opcional)</label>
+                <input type="date" name="fecha_recepcion"
+                       value="{% if recepcion and recepcion.fecha_recepcion %}{{ recepcion.fecha_recepcion.strftime('%Y-%m-%d') }}{% endif %}"
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                              text-xs sm:text-sm text-slate-100
+                              focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
             </div>
 
             <div class="space-y-1">
-                <label class="text-[11px] font-semibold text-slate-200">Hasta</label>
-                <input type="date" name="hasta"
-                       value="{{ filtros.hasta if filtros is defined and filtros.hasta is not none else '' }}"
-                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
-                      text-xs sm:text-sm text-slate-100
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 appearance-none">
+                <label class="block text-[11px] font-semibold text-slate-200">Observaciones</label>
+                <textarea name="observaciones" rows="3"
+                          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                 text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                                 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          placeholder="Notas, instrucciones, incidencias esperadas...">{% if recepcion and recepcion.observaciones %}{{ recepcion.observaciones }}{% endif %}</textarea>
             </div>
 
-            <div class="sm:col-span-3 flex flex-wrap gap-2 pt-1">
-                <button type="submit"
-                        class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
-                       text-slate-900 bg-[#00E4FF] hover:bg-cyan-300
-                       active:scale-[0.97] transition-transform transition-colors">
-                    Aplicar filtros
-                </button>
-
+            {# ACTIONS #}
+            <div class="flex items-center justify-end gap-2 pt-2">
                 <a href="/inbound/recepciones"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                  text-[11px] font-medium text-slate-200 bg-slate-900
-                  hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Limpiar
+                          text-[11px] font-medium text-slate-300
+                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Cancelar
                 </a>
+
+                <button type="submit"
+                        class="inline-flex items-center rounded-full px-5 py-1.5
+                               text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                               hover:bg-cyan-300 active:scale-[0.97]
+                               transition-transform transition-colors">
+                    {% if recepcion %}Guardar cambios{% else %}Crear recepción{% endif %}
+                </button>
             </div>
+
         </form>
-    </section>
-
-    {# =========================
-    LISTA DE RECEPCIONES
-    ========================= #}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-4">
-
-        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div class="space-y-0.5">
-                <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                    Recepciones recientes
-                </p>
-                <p class="text-[11px] text-slate-400">
-                    Abre cada recepción para trabajar líneas, pallets, documentos y fotos.
-                </p>
-            </div>
-
-            {% if recepciones %}
-            <div class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                  text-[11px] text-slate-300">
-                <span class="mr-1 text-slate-500">Registros:</span>
-                <span class="font-semibold text-slate-100">{{ recepciones|length }}</span>
-            </div>
-            {% endif %}
-        </header>
-
-        {% if recepciones %}
-        <div class="space-y-3">
-            {% for r in recepciones %}
-            {% set estado_name = r.estado.name if r.estado is not none and r.estado.name is defined else (r.estado|string) %}
-            {% set origen_name = r.origen.name if r.origen is not none and r.origen.name is defined else (r.origen|string if r.origen is defined else None) %}
-
-            <article class="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-3
-                          hover:border-cyan-400/60 hover:bg-slate-900/80 transition-colors">
-
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-0.5">
-                        <a href="/inbound/recepciones/{{ r.id }}"
-                           class="block text-xs sm:text-sm font-semibold text-slate-100 truncate hover:text-cyan-200 transition-colors">
-                            {{ r.codigo_recepcion }} ·
-                            {% if r.proveedor %}
-                            {{ r.proveedor.nombre }}
-                            {% else %}
-                            <span class="text-slate-300">Sin proveedor</span>
-                            {% endif %}
-                        </a>
-
-                        <p class="text-[11px] text-slate-400 truncate">
-                            {{ r.documento_ref or "Sin documento / referencia (se exige al cerrar)" }}
-                        </p>
-
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <a href="/inbound/recepciones/{{ r.id }}/lineas"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                            text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Líneas
-                            </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/pallets"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                            text-[10px] font-semibold text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Pallets
-                            </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/checklist"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                            text-[10px] font-semibold text-slate-300
-                            hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Checklist
-                            </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/documentos"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                              text-[10px] font-semibold text-slate-300
-                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Docs
-                            </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/fotos"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                              text-[10px] font-semibold text-slate-300
-                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Fotos
-                            </a>
-
-                            <a href="/inbound/recepciones/{{ r.id }}/incidencias"
-                               class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                              text-[10px] font-semibold text-slate-300
-                              hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                                Incidencias
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col items-end gap-1 shrink-0">
-                        <div class="flex items-center gap-2">
-                            {% if origen_name %}
-                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                                {% if origen_name == 'CITA' %}
-                                    bg-sky-500/10 text-sky-200 border-sky-500/40
-                                {% else %}
-                                    bg-slate-700/40 text-slate-100 border-slate-600
-                                {% endif %}">
-                                {{ origen_name }}
-                            </span>
-                            {% endif %}
-
-                            <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
-                                {% if estado_name == 'CERRADO' %}
-                                    bg-emerald-500/10 text-emerald-200 border-emerald-500/40
-                                {% elif estado_name == 'EN_DESCARGA' %}
-                                    bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-                                {% elif estado_name == 'EN_CONTROL_CALIDAD' %}
-                                    bg-amber-500/10 text-amber-200 border-amber-500/40
-                                {% elif estado_name == 'EN_ESPERA' %}
-                                    bg-sky-500/10 text-sky-200 border-sky-500/40
-                                {% else %}
-                                    bg-slate-700/40 text-slate-100 border-slate-600
-                                {% endif %}">
-                                {{ estado_name.replace('_', ' ') }}
-                            </span>
-                        </div>
-
-                        <p class="text-[10px] text-slate-400 whitespace-nowrap">
-                            {% if r.created_at %}
-                            {{ r.created_at.strftime('%d-%m-%Y %H:%M') }}
-                            {% else %}
-                            —
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-
-                {# meta extra si existe #}
-                {% set contenedor = (r.contenedor if r.contenedor is defined else None) %}
-                {% set patente = (r.patente_camion if r.patente_camion is defined else None) %}
-                {% set tipo_carga = (r.tipo_carga if r.tipo_carga is defined else None) %}
-                {% set eta = (r.fecha_estimada_llegada if r.fecha_estimada_llegada is defined else None) %}
-
-                {% if contenedor or patente or tipo_carga or eta %}
-                <div class="mt-2 flex flex-wrap gap-2">
-                    {% if contenedor %}
-                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        Contenedor: <span class="ml-1 text-slate-100">{{ contenedor }}</span>
-                    </span>
-                    {% endif %}
-                    {% if patente %}
-                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        Patente: <span class="ml-1 text-slate-100">{{ patente|upper }}</span>
-                    </span>
-                    {% endif %}
-                    {% if tipo_carga %}
-                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        Tipo: <span class="ml-1 text-slate-100">{{ tipo_carga }}</span>
-                    </span>
-                    {% endif %}
-                    {% if eta %}
-                    <span class="inline-flex items-center rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                        ETA:
-                        <span class="ml-1 text-slate-100">
-                            {% if eta.strftime is defined %}
-                            {{ eta.strftime('%d-%m-%Y') }}
-                            {% else %}
-                            {{ eta }}
-                            {% endif %}
-                        </span>
-                    </span>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-            </article>
-            {% endfor %}
-        </div>
-
-        {# paginación legacy (si existe en tu contexto) #}
-        {% if total_pages and total_pages > 1 %}
-        <nav class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 mt-2">
-            <div class="text-[11px] text-slate-400">
-                Página <span class="font-semibold text-slate-100">{{ page }}</span>
-                de <span class="font-semibold text-slate-100">{{ total_pages }}</span>
-            </div>
-
-            <div class="flex items-center gap-2">
-                {% if page > 1 %}
-                <a href="/inbound/recepciones?page={{ page - 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                        text-[11px] font-medium text-slate-200 bg-slate-900
-                        hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    ← Anterior
-                </a>
-                {% else %}
-                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
-                           text-[11px] font-medium text-slate-500 bg-slate-900/60 cursor-not-allowed">
-                    ← Anterior
-                </span>
-                {% endif %}
-
-                {% if page < total_pages %}
-                <a href="/inbound/recepciones?page={{ page + 1 }}{% if base_query %}&{{ base_query }}{% endif %}"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                        text-[11px] font-medium text-slate-200 bg-slate-900
-                        hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Siguiente →
-                </a>
-                {% else %}
-                <span class="inline-flex items-center rounded-full border border-slate-800 px-3 py-1.5
-                           text-[11px] font-medium text-slate-500 bg-slate-900/60 cursor-not-allowed">
-                    Siguiente →
-                </span>
-                {% endif %}
-            </div>
-        </nav>
-        {% endif %}
-
-        {% else %}
-        <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900 px-4 py-6 text-center space-y-1.5">
-            <p class="text-xs font-semibold text-slate-100">
-                Aún no tienes recepciones inbound.
-            </p>
-            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">
-                Comienza creando tu primera recepción para controlar el flujo completo con Orbion Inbound.
-            </p>
-            <div class="pt-2">
-                <a href="/inbound/recepciones/nueva"
-                   class="inline-flex items-center justify-center rounded-full px-4 py-1.5
-                    text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
-                    hover:bg-cyan-300 active:scale-[0.97]
-                    transition-transform transition-colors">
-                    Crear primera recepción
-                </a>
-            </div>
-        </div>
-        {% endif %}
     </section>
 
 </div>

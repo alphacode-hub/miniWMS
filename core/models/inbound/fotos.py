@@ -12,7 +12,7 @@ class InboundFoto(Base):
     """
     Evidencia fotográfica inbound.
     Baseline v1: guardamos metadata + referencia (path/url).
-    El storage real (local/S3/Azure Blob) se implementa en services.
+    Storage real se implementa en services (más adelante).
     """
     __tablename__ = "inbound_fotos"
 
@@ -26,19 +26,25 @@ class InboundFoto(Base):
     incidencia_id = Column(Integer, ForeignKey("inbound_incidencias.id"), index=True, nullable=True)
     pallet_id = Column(Integer, ForeignKey("inbound_pallets.id"), index=True, nullable=True)
 
-    # metadata
+    # metadata UI
     titulo = Column(String, nullable=True)
     nota = Column(Text, nullable=True)
 
     # referencia al archivo
-    archivo_url = Column(String, nullable=True)   # ej: https://... o /static/uploads/...
-    archivo_path = Column(String, nullable=True)  # ej: ruta relativa interna si usas filesystem
+    archivo_url = Column(String, nullable=True)
+    archivo_path = Column(String, nullable=True)
     mime_type = Column(String, nullable=True)
     size_bytes = Column(Integer, nullable=True)
 
+    creado_por = Column(String, nullable=True)
     creado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
 
-    # relaciones (strings para evitar circular import)
+    # soft delete
+    activo = Column(Integer, default=1, nullable=False, index=True)
+    eliminado_por = Column(String, nullable=True)
+    eliminado_en = Column(DateTime(timezone=True), nullable=True)
+
+    # relaciones
     recepcion = relationship("InboundRecepcion", back_populates="fotos")
     linea = relationship("InboundLinea", back_populates="fotos")
     incidencia = relationship("InboundIncidencia", back_populates="fotos")

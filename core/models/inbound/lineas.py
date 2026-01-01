@@ -77,6 +77,14 @@ class InboundLinea(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
+    # =========================================================
+    # ✅ ENTERPRISE: Snapshots reconciliación (doc vs físico)
+    # =========================================================
+    estado_reconciliacion = Column(String(20), nullable=True)   # OK/FALTANTE/SOBRANTE/MIXTO/...
+    cantidad_diferencia = Column(Float, nullable=True)         # fis_qty - doc_qty
+    peso_diferencia_kg = Column(Float, nullable=True)          # fis_kg - doc_kg
+
+
     # Relaciones
     recepcion = relationship("InboundRecepcion", back_populates="lineas")
     producto = relationship("Producto")

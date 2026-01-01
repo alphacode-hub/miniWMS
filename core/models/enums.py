@@ -32,6 +32,7 @@ class IncidenciaEstado(str, enum.Enum):
     CREADA = "CREADA"
     EN_ANALISIS = "EN_ANALISIS"
     CERRADA = "CERRADA"
+    CANCELADA = "CANCELADA"  # 👈 necesario para servicios enterprise
 
 
 class CitaEstado(str, enum.Enum):
@@ -40,6 +41,24 @@ class CitaEstado(str, enum.Enum):
     RETRASADO = "RETRASADO"
     CANCELADA = "CANCELADA"
     COMPLETADA = "COMPLETADA"
+
+
+# =========================
+# Inbound Checklist (enterprise)
+# =========================
+
+class InboundChecklistEstado(str, enum.Enum):
+    PENDIENTE = "PENDIENTE"
+    EN_PROGRESO = "EN_PROGRESO"
+    COMPLETADO = "COMPLETADO"
+    FIRMADO = "FIRMADO"
+    BLOQUEADO = "BLOQUEADO"
+
+
+class InboundChecklistValor(str, enum.Enum):
+    SI = "SI"
+    NO = "NO"
+    NA = "NA"
 
 
 # =========================

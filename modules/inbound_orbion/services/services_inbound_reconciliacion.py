@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Tuple
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from core.models.enums import PalletEstado
 from core.models.inbound.lineas import InboundLinea
 from core.models.inbound.pallets import InboundPallet, InboundPalletItem
+from core.models.enums import PalletEstado
 
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
@@ -16,6 +16,15 @@ from modules.inbound_orbion.services.services_inbound_core import (
     obtener_recepcion_editable,
     obtener_recepcion_segura,
 )
+
+# ✅ contrato oficial de línea (para saber si es CANTIDAD/PESO)
+from modules.inbound_orbion.services.inbound_linea_contract import (
+    InboundLineaContractError,
+    InboundLineaModo,
+    normalizar_linea,
+)
+
+_EPS = 1e-9
 
 
 # =========================================================
@@ -58,8 +67,8 @@ def _clasificar_eje(doc: float | None, fisico: float | None, tol: float) -> str:
 def _clasificar_linea(
     doc_qty: float | None,
     doc_kg: float | None,
-    fis_qty: float,
-    fis_kg: float,
+    fis_qty: float | None,
+    fis_kg: float | None,
     tol: float,
 ) -> str:
     if doc_qty is None and doc_kg is None:
@@ -83,6 +92,40 @@ def _clasificar_linea(
 
 
 # =========================================================
+# Conversión (kg/u) — usa override de línea o producto si existe
+# =========================================================
+
+def _resolver_peso_unitario_kg(linea: InboundLinea) -> float | None:
+    v = getattr(linea, "peso_unitario_kg_override", None)
+    if v is not None:
+        try:
+            n = float(v)
+            return n if n > 0 else None
+        except (TypeError, ValueError):
+            pass
+
+    prod = getattr(linea, "producto", None)
+    if prod is not None:
+        v2 = getattr(prod, "peso_unitario_kg", None)
+        if v2 is not None:
+            try:
+                n2 = float(v2)
+                return n2 if n2 > 0 else None
+            except (TypeError, ValueError):
+                pass
+
+    return None
+
+
+def _calc_kg_desde_cantidad(cant: float, kg_u: float) -> float:
+    return round(float(cant) * float(kg_u), 3)
+
+
+def _calc_cantidad_desde_kg(kg: float, kg_u: float) -> float:
+    return round(float(kg) / float(kg_u), 3)
+
+
+# =========================================================
 # Fuente de verdad: pallets -> líneas
 # =========================================================
 
@@ -91,32 +134,23 @@ def reconciliar_recepcion(
     negocio_id: int,
     recepcion_id: int,
     *,
-    # tolerancia para clasificar OK vs SOBRANTE/FALTANTE
     tol: float = 1e-6,
-    # incluir detalle por línea en el retorno (para UI)
     include_lineas: bool = True,
-    # escribir campos opcionales si existen (estado_reconciliacion, diferencias, etc.)
     write_optional_fields: bool = True,
-    # fuente de verdad: qué pallets cuentan
-    # - "soft": ABIERTO + EN_PROCESO + LISTO (excluye BLOQUEADO)
-    # - "strict": solo LISTO (excluye BLOQUEADO)
-    strict: bool = False,
-    # guard editable (True por defecto; en lectura puedes desactivarlo)
+    # - soft: ABIERTO + EN_PROCESO + LISTO (excluye BLOQUEADO)
+    # - strict: solo LISTO (excluye BLOQUEADO)
+    strict: bool = True,
     require_editable: bool = True,
-    # commit controlado por caller (por defecto True para mantener tu comportamiento)
     commit: bool = True,
 ) -> Dict[str, Any]:
     """
     Reconciliación enterprise:
-    - Fuente de verdad: InboundPalletItem (cantidad/peso real)
-    - Derivados: InboundLinea.cantidad_recibida y InboundLinea.peso_recibido_kg
-    - Clasifica estado por eje (cantidad/kg) y resumen por línea.
-
-    Guards:
-    - Multi-tenant por negocio_id
-    - (Opcional) requiere recepción editable según InboundConfig
-    - Excluye pallets BLOQUEADO siempre
-    - Modo strict: solo pallets LISTO cuentan para el físico
+    - Fuente de verdad: InboundPalletItem (REAL + ESTIMADOS)
+    - Derivados en InboundLinea:
+        - cantidad_recibida (siempre)
+        - peso_recibido_kg (si existe)
+    - CANTIDAD: kg físico se toma desde peso_estimado_kg (o deriva por kg/u si falta)
+    - PESO: cantidad física se toma desde cantidad_estimada (o deriva por kg/u si falta)
     """
 
     # Guard de recepción (segura + editable si corresponde)
@@ -125,10 +159,9 @@ def reconciliar_recepcion(
     else:
         _ = obtener_recepcion_segura(db, recepcion_id, negocio_id)
 
-    # (Opcional) config inbound por si en el futuro tomas tolerancias desde ahí
     _cfg = obtener_config_inbound(db, negocio_id)
 
-    # Estados de pallets que cuentan para la reconciliación
+    # Estados de pallets que cuentan
     if strict:
         estados_ok = {PalletEstado.LISTO.value}
     else:
@@ -137,7 +170,6 @@ def reconciliar_recepcion(
             PalletEstado.EN_PROCESO.value,
             PalletEstado.LISTO.value,
         }
-    # BLOQUEADO queda fuera siempre
     estados_excluidos = {PalletEstado.BLOQUEADO.value}
 
     lineas: List[InboundLinea] = (
@@ -163,12 +195,14 @@ def reconciliar_recepcion(
 
     linea_ids = [int(l.id) for l in lineas]
 
-    # SUM físico desde pallet_items (join a pallets para filtrar por estado/recepción/tenant)
+    # ✅ SUMS: REAL + ESTIMADOS
     rows = (
         db.query(
             InboundPalletItem.linea_id.label("linea_id"),
-            func.coalesce(func.sum(InboundPalletItem.cantidad), 0.0).label("sum_cantidad"),
-            func.coalesce(func.sum(InboundPalletItem.peso_kg), 0.0).label("sum_peso_kg"),
+            func.coalesce(func.sum(InboundPalletItem.cantidad), 0.0).label("sum_cant_real"),
+            func.coalesce(func.sum(InboundPalletItem.peso_kg), 0.0).label("sum_kg_real"),
+            func.coalesce(func.sum(InboundPalletItem.cantidad_estimada), 0.0).label("sum_cant_est"),
+            func.coalesce(func.sum(InboundPalletItem.peso_estimado_kg), 0.0).label("sum_kg_est"),
         )
         .join(InboundPallet, InboundPallet.id == InboundPalletItem.pallet_id)
         .filter(
@@ -183,8 +217,14 @@ def reconciliar_recepcion(
         .all()
     )
 
-    sum_por_linea: Dict[int, Tuple[float, float]] = {
-        int(r.linea_id): (float(r.sum_cantidad or 0.0), float(r.sum_peso_kg or 0.0))
+    # linea_id -> (cant_real, kg_real, cant_est, kg_est)
+    sum_por_linea: Dict[int, Tuple[float, float, float, float]] = {
+        int(r.linea_id): (
+            float(r.sum_cant_real or 0.0),
+            float(r.sum_kg_real or 0.0),
+            float(r.sum_cant_est or 0.0),
+            float(r.sum_kg_est or 0.0),
+        )
         for r in rows
     }
 
@@ -195,12 +235,49 @@ def reconciliar_recepcion(
     lineas_out: List[Dict[str, Any]] = []
 
     for ln in lineas:
-        fis_qty, fis_kg = sum_por_linea.get(int(ln.id), (0.0, 0.0))
-        fis_qty = float(fis_qty or 0.0)
-        fis_kg = float(fis_kg or 0.0)
+        cant_real, kg_real, cant_est, kg_est = sum_por_linea.get(int(ln.id), (0.0, 0.0, 0.0, 0.0))
+        cant_real = float(cant_real or 0.0)
+        kg_real = float(kg_real or 0.0)
+        cant_est = float(cant_est or 0.0)
+        kg_est = float(kg_est or 0.0)
 
-        total_fis_qty += fis_qty
-        total_fis_kg += fis_kg
+        # Contrato oficial
+        try:
+            view = normalizar_linea(ln, allow_draft=False)
+        except InboundLineaContractError as exc:
+            raise InboundDomainError(f"Línea inválida según contrato: {str(exc)}") from exc
+
+        kg_u = _resolver_peso_unitario_kg(ln)
+
+        # ✅ físico operativo según modo
+        fis_qty: float | None
+        fis_kg: float | None
+
+        if view.modo == InboundLineaModo.CANTIDAD:
+            fis_qty = cant_real
+            # kg: REAL si existe; sino ESTIMADO; sino deriva por kg/u
+            if kg_real > _EPS:
+                fis_kg = kg_real
+            elif kg_est > _EPS:
+                fis_kg = kg_est
+            elif kg_u is not None and fis_qty > _EPS:
+                fis_kg = _calc_kg_desde_cantidad(fis_qty, float(kg_u))
+            else:
+                fis_kg = None
+        else:  # PESO
+            fis_kg = kg_real
+            # cantidad: REAL si existe; sino ESTIMADA; sino deriva por kg/u
+            if cant_real > _EPS:
+                fis_qty = cant_real
+            elif cant_est > _EPS:
+                fis_qty = cant_est
+            elif kg_u is not None and fis_kg > _EPS:
+                fis_qty = _calc_cantidad_desde_kg(fis_kg, float(kg_u))
+            else:
+                fis_qty = None
+
+        total_fis_qty += float(fis_qty or 0.0)
+        total_fis_kg += float(fis_kg or 0.0)
 
         doc_qty = _to_float_or_none(getattr(ln, "cantidad_documento", None))
         doc_kg = _to_float_or_none(getattr(ln, "peso_kg", None))
@@ -233,6 +310,7 @@ def reconciliar_recepcion(
             lineas_out.append(
                 {
                     "linea_id": ln.id,
+                    "modo": view.modo.value if hasattr(view.modo, "value") else str(view.modo),
                     "doc": {"cantidad": _r3(doc_qty), "kg": _r3(doc_kg)},
                     "fisico": {"cantidad": _r3(fis_qty), "kg": _r3(fis_kg)},
                     "diferencia": {
@@ -243,8 +321,6 @@ def reconciliar_recepcion(
                 }
             )
 
-    # En enterprise preferimos que el caller controle la transacción;
-    # pero mantenemos commit opcional para compatibilidad.
     if commit:
         db.commit()
     else:
