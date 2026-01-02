@@ -259,18 +259,14 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
                         </p>
 
                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
-                                Ítems: {{ n_items|cl_num }}
-                            </span>
+                            
                             <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
                                 Kg: {{ kg_real|cl_num or 0.0 }}
                             </span>
                             <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
                                 Cant: {{ cant_real|cl_num or 0.0 }}
                             </span>
-                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
-                                Neto: {% if neto is not none %}{{ neto|cl_num }}{% else %}—{% endif %}
-                            </span>
+                            
                         </div>
 
                         <p class="text-[11px] text-slate-500 mt-2 truncate">

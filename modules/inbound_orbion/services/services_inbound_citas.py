@@ -278,7 +278,7 @@ def crear_cita_y_recepcion(
         estado=CitaEstado.PROGRAMADA,
     )
 
-    # 2) Crear recepción 1:1
+        # 2) Crear recepción 1:1
     recepcion = InboundRecepcion(
         negocio_id=int(negocio_id),
         proveedor_id=int(proveedor_id) if proveedor_id else None,
@@ -293,12 +293,12 @@ def crear_cita_y_recepcion(
         observaciones=nt,
 
         estado=RecepcionEstado.PRE_REGISTRADO,
-        plantilla_id=int(plantilla_id) if plantilla_id else None,
 
         contenedor=_strip(contenedor),
         patente_camion=_strip(patente_camion),
         tipo_carga=_strip(tipo_carga),
     )
+
 
     try:
         db.add(cita)

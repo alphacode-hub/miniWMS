@@ -34,10 +34,7 @@ class InboundLinea(Base):
     # ======================================
     # OBJETIVO DOC (oficial: contrato)
     # ======================================
-    
     cantidad_documento = Column(Float, nullable=True)
-    
-
     unidad = Column(String, nullable=True)
 
     # ✅ ENTERPRISE
@@ -51,7 +48,6 @@ class InboundLinea(Base):
     # ======================================
     # ⚠️ Enterprise: estos campos NO se editan desde UI.
     # Se recalculan por reconciliación desde pallets (InboundPalletItem).
-    # KG RECIBIDO REAL (reconciliación desde pallets)
     cantidad_recibida = Column(Float, default=0, nullable=False)
     peso_recibido_kg = Column(Float, nullable=True)
 
@@ -70,7 +66,6 @@ class InboundLinea(Base):
     # =========================================================
     # ✅ ENTERPRISE: Origen + lifecycle
     # =========================================================
-    # DRAFT: precargada desde plantilla/cita
     es_draft = Column(Integer, default=0, nullable=False, index=True)  # 0/1 (SQLite-friendly)
     activo = Column(Integer, default=1, nullable=False, index=True)
 
@@ -84,7 +79,6 @@ class InboundLinea(Base):
     cantidad_diferencia = Column(Float, nullable=True)         # fis_qty - doc_qty
     peso_diferencia_kg = Column(Float, nullable=True)          # fis_kg - doc_kg
 
-
     # Relaciones
     recepcion = relationship("InboundRecepcion", back_populates="lineas")
     producto = relationship("Producto")
@@ -93,6 +87,12 @@ class InboundLinea(Base):
 
     fotos = relationship(
         "InboundFoto",
+        back_populates="linea",
+        cascade="all, delete-orphan",
+    )
+
+    documentos = relationship(
+        "InboundDocumento",
         back_populates="linea",
         cascade="all, delete-orphan",
     )

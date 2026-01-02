@@ -1,430 +1,564 @@
 ﻿{# modules/inbound_orbion/templates/inbound_checklist_recepcion.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}Inbound · Checklist{% endblock %}
+{% block title %}
+ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+{% endblock %}
+
+{% block page_header %}{% endblock %}
 
 {% block content %}
 {% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else (recepcion.codigo if recepcion and recepcion.codigo else ("Recepción #" ~ recepcion.id if recepcion else "Recepción")) %}
 
-<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
+{% set recep_estado = (recepcion.estado.value if recepcion and recepcion.estado else '') %}
+{% set recepcion_cerrada = (recep_estado == 'CERRADO') %}
 
-    <!-- Header -->
-    <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-            <div class="flex items-center gap-2">
-                <h1 class="text-lg sm:text-xl font-semibold text-slate-100">
-                    Checklist operativo
-                </h1>
+{# SIMPLE V2: solo lectura viene del backend (locked) o recepcion cerrada #}
+{% set solo_lectura = (locked or recepcion_cerrada) %}
 
-                {% if checklist and checklist.estado %}
-                {% set est = checklist.estado|string %}
-                {% if est in ["COMPLETADO","CERRADO","FINALIZADO"] %}
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">
-                    {{ est }}
+{% macro chk_badge_simple(resumen) -%}
+  {%- set bloqueado = (resumen.get("bloqueado") if resumen else False) -%}
+  {%- if bloqueado -%}
+<span id="chkEstadoBadge"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+             bg-rose-500/10 text-rose-200 border-rose-500/40">
+    BLOQUEADO
+</span>
+  {%- else -%}
+<span id="chkEstadoBadge"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+             bg-slate-700/40 text-slate-100 border-slate-600">
+    ACTIVO
+</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro estado_badge(estado) -%}
+  {%- set x = (estado or "")|upper|trim -%}
+  {%- if x == "CUMPLE" -%}
+<span data-role="item-badge" data-state="CUMPLE"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-emerald-500/10 text-emerald-200 border-emerald-500/40">Cumple</span>
+  {%- elif x == "NO_CUMPLE" -%}
+<span data-role="item-badge" data-state="NO_CUMPLE"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-rose-500/10 text-rose-200 border-rose-500/40">No cumple</span>
+  {%- elif x == "NA" -%}
+<span data-role="item-badge" data-state="NA"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-slate-700/40 text-slate-100 border-slate-600">NA</span>
+  {%- else -%}
+<span data-role="item-badge" data-state="PENDIENTE"
+      class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-slate-700/40 text-slate-100 border-slate-600">Pendiente</span>
+  {%- endif -%}
+{%- endmacro %}
+
+
+<div class="max-w-5xl mx-auto px-4 py-5 sm:py-7 space-y-6 sm:space-y-8">
+
+    {# =========================
+    HEADER
+    ========================= #}
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Recepción · Checklist
+            </p>
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recep_codigo }}
+                <span class="text-slate-500 font-normal">
+                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor and recepcion.proveedor.nombre else "Sin proveedor" }}
                 </span>
-                {% elif est in ["EN_PROGRESO","EN CURSO","INICIADO"] %}
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">
-                    {{ est }}
-                </span>
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl">
+                {% if checklist and checklist.plantilla_nombre %}
+                Plantilla: {{ checklist.plantilla_nombre }}
                 {% else %}
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-200 border border-slate-500/20">
-                    {{ est }}
-                </span>
+                Checklist operativo de recepción
                 {% endif %}
-                {% endif %}
-            </div>
-
-            <p class="text-xs sm:text-sm text-slate-300 mt-1">
-                Recepción: <span class="font-medium text-slate-100">{{ recep_codigo }}</span>
-                {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
-                · Proveedor: <span class="font-medium text-slate-100">{{ recepcion.proveedor.nombre }}</span>
-                {% endif %}
+                {% if recep_estado %} · Estado recepción: {{ recep_estado }}{% endif %}
             </p>
-
-            {% if checklist and checklist.plantilla_nombre %}
-            <p class="text-xs text-slate-400 mt-1">
-                Plantilla: <span class="text-slate-200">{{ checklist.plantilla_nombre }}</span>
-            </p>
-            {% endif %}
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
-            <a href="/inbound/recepciones/{{ recepcion.id }}"
+        <div class="shrink-0 flex items-center gap-2">
+            {% if checklist %}
+            {{ chk_badge_simple(checklist.resumen or {}) }}
+            {% endif %}
+
+            {% if solo_lectura %}
+            <span class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10
+                        px-3 py-1 text-[10px] font-semibold text-emerald-200">
+                Solo lectura
+            </span>
+            {% endif %}
+
+            <a href="/inbound/recepciones/{{ recepcion.id if recepcion else '' }}"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                ← Volver a recepción
+                      text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300
+                      transition-colors">
+                ← Volver
             </a>
         </div>
-    </div>
+    </header>
 
-    <!-- Alerts -->
-    {% if error %}
-    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-rose-100">
-        <div class="text-sm font-semibold">Error</div>
-        <div class="text-sm text-rose-100/90 mt-1">{{ error }}</div>
-    </div>
+    {# =========================
+    ALERTAS (ok/error)
+    ========================= #}
+    {% if ok %}
+    <section class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Listo</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+    </section>
     {% endif %}
 
-    {% if ok %}
-    <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-100">
-        <div class="text-sm font-semibold">Listo</div>
-        <div class="text-sm text-emerald-100/90 mt-1">{{ ok }}</div>
-    </div>
+    {% if error %}
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar la acción</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ error }}</p>
+    </section>
+    {% endif %}
+
+    {% if locked and locked_reason %}
+    <section class="rounded-2xl border border-slate-700 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-slate-200">Modo solo lectura</p>
+        <p class="text-[11px] text-slate-400 mt-1 whitespace-pre-line">{{ locked_reason }}</p>
+    </section>
     {% endif %}
 
     {% if checklist %}
-
     {% set resumen = checklist.resumen or {} %}
     {% set pct = resumen.get("progreso_pct", 0) %}
-    {% set total = resumen.get("items_total", (checklist.items|length)) %}
+    {% set total = resumen.get("items_total", 0) %}
     {% set respondidos = resumen.get("items_respondidos", 0) %}
     {% set req_total = resumen.get("requeridos_total", 0) %}
     {% set req_ok = resumen.get("requeridos_ok", 0) %}
     {% set req_pend = resumen.get("requeridos_pendientes", 0) %}
+    {% set crit_bad = resumen.get("criticos_no_cumple", 0) %}
+    {% set bloqueado = resumen.get("bloqueado", False) %}
 
-    <!-- Resumen / progreso -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
-            <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold text-slate-100">Progreso</div>
-                <div class="text-xs text-slate-300">{{ pct }}%</div>
-            </div>
-            <div class="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div class="h-full bg-cyan-400/80" style="width: {{ pct }}%"></div>
+    {# =========================
+    RESUMEN
+    ========================= #}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Resumen</p>
+                <p class="text-[11px] text-slate-400">Autosave activo. Requeridos OK para “completar” operativo.</p>
             </div>
 
-            <div class="mt-3 grid grid-cols-2 gap-2">
-                <div class="rounded-xl bg-slate-950/30 border border-slate-800/60 p-3">
-                    <div class="text-[11px] text-slate-400">Respondidos</div>
-                    <div class="text-lg font-semibold text-slate-100">
-                        {{ respondidos }}
-                        <span class="text-xs text-slate-400">/ {{ total }}</span>
-                    </div>
-                </div>
-                <div class="rounded-xl bg-slate-950/30 border border-slate-800/60 p-3">
-                    <div class="text-[11px] text-slate-400">Requeridos OK</div>
-                    <div class="text-lg font-semibold text-slate-100">
-                        {{ req_ok }}
-                        <span class="text-xs text-slate-400">/ {{ req_total }}</span>
-                    </div>
+            <span id="pctBadge" class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-300">
+                {{ pct }}%
+            </span>
+        </div>
+
+        <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="pctBar" class="h-full bg-cyan-400/80" style="width: {{ pct }}%"></div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <p class="text-[10px] text-slate-400 uppercase tracking-wide">Respondidos</p>
+                <p class="mt-1 text-sm font-semibold text-slate-100">
+                    <span id="respondidosTxt">{{ respondidos }}</span>
+                    <span class="text-[11px] font-normal text-slate-400">/ <span id="totalTxt">{{ total }}</span></span>
+                </p>
+                <p class="text-[10px] text-slate-500 mt-1">Cuenta si estado ≠ PENDIENTE.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <p class="text-[10px] text-slate-400 uppercase tracking-wide">Requeridos OK</p>
+                <p class="mt-1 text-sm font-semibold text-slate-100">
+                    <span id="reqOkTxt">{{ req_ok }}</span>
+                    <span class="text-[11px] font-normal text-slate-400">/ <span id="reqTotTxt">{{ req_total }}</span></span>
+                </p>
+                <p id="reqPendLine" class="text-[10px] mt-1 {{ 'text-amber-300' if req_pend>0 else 'text-slate-500' }}">
                     {% if req_pend > 0 %}
-                    <div class="mt-1 text-[11px] text-amber-300">
-                        Faltan {{ req_pend }} requeridos
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4 lg:col-span-2">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <div class="text-sm font-semibold text-slate-100">Acciones</div>
-                    <div class="text-xs text-slate-400 mt-1">
-                        Marca y guarda. “Guardar todo” es modo seguro (BOOL solo guarda OK).
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button type="button"
-                            id="btnGuardarTodo"
-                            class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
-                        Guardar todo
-                    </button>
-
-                    {% set est = checklist.estado|string %}
-                    {% if est in ["COMPLETADO","CERRADO","FINALIZADO"] %}
-                    <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/checklist/reabrir">
-                        <button type="submit"
-                                class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold border border-slate-700/60">
-                            Reabrir checklist
-                        </button>
-                    </form>
+                    Faltan <span id="reqPendTxt">{{ req_pend }}</span> requeridos.
                     {% else %}
-                    <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/checklist/completar">
-                        <button type="submit"
-                                class="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-emerald-950 text-xs font-semibold border border-emerald-400/40">
-                            Completar checklist
-                        </button>
-                    </form>
+                    Listo.
                     {% endif %}
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <p class="text-[10px] text-slate-400 uppercase tracking-wide">Críticos NO CUMPLE</p>
+                <p class="mt-1 text-sm font-semibold {{ 'text-rose-200' if crit_bad>0 else 'text-slate-100' }}">
+                    <span id="critTxt">{{ crit_bad }}</span>
+                </p>
+                <p class="text-[10px] text-slate-500 mt-1">Si &gt; 0 → bloqueo.</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <p class="text-[10px] text-slate-400 uppercase tracking-wide">Estado</p>
+                <p class="mt-1 text-sm font-semibold {{ 'text-rose-200' if bloqueado else 'text-slate-100' }}">
+                    <span id="estadoTxt">{{ "BLOQUEADO" if bloqueado else "ACTIVO" }}</span>
+                </p>
+                <p class="text-[10px] text-slate-500 mt-1">Recepción cerrada inmoviliza.</p>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+            <div id="saveStatus" class="text-[11px] text-slate-500">
+                {% if solo_lectura %}Solo lectura.{% else %}Listo.{% endif %}
+            </div>
+
+            <span class="inline-flex items-center rounded-full border border-slate-700 px-4 py-1.5 text-[11px] font-semibold text-slate-400 bg-slate-900/40">
+                Autosave activo
+            </span>
+        </div>
+    </section>
+
+    {# =========================
+    SECCIONES
+    ========================= #}
+    <section class="space-y-4">
+        {% for sec in (checklist.secciones or []) %}
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden" data-role="section" data-sec="{{ sec.codigo }}">
+            <div class="px-3 py-3 sm:px-4 sm:py-4 border-b border-slate-800 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold text-slate-300">{{ sec.titulo }}</p>
+                    {% set sres = sec.resumen or {} %}
+                    {% set spct = sres.get("progreso_pct", 0) %}
+                    {% set stot = sres.get("items_total", 0) %}
+                    {% set sresp = sres.get("items_respondidos", 0) %}
+                    <p class="text-[10px] text-slate-500">{{ sec.codigo }} · {{ sresp }}/{{ stot }} · {{ spct }}%</p>
+                </div>
+                <div class="h-2 w-40 rounded-full bg-slate-800 overflow-hidden">
+                    <div class="h-full bg-cyan-400/80" style="width: {{ spct }}%"></div>
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                <div class="text-xs text-slate-300">
-                    <span class="font-semibold text-slate-100">Tip enterprise:</span>
-                    Si hay “NO OK”, registra nota; luego adjuntaremos evidencia (fotos/documentos) cuando integremos esos módulos.
-                </div>
-            </div>
-        </div>
-    </div>
+            <div class="divide-y divide-slate-800">
+                {% for it in (sec.items or []) %}
+                {% set est = (it.estado|string)|upper|trim if it.estado else "PENDIENTE" %}
+                {% if est in ["", "NONE"] %}{% set est = "PENDIENTE" %}{% endif %}
 
-    <!-- Items -->
-    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60">
-        <div class="p-4 border-b border-slate-800/60">
-            <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold text-slate-100">Ítems</div>
-                <div class="text-xs text-slate-400">{{ total }} items</div>
-            </div>
-        </div>
+                <div class="px-3 py-4 sm:px-4 sm:py-5 checklist-item"
+                     data-item-id="{{ it.item_id }}"
+                     data-sololectura="{{ '1' if solo_lectura else '0' }}"
+                     data-estado="{{ est }}"
+                     data-role="item">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-xs font-semibold text-slate-100 truncate">{{ it.nombre }}</p>
 
-        <div class="divide-y divide-slate-800/60">
-            {% for it in (checklist.items or []) %}
-            {% set resp_ok = it.ok %}
-            {% set resp_valor = it.valor %}
-            {% set resp_nota = it.nota %}
-            {% set resp_user = it.respondido_por %}
-            {% set resp_dt = it.actualizado_en %}
-            {% set tipo = (it.tipo|string) if it.tipo is not none else "BOOL" %}
-            {% set requerido = it.requerido if it.requerido is not none else false %}
-            {% set respondido = (resp_ok is not none) or (resp_valor and (resp_valor|string)|trim != "") or (resp_nota and (resp_nota|string)|trim != "") %}
+                                {% if it.requerido %}
+                                <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                                             bg-amber-500/10 text-amber-200 border-amber-500/40">REQUERIDO</span>
+                                {% endif %}
 
-            <div class="p-4 checklist-item"
-                 data-item-id="{{ it.item_id }}"
-                 data-tipo="{{ tipo }}">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                            <div class="text-sm font-semibold text-slate-100 truncate">
-                                {{ it.nombre }}
+                                {% if it.critico %}
+                                <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                                             bg-rose-500/10 text-rose-200 border-rose-500/40">CRÍTICO</span>
+                                {% endif %}
+
+                                {% if it.codigo %}
+                                <span class="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border
+                                             bg-slate-700/40 text-slate-100 border-slate-600" data-role="item-code">
+                                    {{ it.codigo }}
+                                </span>
+                                {% endif %}
                             </div>
-                            {% if requerido %}
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
-                                REQUERIDO
-                            </span>
-                            {% endif %}
 
-                            {% if it.codigo %}
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-500/10 text-slate-300 border border-slate-700/60">
-                                {{ it.codigo }}
-                            </span>
+                            {% if it.descripcion %}
+                            <p class="text-[11px] text-slate-400">{{ it.descripcion }}</p>
                             {% endif %}
                         </div>
 
-                        {% if it.descripcion %}
-                        <div class="text-xs text-slate-400 mt-1">
-                            {{ it.descripcion }}
+                        <div class="shrink-0">
+                            {{ estado_badge(est) }}
                         </div>
-                        {% endif %}
                     </div>
 
-                    <!-- Estado visual -->
-                    <div class="shrink-0">
-                        {% if respondido %}
-                        {% if resp_ok is not none %}
-                        {% if resp_ok %}
-                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-200 border border-emerald-500/20">OK</span>
-                        {% else %}
-                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-200 border border-rose-500/20">NO OK</span>
-                        {% endif %}
-                        {% elif resp_valor %}
-                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-cyan-500/15 text-cyan-200 border border-cyan-500/20">
-                            {{ resp_valor }}
-                        </span>
-                        {% else %}
-                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
-                            Respondido
-                        </span>
-                        {% endif %}
-                        {% else %}
-                        <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-700/60">
-                            Pendiente
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
+                    <div class="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-3">
+                        <div class="lg:col-span-8 space-y-3">
+                            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 space-y-2">
+                                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Evaluación</p>
 
-                <!-- Form respuesta -->
-                <form method="post"
-                      action="/inbound/recepciones/{{ recepcion.id }}/checklist/item"
-                      class="mt-4 checklist-form">
-                    <input type="hidden" name="checklist_item_id" value="{{ it.item_id }}" />
-
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                        <div class="md:col-span-8">
-                            {% if tipo == "BOOL" %}
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <div class="text-xs font-semibold text-slate-300 mb-2">Resultado</div>
-
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                                        <input type="radio" name="ok" value=""
-                                               class="h-4 w-4"
-                                               {% if resp_ok is none %}checked{% endif %} />
-                                        Pendiente
-                                    </label>
-
-                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                                        <input type="radio" name="ok" value="true"
-                                               class="h-4 w-4"
-                                               {% if resp_ok is not none and resp_ok %}checked{% endif %} />
-                                        OK
-                                    </label>
-
-                                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                                        <input type="radio" name="ok" value="false"
-                                               class="h-4 w-4"
-                                               {% if resp_ok is not none and (not resp_ok) %}checked{% endif %} />
-                                        NO OK
-                                    </label>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    {% set dis = "opacity-50 pointer-events-none" if solo_lectura else "" %}
+                                    <button type="button" class="chk-pill {{ dis }}" data-set="PENDIENTE">Pendiente</button>
+                                    <button type="button" class="chk-pill {{ dis }}" data-set="CUMPLE">Cumple</button>
+                                    <button type="button" class="chk-pill {{ dis }}" data-set="NO_CUMPLE">No cumple</button>
+                                    <button type="button" class="chk-pill {{ dis }}" data-set="NA">NA</button>
                                 </div>
 
-                                <div class="mt-2 text-xs text-slate-500">
-                                    “Guardar todo” solo guarda OK (modo seguro). Para NO OK usa “Guardar”.
-                                </div>
+                                {% if it.codigo == "TEMP_APLICA" %}
+                                <p class="text-[10px] text-slate-500">
+                                    Si marcas <span class="font-semibold text-slate-300">NA</span>, se ocultarán los ítems de temperatura.
+                                </p>
+                                {% endif %}
                             </div>
-
-                            {% elif tipo == "OPCION" %}
-                            {% set opts = (it.opciones or "") %}
-                            {% set lista = opts.split(",") if opts else [] %}
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <label class="block text-xs font-semibold text-slate-300 mb-2">Selección</label>
-                                <select name="valor"
-                                        class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
-                                    <option value="">— Seleccionar —</option>
-                                    {% for op in lista %}
-                                    {% set v = op.strip() %}
-                                    {% if v %}
-                                    <option value="{{ v }}" {% if resp_valor == v %}selected{% endif %}>{{ v }}</option>
-                                    {% endif %}
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            {% elif tipo in ["NUMERO","NUMBER"] %}
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <label class="block text-xs font-semibold text-slate-300 mb-2">Valor numérico</label>
-                                <input type="number" step="any" name="valor"
-                                       value="{{ resp_valor if resp_valor else '' }}"
-                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                                       placeholder="Ej: 12.5" />
-                            </div>
-
-                            {% elif tipo == "FECHA" %}
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <label class="block text-xs font-semibold text-slate-300 mb-2">Fecha</label>
-                                <input type="date" name="valor"
-                                       value="{{ resp_valor if resp_valor else '' }}"
-                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30" />
-                            </div>
-
-                            {% else %}
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3">
-                                <label class="block text-xs font-semibold text-slate-300 mb-2">Valor / Texto</label>
-                                <input type="text" name="valor"
-                                       value="{{ resp_valor if resp_valor else '' }}"
-                                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                                       placeholder="Ej: 2°C, Sellos intactos, OK..." />
-                            </div>
-                            {% endif %}
                         </div>
 
-                        <div class="md:col-span-4">
-                            <div class="rounded-xl border border-slate-800/60 bg-slate-950/30 p-3 h-full">
-                                <label class="block text-xs font-semibold text-slate-300 mb-2">Nota (opcional)</label>
-                                <textarea name="nota" rows="3"
-                                          class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                                          placeholder="Observación breve...">{{ resp_nota if resp_nota else '' }}</textarea>
-
-                                <div class="mt-3 flex items-center justify-between gap-2">
-                                    <button type="submit"
-                                            class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
-                                        Guardar
-                                    </button>
-
-                                    {% if resp_user or resp_dt %}
-                                    <div class="text-[11px] text-slate-500 text-right">
-                                        {% if resp_user %}<div>{{ resp_user }}</div>{% endif %}
-                                        {% if resp_dt %}<div>Actualizado</div>{% endif %}
-                                    </div>
-                                    {% endif %}
-                                </div>
+                        <div class="lg:col-span-4">
+                            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 h-full space-y-2">
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Nota (opcional)</label>
+                                <textarea rows="3"
+                                          class="chk-note w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                                                 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none
+                                                 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-50"
+                                          placeholder="Observación breve..."
+                                          {% if solo_lectura %}disabled{% endif %}>{{ it.nota if it.nota else '' }}</textarea>
+                                <p class="text-[10px] text-slate-500">Autosave: se guarda al cambiar o escribir (debounce).</p>
                             </div>
                         </div>
                     </div>
-
-                </form>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-
-            {% if not checklist.items %}
-            <div class="p-6 text-center text-slate-400">
-                No hay ítems de checklist asignados a esta recepción.
-            </div>
-            {% endif %}
         </div>
-    </div>
-
-    {% else %}
-    <div class="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-6 text-slate-300">
-        No se pudo cargar el checklist.
-    </div>
+        {% endfor %}
+    </section>
     {% endif %}
-
 </div>
+
+<style>
+    .chk-pill {
+        border-radius: 9999px;
+    }
+</style>
 
 <script>
 (function () {
-  const btn = document.getElementById("btnGuardarTodo");
-  if (!btn) return;
+  const SOLO = {{ "true" if solo_lectura else "false" }};
+  const recepId = {{ recepcion.id if recepcion else "null" }};
+  if (!recepId) return;
 
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.textContent = "Guardando...";
+  const statusEl = document.getElementById("saveStatus");
+
+  function setStatus(txt, isErr) {
+    if (!statusEl) return;
+    statusEl.textContent = txt;
+    statusEl.className = "text-[11px] " + (isErr ? "text-rose-300" : "text-slate-500");
+  }
+
+  function updateResumen(res) {
+    if (!res) return;
+
+    const pct = res.progreso_pct ?? 0;
+    const total = res.items_total ?? 0;
+    const resp = res.items_respondidos ?? 0;
+    const reqT = res.requeridos_total ?? 0;
+    const reqO = res.requeridos_ok ?? 0;
+    const reqP = res.requeridos_pendientes ?? 0;
+    const crit = res.criticos_no_cumple ?? 0;
+    const bloqueado = !!res.bloqueado;
+
+    const pctBadge = document.getElementById("pctBadge");
+    const pctBar = document.getElementById("pctBar");
+    const respondidosTxt = document.getElementById("respondidosTxt");
+    const totalTxt = document.getElementById("totalTxt");
+    const reqTotTxt = document.getElementById("reqTotTxt");
+    const reqOkTxt = document.getElementById("reqOkTxt");
+    const reqPendLine = document.getElementById("reqPendLine");
+    const critTxt = document.getElementById("critTxt");
+    const estadoTxt = document.getElementById("estadoTxt");
+
+    if (pctBadge) pctBadge.textContent = pct + "%";
+    if (pctBar) pctBar.style.width = pct + "%";
+    if (respondidosTxt) respondidosTxt.textContent = String(resp);
+    if (totalTxt) totalTxt.textContent = String(total);
+    if (reqTotTxt) reqTotTxt.textContent = String(reqT);
+    if (reqOkTxt) reqOkTxt.textContent = String(reqO);
+    if (critTxt) critTxt.textContent = String(crit);
+
+    if (estadoTxt) {
+      estadoTxt.textContent = bloqueado ? "BLOQUEADO" : "ACTIVO";
+      estadoTxt.className = "font-semibold " + (bloqueado ? "text-rose-200" : "text-slate-100");
+    }
+
+    if (reqPendLine) {
+      if (reqP > 0) {
+        reqPendLine.className = "text-[10px] mt-1 text-amber-300";
+        reqPendLine.textContent = "Faltan " + reqP + " requeridos.";
+      } else {
+        reqPendLine.className = "text-[10px] mt-1 text-slate-500";
+        reqPendLine.textContent = "Listo.";
+      }
+    }
+
+    // badge global (BLOQUEADO/ACTIVO)
+    const chkBadge = document.getElementById("chkEstadoBadge");
+    if (chkBadge) {
+      if (bloqueado) {
+        chkBadge.textContent = "BLOQUEADO";
+        chkBadge.className = "inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-rose-500/10 text-rose-200 border-rose-500/40";
+      } else {
+        chkBadge.textContent = "ACTIVO";
+        chkBadge.className = "inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-slate-700/40 text-slate-100 border-slate-600";
+      }
+    }
+  }
+
+  function pillClass(state, active) {
+    const base = "inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold border transition-colors";
+    if (!active) return base + " border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-300";
+    if (state === "CUMPLE") return base + " bg-emerald-500/10 text-emerald-200 border-emerald-500/40";
+    if (state === "NO_CUMPLE") return base + " bg-rose-500/10 text-rose-200 border-rose-500/40";
+    if (state === "NA") return base + " bg-slate-700/40 text-slate-100 border-slate-600";
+    return base + " bg-slate-700/40 text-slate-100 border-slate-600";
+  }
+
+  function badgeClass(state) {
+    const base = "inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border";
+    if (state === "CUMPLE") return base + " bg-emerald-500/10 text-emerald-200 border-emerald-500/40";
+    if (state === "NO_CUMPLE") return base + " bg-rose-500/10 text-rose-200 border-rose-500/40";
+    return base + " bg-slate-700/40 text-slate-100 border-slate-600";
+  }
+
+  function badgeLabel(state) {
+    if (state === "CUMPLE") return "Cumple";
+    if (state === "NO_CUMPLE") return "No cumple";
+    if (state === "NA") return "NA";
+    return "Pendiente";
+  }
+
+  function setEstadoUI(itemEl, state) {
+    if (!itemEl) return;
+    itemEl.setAttribute("data-estado", state);
+
+    const pills = itemEl.querySelectorAll(".chk-pill");
+    pills.forEach((p) => {
+      const s = (p.getAttribute("data-set") || "PENDIENTE").toUpperCase();
+      const active = (s === state);
+      const disabled = p.classList.contains("pointer-events-none");
+      p.className = "chk-pill " + (disabled ? "opacity-50 pointer-events-none " : "") + pillClass(s, active);
+    });
+
+    const badge = itemEl.querySelector('[data-role="item-badge"]');
+    if (badge) {
+      badge.setAttribute("data-state", state);
+      badge.className = badgeClass(state);
+      badge.textContent = badgeLabel(state);
+    }
+
+    itemEl.classList.add("ring-2", "ring-cyan-500/30");
+    setTimeout(() => itemEl.classList.remove("ring-2", "ring-cyan-500/30"), 250);
+  }
+
+  function shouldHideTemp() {
+    const tempItem = Array.from(document.querySelectorAll('.checklist-item[data-role="item"]')).find((it) => {
+      const chip = it.querySelector('[data-role="item-code"]');
+      return chip && (chip.textContent || "").trim() === "TEMP_APLICA";
+    });
+    if (!tempItem) return false;
+    const v = (tempItem.getAttribute("data-estado") || "PENDIENTE").toUpperCase();
+    return v === "NA";
+  }
+
+  function applyTempVisibility() {
+    const hide = shouldHideTemp();
+    const targets = Array.from(document.querySelectorAll('.checklist-item[data-role="item"]')).filter((it) => {
+      const chip = it.querySelector('[data-role="item-code"]');
+      const code = chip ? (chip.textContent || "").trim() : "";
+      return code === "TEMP_INGRESO" || code === "TEMP_CONFORME";
+    });
+    targets.forEach((it) => { it.style.display = hide ? "none" : ""; });
+  }
+
+  const timers = new Map();
+  const inFlight = new Map();
+
+  function debouncedSave(itemEl, ms) {
+    const key = itemEl.getAttribute("data-item-id") || "";
+    if (timers.has(key)) clearTimeout(timers.get(key));
+    timers.set(key, setTimeout(() => autosave(itemEl), ms));
+  }
+
+  async function autosave(itemEl) {
+    if (SOLO) return;
+    if (!itemEl) return;
+
+    const itemId = parseInt(itemEl.getAttribute("data-item-id"), 10);
+    const estado = (itemEl.getAttribute("data-estado") || "PENDIENTE").toUpperCase();
+    const notaEl = itemEl.querySelector(".chk-note");
+    const nota = notaEl ? (notaEl.value || "") : "";
+
+    if (inFlight.has(String(itemId))) {
+      try { inFlight.get(String(itemId)).abort(); } catch (_) {}
+      inFlight.delete(String(itemId));
+    }
+    const controller = new AbortController();
+    inFlight.set(String(itemId), controller);
+
+    setStatus("Guardando…", false);
 
     try {
-      const rows = Array.from(document.querySelectorAll(".checklist-item"));
-
-      const items = rows.map((row) => {
-        const itemId = parseInt(row.getAttribute("data-item-id"), 10);
-        const tipo = (row.getAttribute("data-tipo") || "").toUpperCase();
-
-        const form = row.querySelector("form.checklist-form");
-        const okEl = form ? form.querySelector('input[name="ok"]:checked') : null;
-        const valorEl = form ? form.querySelector('input[name="valor"], select[name="valor"]') : null;
-        const notaEl = form ? form.querySelector('textarea[name="nota"]') : null;
-
-        const valor = valorEl ? (valorEl.value || "") : "";
-        const nota = notaEl ? (notaEl.value || "") : "";
-
-        // MODO SEGURO:
-        // - BOOL: solo enviamos ok=true si el usuario eligió OK.
-        //         NO OK o Pendiente => ok=null (backend lo ignora en guardar_todo)
-        let ok = null;
-        if (tipo === "BOOL") {
-          const v = okEl ? (okEl.value || "") : "";
-          ok = (v === "true") ? true : null;
-        }
-
-        return {
-          checklist_item_id: itemId,
-          tipo: tipo,
-          ok: ok,
-          valor: valor,
-          nota: nota
-        };
-      });
-
-      const res = await fetch(`/inbound/recepciones/{{ recepcion.id }}/checklist/guardar_todo`, {
+      const res = await fetch(`/inbound/recepciones/${recepId}/checklist/autosave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ item_id: itemId, estado: estado, nota: nota }),
+        signal: controller.signal
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      inFlight.delete(String(itemId));
+
       if (!res.ok || !data.ok) {
-        alert(data.error || "Error al guardar todo.");
+        setStatus((data && data.error) ? data.error : "Error al guardar.", true);
         return;
       }
 
-      window.location.reload();
+      updateResumen(data.resumen);
+
+      if (data.item_updated && data.item_updated.item_id) {
+        const upd = data.item_updated;
+        const target = document.querySelector(`.checklist-item[data-item-id="${upd.item_id}"]`);
+        if (target) {
+          const st = ((upd.estado || "PENDIENTE") + "").toUpperCase();
+          setEstadoUI(target, st);
+          const note = target.querySelector(".chk-note");
+          if (note && typeof upd.nota === "string") {
+            // no pisamos si el user está escribiendo
+            if (document.activeElement !== note) note.value = upd.nota;
+          }
+        }
+      }
+
+      if ((itemEl.querySelector('[data-role="item-code"]')?.textContent || "").trim() === "TEMP_APLICA") {
+        applyTempVisibility();
+      }
+
+      setStatus("Guardado.", false);
 
     } catch (e) {
-      alert("Error inesperado al guardar todo.");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Guardar todo";
+      if (e && e.name === "AbortError") return;
+      setStatus("Error inesperado al guardar.", true);
+    }
+  }
+
+  // Init UI de pills/badges según data-estado
+  document.querySelectorAll('.checklist-item[data-role="item"]').forEach((itemEl) => {
+    const state = (itemEl.getAttribute("data-estado") || "PENDIENTE").toUpperCase();
+    setEstadoUI(itemEl, state);
+  });
+
+  applyTempVisibility();
+
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target && ev.target.closest ? ev.target.closest(".chk-pill") : null;
+    if (!btn) return;
+
+    const itemEl = btn.closest(".checklist-item");
+    if (!itemEl) return;
+    if (itemEl.getAttribute("data-sololectura") === "1") return;
+
+    const state = (btn.getAttribute("data-set") || "PENDIENTE").toUpperCase();
+    setEstadoUI(itemEl, state);
+    debouncedSave(itemEl, 60);
+  });
+
+  document.addEventListener("input", (ev) => {
+    const el = ev.target;
+    if (!el) return;
+
+    const itemEl = el.closest ? el.closest(".checklist-item") : null;
+    if (!itemEl) return;
+    if (itemEl.getAttribute("data-sololectura") === "1") return;
+
+    if (el.classList.contains("chk-note")) {
+      debouncedSave(itemEl, 450);
     }
   });
 })();

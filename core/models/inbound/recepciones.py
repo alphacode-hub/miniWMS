@@ -1,12 +1,11 @@
-﻿# core/models/inbound/recepciones.py
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from sqlalchemy import (
     Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
-    ForeignKey,
-    DateTime,
     Text,
     UniqueConstraint,
 )
@@ -30,7 +29,7 @@ class InboundRecepcion(Base):
     negocio_id = Column(Integer, ForeignKey("negocios.id"), index=True, nullable=False)
     proveedor_id = Column(Integer, ForeignKey("proveedores.id"), index=True, nullable=True)
 
-    # ✅ FK real hacia inbound_citas.id
+    # FK real hacia inbound_citas.id
     cita_id = Column(Integer, ForeignKey("inbound_citas.id"), index=True, nullable=True)
 
     origen = Column(
@@ -39,8 +38,6 @@ class InboundRecepcion(Base):
         default=RecepcionOrigen.CITA,
         index=True,
     )
-
-    plantilla_id = Column(Integer, nullable=True, index=True)
 
     codigo_recepcion = Column(String, nullable=False, index=True)
     documento_ref = Column(String, nullable=True, index=True)
@@ -68,11 +65,12 @@ class InboundRecepcion(Base):
     fecha_fin_descarga = Column(DateTime(timezone=True), nullable=True, index=True)
     fecha_cierre = Column(DateTime(timezone=True), nullable=True, index=True)
 
+    # =========================
     # Relaciones
+    # =========================
     negocio = relationship("Negocio", back_populates="inbound_recepciones")
     proveedor = relationship("Proveedor", back_populates="recepciones")
 
-    # ✅ 1:1 explícito (foreign_keys + back_populates)
     cita = relationship(
         "InboundCita",
         back_populates="recepcion",
@@ -85,6 +83,19 @@ class InboundRecepcion(Base):
 
     incidencias = relationship("InboundIncidencia", back_populates="recepcion", cascade="all, delete-orphan")
     fotos = relationship("InboundFoto", back_populates="recepcion", cascade="all, delete-orphan")
-    checklist_respuestas = relationship("InboundChecklistRespuesta", back_populates="recepcion", cascade="all, delete-orphan")
     documentos = relationship("InboundDocumento", back_populates="recepcion", cascade="all, delete-orphan")
-    checklist = relationship("InboundChecklistRecepcion", back_populates="recepcion", uselist=False, cascade="all, delete-orphan")
+
+    # Checklist SIMPLE V2
+    checklist_ejecucion = relationship(
+        "InboundChecklistEjecucion",
+        back_populates="recepcion",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    # Conveniencia de lectura (source-of-truth: ejecucion.respuestas)
+    # IMPORTANTE: no cascade acá para evitar doble cascada.
+    checklist_respuestas = relationship(
+        "InboundChecklistRespuesta",
+        back_populates="recepcion",
+    )

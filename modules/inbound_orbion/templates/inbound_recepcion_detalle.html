@@ -28,6 +28,43 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
 {% set steps = ['PRE_REGISTRADO','EN_ESPERA','EN_DESCARGA','EN_CONTROL_CALIDAD','CERRADO'] %}
 {% set step_index = steps.index(estado_recepcion) if estado_recepcion in steps else 0 %}
 
+{# =========================
+Helpers UI (duraciones)
+========================= #}
+{% macro fmt_minutes(mins) -%}
+  {%- if mins is none -%}
+    —
+  {%- else -%}
+    {# mins puede venir float -> lo normalizamos a int #}
+    {%- set m = (mins|round(0, 'common')|int) -%}
+    {%- if m < 0 -%}{%- set m = 0 -%}{%- endif -%}
+    {%- if m >= 60 -%}
+      {%- set h = (m // 60) -%}
+      {%- set r = (m % 60) -%}
+{{ h }} h{% if r > 0 %} {{ r }} min{% endif %}
+    {%- else -%}
+{{ m }} min
+    {%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro diff_minutes(dt_end, dt_start) -%}
+  {%- if dt_end and dt_start and dt_end is not none and dt_start is not none -%}
+    {%- if dt_end.__class__.__name__ == 'datetime' or dt_end.strftime is defined -%}
+      {%- set delta = (dt_end - dt_start) -%}
+      {%- if delta and delta.total_seconds is defined -%}
+{{ (delta.total_seconds() / 60.0) }}
+      {%- else -%}
+{{ none }}
+      {%- endif -%}
+    {%- else -%}
+{{ none }}
+    {%- endif -%}
+  {%- else -%}
+{{ none }}
+  {%- endif -%}
+{%- endmacro %}
+
 {% block content %}
 <div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
@@ -167,51 +204,46 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
             </div>
 
             <div class="flex flex-wrap gap-2">
+                <a href="/inbound/recepciones/{{ recepcion.id }}/documentos"
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                    Documentos
+                </a>
                 <a href="/inbound/recepciones/{{ recepcion.id }}/lineas"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                          text-[11px] font-medium text-slate-200 bg-slate-900
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Líneas
                 </a>
 
                 <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
-                          text-[11px] font-medium text-slate-200 bg-slate-900
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Pallets
                 </a>
 
                 <a href="/inbound/recepciones/{{ recepcion.id }}/incidencias"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                           text-[10px] font-semibold text-slate-300
-                           hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Incidencias
-                </a>
-
-
-
-                <a href="/inbound/recepciones/{{ recepcion.id }}/documentos"
-                   class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                          text-[10px] font-semibold text-slate-300
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
-                    Documentos
                 </a>
 
                 <a href="/inbound/recepciones/{{ recepcion.id }}/fotos"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                          text-[10px] font-semibold text-slate-300
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Fotos
                 </a>
 
                 <a href="/inbound/recepciones/{{ recepcion.id }}/checklist"
                    class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1
-                          text-[10px] font-semibold text-slate-300
-                          hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                   text-[10px] font-semibold text-slate-300
+                   hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                     Checklist
                 </a>
-
-
             </div>
         </div>
 
@@ -294,6 +326,23 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
     {% set fecha_inicio_descarga = (recepcion.fecha_inicio_descarga if recepcion.fecha_inicio_descarga is defined else None) %}
     {% set fecha_fin_descarga = (recepcion.fecha_fin_descarga if recepcion.fecha_fin_descarga is defined else None) %}
 
+    {# =========================
+    Duraciones (metrics -> fallback por fechas)
+    ========================= #}
+    {% set m_espera = (metrics.tiempo_espera_min if metrics is defined and metrics and metrics.tiempo_espera_min is not none else none) %}
+    {% set m_descarga = (metrics.tiempo_descarga_min if metrics is defined and metrics and metrics.tiempo_descarga_min is not none else none) %}
+    {% set m_total = (metrics.tiempo_total_hasta_fin_descarga_min if metrics is defined and metrics and metrics.tiempo_total_hasta_fin_descarga_min is not none else none) %}
+
+    {% if m_espera is none %}
+    {% set m_espera = (diff_minutes(fecha_inicio_descarga, fecha_arribo) | float if (diff_minutes(fecha_inicio_descarga, fecha_arribo) != none) else none) %}
+    {% endif %}
+    {% if m_descarga is none %}
+    {% set m_descarga = (diff_minutes(fecha_fin_descarga, fecha_inicio_descarga) | float if (diff_minutes(fecha_fin_descarga, fecha_inicio_descarga) != none) else none) %}
+    {% endif %}
+    {% if m_total is none %}
+    {% set m_total = (diff_minutes(fecha_fin_descarga, fecha_arribo) | float if (diff_minutes(fecha_fin_descarga, fecha_arribo) != none) else none) %}
+    {% endif %}
+
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Timeline de recepción</p>
@@ -354,7 +403,7 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de espera</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_espera_min is not none %}{{ metrics.tiempo_espera_min|cl_num }} min{% else %}—{% endif %}
+                        {{ fmt_minutes(m_espera) }}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Arribo → inicio descarga.</p>
                 </div>
@@ -362,7 +411,7 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo de descarga</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_descarga_min is not none %}{{ metrics.tiempo_descarga_min|cl_num }} min{% else %}—{% endif %}
+                        {{ fmt_minutes(m_descarga) }}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Inicio → fin descarga.</p>
                 </div>
@@ -370,11 +419,15 @@ ORBION · {{ recepcion.codigo_recepcion if recepcion else "Recepción no encontr
                 <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wide">Tiempo total</p>
                     <p class="mt-1 text-sm font-semibold text-slate-100">
-                        {% if metrics and metrics.tiempo_total_hasta_fin_descarga_min is not none %}{{ metrics.tiempo_total_hasta_fin_descarga_min|cl_num }} min{% else %}—{% endif %}
+                        {{ fmt_minutes(m_total) }}
                     </p>
                     <p class="text-[10px] text-slate-500 mt-1">Arribo → fin descarga.</p>
                 </div>
             </div>
+
+            <p class="text-[10px] text-slate-500">
+                Fuente: {% if metrics is defined and metrics %}metrics{% else %}cálculo por timestamps{% endif %}.
+            </p>
         </div>
     </section>
 

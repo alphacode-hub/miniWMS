@@ -9,30 +9,43 @@ from .recepciones import InboundRecepcion
 from .lineas import InboundLinea
 from .pallets import InboundPallet, InboundPalletItem
 from .prealertas import InboundPrealerta
-from .checklist import InboundChecklistRecepcion, InboundChecklistRespuesta
+
+# ✅ Checklist SIMPLE V2
+from .checklist import (
+    InboundChecklistPlantilla,
+    InboundChecklistSeccion,
+    InboundChecklistItem,
+    InboundChecklistEjecucion,
+    InboundChecklistRespuesta,
+)
+
 from .incidencias import InboundIncidencia
 from .fotos import InboundFoto
 from .documentos import InboundDocumento
-from .plantillas_checklist import InboundPlantillaChecklist, InboundPlantillaChecklistItem
-
- 
-
 
 
 __all__ = [
     "RecepcionEstado", "PalletEstado", "IncidenciaEstado", "CitaEstado",
+
     "InboundConfig",
     "Proveedor",
+
     "InboundPlantillaProveedor", "InboundPlantillaProveedorLinea",
-    "InboundPlantillaChecklist", "InboundPlantillaChecklistItem",
+
     "InboundCita",
     "InboundRecepcion",
     "InboundLinea",
     "InboundPallet", "InboundPalletItem",
     "InboundPrealerta",
-    "InboundChecklistRecepcion", "InboundChecklistRespuesta",
+
+    # ✅ Checklist SIMPLE V2
+    "InboundChecklistPlantilla",
+    "InboundChecklistSeccion",
+    "InboundChecklistItem",
+    "InboundChecklistEjecucion",
+    "InboundChecklistRespuesta",
+
     "InboundIncidencia",
     "InboundFoto",
     "InboundDocumento",
 ]
-

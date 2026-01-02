@@ -243,9 +243,9 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                             data-modo="{{ l.modo }}"
                             {% if l.pendiente <= 0 %}disabled{% endif %}>
                 {{ l.nombre }} · {{ l.modo }}
-                · Pend: {{ '%.3f'|format(l.pendiente) }}
+                · Pend: {{ l.pendiente|cl_num }}
                 {% if l.modo == "PESO" %} kg {% else %} {{ l.unidad or "u" }} {% endif %}
-                {% if l.peso_unitario_kg is not none %} · Conv: {{ l.peso_unitario_kg }} kg/u{% endif %}
+                {% if l.peso_unitario_kg is not none %} · Conv: {{ l.peso_unitario_kg|cl_num }} kg/u{% endif %}
                 {% if l.pendiente <= 0 %} · (sin pendiente){% endif %}
               </option>
                     {% endfor %}

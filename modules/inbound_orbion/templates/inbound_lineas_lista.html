@@ -49,7 +49,6 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             </a>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
-
                 <a href="/inbound/recepciones/{{ recepcion.id }}/lineas/nueva"
                    class="inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold
                   text-slate-900 bg-[#00E4FF] hover:bg-cyan-300 active:scale-[0.97]
@@ -84,242 +83,6 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
     {% endif %}
 
     {# =========================
-    Panel conciliación (claro + positivo + kg estimado + incidencias)
-    ========================= #}
-    {% if lineas and lineas|length > 0 %}
-    {% set ns = namespace(
-    ok=0, falt=0, sobr=0, mix=0, sin=0, any=0,
-    ok_u=0.0, falt_u=0.0, sobr_u=0.0, mix_u=0.0, otr_u=0.0,
-    ok_kg=0.0, falt_kg=0.0, sobr_kg=0.0, mix_kg=0.0, otr_kg=0.0,
-    ok_inc_u=0.0, falt_inc_u=0.0, sobr_inc_u=0.0, mix_inc_u=0.0, otr_inc_u=0.0,
-    ok_inc_kg=0.0, falt_inc_kg=0.0, sobr_inc_kg=0.0, mix_inc_kg=0.0, otr_inc_kg=0.0
-    ) %}
-
-    {% for l in lineas %}
-    {% set st = (l.estado_reconciliacion if l.estado_reconciliacion is defined else none) %}
-    {% if st %}
-    {% set ns.any = ns.any + 1 %}
-    {% if st == 'OK' %}{% set ns.ok = ns.ok + 1 %}
-    {% elif st == 'FALTANTE' %}{% set ns.falt = ns.falt + 1 %}
-    {% elif st == 'SOBRANTE' %}{% set ns.sobr = ns.sobr + 1 %}
-    {% elif st == 'MIXTO' %}{% set ns.mix = ns.mix + 1 %}
-    {% else %}{% set ns.sin = ns.sin + 1 %}
-    {% endif %}
-    {% endif %}
-
-    {# --- modo + pesos para estimaciones --- #}
-    {% set cant_doc = l.cantidad_documento %}
-    {% set kg_doc = l.peso_kg %}
-    {% set modo = 'CANTIDAD' if (cant_doc is not none and cant_doc > 0) else ('PESO' if (kg_doc is not none and kg_doc > 0) else 'DRAFT') %}
-
-    {% set pu = (l.peso_unitario_kg_override if l.peso_unitario_kg_override is not none else (l.producto.peso_unitario_kg if l.producto and l.producto.peso_unitario_kg is not none else none)) %}
-    {% set ub = (l.unidades_por_bulto_override if l.unidades_por_bulto_override is not none else (l.producto.unidades_por_bulto if l.producto and l.producto.unidades_por_bulto is not none else none)) %}
-    {% set pb = (l.peso_por_bulto_kg_override if l.peso_por_bulto_kg_override is not none else (l.producto.peso_por_bulto_kg if l.producto and l.producto.peso_por_bulto_kg is not none else none)) %}
-
-    {# --- diferencias (pueden venir con signo) --- #}
-    {% set d_qty_raw = (l.cantidad_diferencia if l.cantidad_diferencia is defined else none) %}
-    {% set d_kg_raw = (l.peso_diferencia_kg if l.peso_diferencia_kg is defined else none) %}
-
-    {# --- normalizamos a "gap positivo" por estado --- #}
-    {% set gap_u = 0.0 %}
-    {% set gap_kg = 0.0 %}
-
-    {% if st == 'FALTANTE' %}
-    {% if d_qty_raw is not none %}{% set gap_u = (d_qty_raw|abs) %}{% endif %}
-    {% if d_kg_raw is not none %}
-    {% set gap_kg = (d_kg_raw|abs) %}
-    {% elif gap_u and pu is not none and pu > 0 %}
-    {% set gap_kg = (gap_u * pu) %}
-    {% endif %}
-
-    {% elif st == 'SOBRANTE' %}
-    {% if d_qty_raw is not none %}{% set gap_u = (d_qty_raw|abs) %}{% endif %}
-    {% if d_kg_raw is not none %}
-    {% set gap_kg = (d_kg_raw|abs) %}
-    {% elif gap_u and pu is not none and pu > 0 %}
-    {% set gap_kg = (gap_u * pu) %}
-    {% endif %}
-
-    {% elif st == 'MIXTO' %}
-    {% if d_qty_raw is not none %}{% set gap_u = (d_qty_raw|abs) %}{% endif %}
-    {% if d_kg_raw is not none %}
-    {% set gap_kg = (d_kg_raw|abs) %}
-    {% elif gap_u and pu is not none and pu > 0 %}
-    {% set gap_kg = (gap_u * pu) %}
-    {% endif %}
-    {% endif %}
-
-    {# --- incidencias por línea (explicación) --- #}
-    {% set inc = (inc_por_linea.get(l.id) if inc_por_linea is mapping else none) %}
-    {% set inc_u = (inc.qty if inc and inc.qty is defined and inc.qty is not none else 0.0) %}
-    {% set inc_kg = (inc.kg if inc and inc.kg is defined and inc.kg is not none else 0.0) %}
-
-    {# --- agregamos a buckets --- #}
-    {% if st == 'OK' %}
-    {% set ns.ok_u = ns.ok_u + gap_u %}
-    {% set ns.ok_kg = ns.ok_kg + gap_kg %}
-    {% set ns.ok_inc_u = ns.ok_inc_u + inc_u %}
-    {% set ns.ok_inc_kg = ns.ok_inc_kg + inc_kg %}
-    {% elif st == 'FALTANTE' %}
-    {% set ns.falt_u = ns.falt_u + gap_u %}
-    {% set ns.falt_kg = ns.falt_kg + gap_kg %}
-    {% set ns.falt_inc_u = ns.falt_inc_u + inc_u %}
-    {% set ns.falt_inc_kg = ns.falt_inc_kg + inc_kg %}
-    {% elif st == 'SOBRANTE' %}
-    {% set ns.sobr_u = ns.sobr_u + gap_u %}
-    {% set ns.sobr_kg = ns.sobr_kg + gap_kg %}
-    {% set ns.sobr_inc_u = ns.sobr_inc_u + inc_u %}
-    {% set ns.sobr_inc_kg = ns.sobr_inc_kg + inc_kg %}
-    {% elif st == 'MIXTO' %}
-    {% set ns.mix_u = ns.mix_u + gap_u %}
-    {% set ns.mix_kg = ns.mix_kg + gap_kg %}
-    {% set ns.mix_inc_u = ns.mix_inc_u + inc_u %}
-    {% set ns.mix_inc_kg = ns.mix_inc_kg + inc_kg %}
-    {% elif st %}
-    {% set ns.otr_u = ns.otr_u + gap_u %}
-    {% set ns.otr_kg = ns.otr_kg + gap_kg %}
-    {% set ns.otr_inc_u = ns.otr_inc_u + inc_u %}
-    {% set ns.otr_inc_kg = ns.otr_inc_kg + inc_kg %}
-    {% endif %}
-    {% endfor %}
-
-    {% if show_recon or ns.any > 0 %}
-    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Conciliación</p>
-                <p class="text-[11px] text-slate-500">
-                    Estado por línea según <span class="text-slate-300 font-semibold">doc vs físico</span>.
-                    Los números muestran <span class="text-slate-300 font-semibold">gap agregado</span> (siempre positivo) y
-                    <span class="text-slate-300 font-semibold">explicación por incidencias</span>.
-                </p>
-
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=ALL"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'ALL' %}border-cyan-400/40 bg-cyan-500/10 text-cyan-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-cyan-400/40 hover:text-cyan-200{% endif %}">
-                        Ver todo
-                    </a>
-
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=OK"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'OK' %}border-emerald-500/35 bg-emerald-500/10 text-emerald-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-emerald-500/35 hover:text-emerald-200{% endif %}">
-                        OK
-                    </a>
-
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=FALTANTE"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'FALTANTE' %}border-amber-500/35 bg-amber-500/10 text-amber-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-amber-500/35 hover:text-amber-200{% endif %}">
-                        Faltante
-                    </a>
-
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=SOBRANTE"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'SOBRANTE' %}border-cyan-500/35 bg-cyan-500/10 text-cyan-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-cyan-500/35 hover:text-cyan-200{% endif %}">
-                        Sobrante
-                    </a>
-
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=MIXTO"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'MIXTO' %}border-rose-500/35 bg-rose-500/10 text-rose-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-rose-500/35 hover:text-rose-200{% endif %}">
-                        Mixto
-                    </a>
-
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/lineas?recon=1&f=OTROS"
-                       class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold
-                    {% if f == 'OTROS' %}border-slate-500/35 bg-slate-500/10 text-slate-200{% else %}border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-500/35 hover:text-slate-200{% endif %}">
-                        Otros
-                    </a>
-                </div>
-            </div>
-
-            <div class="flex flex-col items-end gap-2">
-                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-300">
-                    Snapshots: {{ ns.any }}
-                </span>
-                <span class="text-[10px] text-slate-500">
-                    Incidencias: {{ inc_resumen.totales.count if inc_resumen.totales is defined else 0 }}
-                </span>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
-                <p class="text-[11px] text-slate-400">OK</p>
-                <p class="text-lg font-semibold text-emerald-200">{{ ns.ok }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">
-                    {{ ns.ok_u|cl_num }} u · {{ ns.ok_kg|cl_num }} kg
-                </p>
-                {% if ns.ok_inc_u or ns.ok_inc_kg %}
-                <p class="text-[10px] text-slate-500 mt-1">
-                    Incidencias: {{ ns.ok_inc_u|cl_num }} u · {{ ns.ok_inc_kg|cl_num }} kg
-                </p>
-                {% endif %}
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
-                <p class="text-[11px] text-slate-400">Faltante</p>
-                <p class="text-lg font-semibold text-amber-200">{{ ns.falt }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">
-                    {{ ns.falt_u|cl_num }} u · {{ ns.falt_kg|cl_num }} kg
-                </p>
-                {% if ns.falt_inc_u or ns.falt_inc_kg %}
-                <p class="text-[10px] text-slate-500 mt-1">
-                    Incidencias: {{ ns.falt_inc_u|cl_num }} u · {{ ns.falt_inc_kg|cl_num }} kg
-                </p>
-                {% endif %}
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
-                <p class="text-[11px] text-slate-400">Sobrante</p>
-                <p class="text-lg font-semibold text-cyan-200">{{ ns.sobr }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">
-                    {{ ns.sobr_u|cl_num }} u · {{ ns.sobr_kg|cl_num }} kg
-                </p>
-                {% if ns.sobr_inc_u or ns.sobr_inc_kg %}
-                <p class="text-[10px] text-slate-500 mt-1">
-                    Incidencias: {{ ns.sobr_inc_u|cl_num }} u · {{ ns.sobr_inc_kg|cl_num }} kg
-                </p>
-                {% endif %}
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
-                <p class="text-[11px] text-slate-400">Mixto</p>
-                <p class="text-lg font-semibold text-rose-200">{{ ns.mix }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">
-                    {{ ns.mix_u|cl_num }} u · {{ ns.mix_kg|cl_num }} kg
-                </p>
-                {% if ns.mix_inc_u or ns.mix_inc_kg %}
-                <p class="text-[10px] text-slate-500 mt-1">
-                    Incidencias: {{ ns.mix_inc_u|cl_num }} u · {{ ns.mix_inc_kg|cl_num }} kg
-                </p>
-                {% endif %}
-            </div>
-
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/40 px-3 py-3">
-                <p class="text-[11px] text-slate-400">Otros</p>
-                <p class="text-lg font-semibold text-slate-100">{{ ns.sin }}</p>
-                <p class="text-[10px] text-slate-500 mt-1">
-                    {{ ns.otr_u|cl_num }} u · {{ ns.otr_kg|cl_num }} kg
-                </p>
-                {% if ns.otr_inc_u or ns.otr_inc_kg %}
-                <p class="text-[10px] text-slate-500 mt-1">
-                    Incidencias: {{ ns.otr_inc_u|cl_num }} u · {{ ns.otr_inc_kg|cl_num }} kg
-                </p>
-                {% endif %}
-            </div>
-
-        </div>
-
-        <p class="text-[11px] text-slate-500">
-            “N” = cantidad de líneas en ese estado. “u/kg” = gap agregado (positivo). “Incidencias” explica parte del gap por afectación registrada.
-        </p>
-    </section>
-    {% endif %}
-    {% endif %}
-
-    {# =========================
     Lista de líneas
     ========================= #}
     <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
@@ -346,29 +109,69 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
 
             {% set cant_doc = l.cantidad_documento %}
             {% set kg_doc = l.peso_kg %}
-            {% set modo = 'CANTIDAD' if (cant_doc is not none and cant_doc > 0) else ('PESO' if (kg_doc is not none and kg_doc > 0) else 'DRAFT') %}
+
+            {# Modo oficial #}
+            {% set modo_oficial = (
+            l.modo_oficial
+            if l.modo_oficial is defined and l.modo_oficial
+            else (
+            l.modo_objetivo
+            if l.modo_objetivo is defined and l.modo_objetivo
+            else none
+            )
+            ) %}
+
+            {% if not modo_oficial %}
+            {% if l.es_draft == 1 %}
+            {% set modo_oficial = 'DRAFT' %}
+            {% elif kg_doc is not none and kg_doc > 0 and (cant_doc is none or cant_doc <= 0) %}
+            {% set modo_oficial = 'PESO' %}
+            {% elif cant_doc is not none and cant_doc > 0 and (kg_doc is none or kg_doc <= 0) %}
+            {% set modo_oficial = 'CANTIDAD' %}
+            {% elif (kg_doc is not none and kg_doc > 0) and (cant_doc is not none and cant_doc > 0) %}
+            {% set modo_oficial = 'PESO' %}
+            {% else %}
+            {% set modo_oficial = 'DRAFT' %}
+            {% endif %}
+            {% endif %}
 
             {% set pu = (l.peso_unitario_kg_override if l.peso_unitario_kg_override is not none else (l.producto.peso_unitario_kg if l.producto and l.producto.peso_unitario_kg is not none else none)) %}
-            {% set ub = (l.unidades_por_bulto_override if l.unidades_por_bulto_override is not none else (l.producto.unidades_por_bulto if l.producto and l.producto.unidades_por_bulto is not none else none)) %}
-            {% set pb = (l.peso_por_bulto_kg_override if l.peso_por_bulto_kg_override is not none else (l.producto.peso_por_bulto_kg if l.producto and l.producto.peso_por_bulto_kg is not none else none)) %}
-            {% set nb = (l.nombre_bulto_override if l.nombre_bulto_override else (l.producto.bulto_nombre if l.producto and l.producto.bulto_nombre else 'bulto')) %}
 
+            {# Kg recibido -> siempre número para UI #}
+            {% set kg_rec = (l.peso_recibido_kg if l.peso_recibido_kg is defined else none) %}
+            {% set kg_rec_show = (kg_rec if kg_rec is not none else 0.0) %}
+
+            {# unidad texto del producto (para cantidad estimada y para modo cantidad) #}
+            {% set unidad_txt = (l.unidad or (l.producto.unidad if l.producto else "unidad")) %}
+            {% set unidad = unidad_txt|lower %}
+            {% set plural = unidad %}
+            {% if unidad.endswith('s') %}
+            {% set plural = unidad %}
+            {% elif unidad.endswith('z') %}
+            {% set plural = unidad[:-1] ~ 'ces' %}
+            {% elif unidad.endswith('ción') %}
+            {% set plural = unidad ~ 'es' %}
+            {% else %}
+            {% set plural = unidad ~ 's' %}
+            {% endif %}
+
+            {# Estimado CANTIDAD -> Kg doc #}
             {% set est_kg = none %}
-            {% if l.bultos is not none and l.bultos > 0 and pb is not none and pb > 0 %}
-            {% set est_kg = (l.bultos * pb) %}
-            {% elif l.bultos is not none and l.bultos > 0 and ub is not none and ub > 0 and pu is not none and pu > 0 %}
-            {% set est_kg = (l.bultos * ub * pu) %}
-            {% elif cant_doc is not none and cant_doc > 0 and pu is not none and pu > 0 %}
+            {% if modo_oficial == 'CANTIDAD' %}
+            {% if cant_doc is not none and cant_doc > 0 and pu is not none and pu > 0 %}
             {% set est_kg = (cant_doc * pu) %}
             {% endif %}
-
-            {% set est_unidades = none %}
-            {% if modo == 'PESO' and kg_doc is not none and kg_doc > 0 and pu is not none and pu > 0 %}
-            {% set est_unidades = (kg_doc / pu) %}
             {% endif %}
 
-            {% set d_qty = (l.cantidad_diferencia if l.cantidad_diferencia is defined else none) %}
-            {% set d_kg = (l.peso_diferencia_kg if l.peso_diferencia_kg is defined else none) %}
+            {# Estimado PESO -> Cantidad doc/rec (✅ rec siempre 0 si hay pu) #}
+            {% set est_unidades_doc = none %}
+            {% set est_unidades_rec = none %}
+            {% if modo_oficial == 'PESO' and pu is not none and pu > 0 %}
+            {% if kg_doc is not none and kg_doc > 0 %}
+            {% set est_unidades_doc = (kg_doc / pu) %}
+            {% endif %}
+            {% set est_unidades_rec = (kg_rec_show / pu) %}
+            {% endif %}
 
             <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                 <div class="flex items-start justify-between gap-3">
@@ -379,112 +182,73 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
 
                         <div class="mt-1 flex flex-wrap items-center gap-2">
                             <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
-                      {% if modo == 'PESO' %}
-                        bg-indigo-500/10 text-indigo-200 border-indigo-500/40
-                      {% elif modo == 'CANTIDAD' %}
-                        bg-sky-500/10 text-sky-200 border-sky-500/40
-                      {% else %}
-                        bg-slate-700/40 text-slate-200 border-slate-600
-                      {% endif %}">
-                                Oficial: {{ modo }}
+                              {% if modo_oficial == 'PESO' %}
+                                bg-indigo-500/10 text-indigo-200 border-indigo-500/40
+                              {% elif modo_oficial == 'CANTIDAD' %}
+                                bg-sky-500/10 text-sky-200 border-sky-500/40
+                              {% else %}
+                                bg-slate-700/40 text-slate-200 border-slate-600
+                              {% endif %}">
+                                Oficial: {{ modo_oficial }}
                             </span>
-
-                            {% if rec_state %}
-                            <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
-                    {% if rec_state == 'OK' %}
-                      bg-emerald-500/15 text-emerald-200 border-emerald-500/20
-                    {% elif rec_state == 'FALTANTE' %}
-                      bg-amber-500/15 text-amber-200 border-amber-500/20
-                    {% elif rec_state == 'SOBRANTE' %}
-                      bg-cyan-500/15 text-cyan-200 border-cyan-500/20
-                    {% elif rec_state == 'MIXTO' %}
-                      bg-rose-500/15 text-rose-200 border-rose-500/20
-                    {% else %}
-                      bg-slate-500/15 text-slate-200 border-slate-500/20
-                    {% endif %}">
-                                Conciliación: {{ rec_state }}
-                            </span>
-                            {% endif %}
-
-                            {% if l.es_draft == 1 %}
-                            <span class="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-[2px] text-[10px] font-semibold text-amber-200">
-                                Plantilla · Borrador
-                            </span>
-                            {% endif %}
-
-                            
                         </div>
 
-                        {% set unidad_txt = (l.unidad or (l.producto.unidad if l.producto else "unidad")) %}
+                        {# =====================
+                        OFICIAL: CANTIDAD (✅ unidad junto a cada valor)
+                        ===================== #}
+                        {% if modo_oficial == 'CANTIDAD' %}
+                        {% set qty_rec_show = (l.cantidad_recibida if l.cantidad_recibida is not none else 0.0) %}
 
-                        {% if modo == 'CANTIDAD' %}
                         <p class="text-[11px] text-slate-300 mt-2">
                             <span class="text-slate-500">Cantidad doc</span>:
                             <span class="font-semibold text-slate-100">{% if cant_doc is not none %}{{ cant_doc|cl_num }}{% else %}—{% endif %}</span>
-                            · <span class="text-slate-500">Recibida</span>:
-                            <span class="font-semibold text-slate-100">{% if l.cantidad_recibida is not none %}{{ l.cantidad_recibida|cl_num }}{% else %}—{% endif %}</span>
-                            {% set unidad = unidad_txt|lower %}
-                            {% set plural = unidad %}
-                            {% if unidad.endswith('s') %}
-                            {% set plural = unidad %}
-                            {% elif unidad.endswith('z') %}
-                            {% set plural = unidad[:-1] ~ 'ces' %}
-                            {% elif unidad.endswith('ción') %}
-                            {% set plural = unidad ~ 'es' %}
-                            {% else %}
-                            {% set plural = unidad ~ 's' %}
-                            {% endif %}
-
-                            · <span class="text-slate-500">{{ plural }}</span>
+                            <span class="text-slate-500">{{ plural }}</span> ·
+                            <span class="text-slate-500">Recibida</span>:
+                            <span class="font-semibold text-slate-100">{{ qty_rec_show|cl_num }}</span>
+                            <span class="text-slate-500">{{ plural }}</span>
                         </p>
 
-                        {# ✅ AQUÍ: mejoramos "Estimado Kg doc" para incluir kg recibidos #}
                         {% if est_kg is not none %}
-                        {% set kg_rec = (l.peso_recibido_kg if l.peso_recibido_kg is defined else none) %}
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[1px] text-[10px] font-semibold text-slate-300">
+                                Estimado
+                            </span>
+                            <span class="text-slate-500">Kg doc</span>:
+                            <span class="font-semibold text-slate-200">{{ est_kg|cl_num }}</span> kg
+                            · <span class="text-slate-500">Recibido</span>:
+                            <span class="font-semibold text-slate-200">{{ kg_rec_show|cl_num }}</span> kg
+                        </p>
+                        {% endif %}
+
+                        {# =====================
+                        OFICIAL: PESO
+                        - ✅ principal SIEMPRE en kg (no “sacos/cajas”)
+                        - ✅ estimado en unidad del producto (cajas/sacos/etc), no “u”
+                        ===================== #}
+                        {% elif modo_oficial == 'PESO' %}
+                        <p class="text-[11px] text-slate-300 mt-2">
+                            <span class="text-slate-500">Kg doc</span>:
+                            <span class="font-semibold text-slate-100">{% if kg_doc is not none %}{{ kg_doc|cl_num }}{% else %}—{% endif %}</span> kg
+                            · <span class="text-slate-500">Kg recibido</span>:
+                            <span class="font-semibold text-slate-100">{{ kg_rec_show|cl_num }}</span> kg
+                        </p>
+
+                        {% if est_unidades_doc is not none or est_unidades_rec is not none %}
                         <p class="text-[11px] text-slate-400 mt-1">
                             <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[1px] text-[10px] font-semibold text-slate-300">
                                 Estimado
                             </span>
 
-                            <span class="text-slate-500">Kg doc</span>:
-                            <span class="font-semibold text-slate-200">{{ est_kg|cl_num }}</span> kg
+                            <span class="text-slate-500">Cantidad doc</span>:
+                            <span class="font-semibold text-slate-200">{% if est_unidades_doc is not none %}{{ est_unidades_doc|cl_num }}{% else %}—{% endif %}</span>
+                            <span class="text-slate-500">{{ plural }}</span>
 
-                            {% if kg_rec is not none %}
-                            · <span class="text-slate-500">Recibido</span>:
-                            <span class="font-semibold text-slate-200">{{ kg_rec|cl_num }}</span> kg
-                            {% endif %}
-
-                            
+                            · <span class="text-slate-500">Recibida</span>:
+                            <span class="font-semibold text-slate-200">{{ est_unidades_rec|cl_num }}</span>
+                            <span class="text-slate-500">{{ plural }}</span>
                         </p>
                         {% endif %}
 
-                        {% elif modo == 'PESO' %}
-                        <p class="text-[11px] text-slate-300 mt-2">
-                            <span class="text-slate-500">Kg doc</span>:
-                            <span class="font-semibold text-slate-100">{% if kg_doc is not none %}{{ kg_doc|cl_num }}{% else %}—{% endif %}</span>
-                            · <span class="text-slate-500">Kg recibido</span>:
-                            <span class="font-semibold text-slate-100">
-                                {% if l.peso_recibido_kg is defined and l.peso_recibido_kg is not none %}{{ l.peso_recibido_kg|cl_num }}{% else %}—{% endif %}
-                            </span>
-                        </p>
-
-                        {% if d_kg is not none %}
-                        <p class="text-[11px] text-slate-400 mt-1">
-                            <span class="text-slate-500">Δ Kg</span>:
-                            <span class="font-semibold {% if d_kg < 0 %}text-amber-200{% elif d_kg > 0 %}text-cyan-200{% else %}text-emerald-200{% endif %}">
-                                {{ d_kg|cl_num }}
-                            </span>
-                        </p>
-                        {% endif %}
-
-                        {% if est_unidades is not none %}
-                        <p class="text-[11px] text-slate-400 mt-1">
-                            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[1px] text-[10px] font-semibold text-slate-300">Estimado</span>
-                            <span class="text-slate-500">Cantidad</span>:
-                            <span class="font-semibold text-slate-200">{{ est_unidades|cl_num }}</span>
-                            <span class="text-slate-500">{{ unidad_txt }}</span>
-                        </p>
-                        {% endif %}
                         {% else %}
                         <p class="text-[11px] text-slate-400 mt-2">
                             Línea borrador: <span class="font-semibold text-slate-200">pendiente completar objetivo documental</span>.
@@ -502,6 +266,11 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
 
                     <div class="flex flex-col items-end gap-2">
                         {% if not es_cerrada %}
+                        <a href="/inbound/recepciones/{{ recepcion.id }}/pallets"
+                           class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5 text-[11px] font-semibold
+                            text-slate-200 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
+                            Crear Pallet
+                        </a>
                         <a href="/inbound/recepciones/{{ recepcion.id }}/lineas/{{ l.id }}/editar"
                            class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40
                           px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300">

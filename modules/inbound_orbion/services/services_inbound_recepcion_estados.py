@@ -24,20 +24,49 @@ from modules.inbound_orbion.services.services_inbound_citas_sync import (
 
 @dataclass
 class RecepcionMetrics:
-    tiempo_espera_min: float | None = None
-    tiempo_descarga_min: float | None = None
-    tiempo_total_hasta_fin_descarga_min: float | None = None
+    # ✅ Minutos ENTEROS para UI (coherentes entre sí)
+    tiempo_espera_min: int | None = None
+    tiempo_descarga_min: int | None = None
+    tiempo_total_hasta_fin_descarga_min: int | None = None
 
 
-def _minutes_between(a: datetime | None, b: datetime | None) -> float | None:
+# ============================
+# Helpers de tiempo
+# ============================
+
+def _seconds_between(a: datetime | None, b: datetime | None) -> float | None:
+    """
+    Retorna segundos (float) entre a -> b.
+    - None si falta algún timestamp
+    - 0 si delta es negativo (defensivo)
+    """
     if not a or not b:
         return None
     try:
         delta = b - a
-        return float(delta.total_seconds() / 60.0)
+        sec = float(delta.total_seconds())
+        return sec if sec >= 0 else 0.0
     except Exception:
         return None
 
+
+def _to_minutes_int(seconds: float | None) -> int | None:
+    """
+    Regla única para pasar segundos -> minutos ENTEROS.
+    Usamos redondeo al minuto más cercano (enterprise-friendly).
+    """
+    if seconds is None:
+        return None
+    try:
+        m = int(round(seconds / 60.0))
+        return m if m >= 0 else 0
+    except Exception:
+        return None
+
+
+# ============================
+# MÉTRICAS (PUBLIC)
+# ============================
 
 def obtener_metrics_recepcion(db: Session, *, negocio_id: int, recepcion_id: int) -> RecepcionMetrics:
     """
@@ -45,7 +74,9 @@ def obtener_metrics_recepcion(db: Session, *, negocio_id: int, recepcion_id: int
 
     - tiempo_espera_min: fecha_arribo -> fecha_inicio_descarga
     - tiempo_descarga_min: fecha_inicio_descarga -> fecha_fin_descarga
-    - tiempo_total_hasta_fin_descarga_min: fecha_arribo -> fecha_fin_descarga
+    - tiempo_total_hasta_fin_descarga_min:
+        ✅ si existen espera y descarga: total = espera + descarga (coherencia matemática en UI)
+        ✅ si falta un tramo: total = arribo -> fin (si existe)
     """
     r = db.get(InboundRecepcion, int(recepcion_id))
     if not r or int(getattr(r, "negocio_id", 0)) != int(negocio_id):
@@ -55,10 +86,23 @@ def obtener_metrics_recepcion(db: Session, *, negocio_id: int, recepcion_id: int
     fecha_inicio_descarga = getattr(r, "fecha_inicio_descarga", None)
     fecha_fin_descarga = getattr(r, "fecha_fin_descarga", None)
 
+    espera_sec = _seconds_between(fecha_arribo, fecha_inicio_descarga)
+    descarga_sec = _seconds_between(fecha_inicio_descarga, fecha_fin_descarga)
+    total_sec = _seconds_between(fecha_arribo, fecha_fin_descarga)
+
+    espera_min = _to_minutes_int(espera_sec)
+    descarga_min = _to_minutes_int(descarga_sec)
+
+    # ✅ Total coherente: si puedo sumar tramos, el total mostrado debe calzar con la suma mostrada.
+    if espera_min is not None and descarga_min is not None:
+        total_min = espera_min + descarga_min
+    else:
+        total_min = _to_minutes_int(total_sec)
+
     return RecepcionMetrics(
-        tiempo_espera_min=_minutes_between(fecha_arribo, fecha_inicio_descarga),
-        tiempo_descarga_min=_minutes_between(fecha_inicio_descarga, fecha_fin_descarga),
-        tiempo_total_hasta_fin_descarga_min=_minutes_between(fecha_arribo, fecha_fin_descarga),
+        tiempo_espera_min=espera_min,
+        tiempo_descarga_min=descarga_min,
+        tiempo_total_hasta_fin_descarga_min=total_min,
     )
 
 

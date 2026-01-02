@@ -160,7 +160,12 @@ class Negocio(Base):
     proveedores = relationship("Proveedor", back_populates="negocio", cascade="all, delete-orphan")
     plantillas_proveedor = relationship("InboundPlantillaProveedor", back_populates="negocio", cascade="all, delete-orphan")
     prealertas_inbound = relationship("InboundPrealerta", back_populates="negocio", cascade="all, delete-orphan")
-    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="negocio", cascade="all, delete-orphan")
+    plantillas_checklist = relationship(
+        "InboundChecklistPlantilla",
+        back_populates="negocio",
+        cascade="all, delete-orphan",
+    )
+
     inbound_analytics_snapshots = relationship("InboundAnalyticsSnapshot", back_populates="negocio", cascade="all, delete-orphan")
 
     # --- SAAS (subscriptions + usage)
@@ -418,9 +423,10 @@ from core.models.inbound import (  # noqa: E402
     InboundPallet,
     InboundPalletItem,
     InboundPrealerta,
-    InboundPlantillaChecklist,
-    InboundPlantillaChecklistItem,
-    InboundChecklistRecepcion,
+    InboundChecklistPlantilla,
+    InboundChecklistSeccion,
+    InboundChecklistItem,
+    InboundChecklistEjecucion,
     InboundChecklistRespuesta,
     InboundIncidencia,
     InboundFoto,

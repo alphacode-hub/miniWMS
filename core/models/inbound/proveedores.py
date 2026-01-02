@@ -41,4 +41,11 @@ class Proveedor(Base):
     citas = relationship("InboundCita", back_populates="proveedor")
     recepciones = relationship("InboundRecepcion", back_populates="proveedor")
     prealertas = relationship("InboundPrealerta", back_populates="proveedor")
-    plantillas_checklist = relationship("InboundPlantillaChecklist", back_populates="proveedor")
+    checklist_respuestas = relationship(
+        "InboundChecklistRespuesta",
+        secondary="inbound_recepciones",
+        primaryjoin="Proveedor.id==InboundRecepcion.proveedor_id",
+        secondaryjoin="InboundRecepcion.id==InboundChecklistRespuesta.recepcion_id",
+        viewonly=True,
+    )
+

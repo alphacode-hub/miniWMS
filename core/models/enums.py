@@ -1,7 +1,5 @@
-﻿# core/models/enums.py
-from __future__ import annotations
+﻿from __future__ import annotations
 import enum
-
 
 # =========================
 # Operación WMS / Inbound
@@ -32,7 +30,7 @@ class IncidenciaEstado(str, enum.Enum):
     CREADA = "CREADA"
     EN_ANALISIS = "EN_ANALISIS"
     CERRADA = "CERRADA"
-    CANCELADA = "CANCELADA"  # 👈 necesario para servicios enterprise
+    CANCELADA = "CANCELADA"
 
 
 class CitaEstado(str, enum.Enum):
@@ -44,21 +42,35 @@ class CitaEstado(str, enum.Enum):
 
 
 # =========================
-# Inbound Checklist (enterprise)
+# Inbound Documentos
 # =========================
 
-class InboundChecklistEstado(str, enum.Enum):
-    PENDIENTE = "PENDIENTE"
-    EN_PROGRESO = "EN_PROGRESO"
-    COMPLETADO = "COMPLETADO"
-    FIRMADO = "FIRMADO"
-    BLOQUEADO = "BLOQUEADO"
+class InboundDocumentoTipo(str, enum.Enum):
+    GUIA = "GUIA"
+    BL = "BL"
+    FACTURA = "FACTURA"
+    CERTIFICADO = "CERTIFICADO"
+    OTRO = "OTRO"
 
 
-class InboundChecklistValor(str, enum.Enum):
-    SI = "SI"
-    NO = "NO"
-    NA = "NA"
+class InboundDocumentoEstado(str, enum.Enum):
+    VIGENTE = "VIGENTE"
+    REEMPLAZADO = "REEMPLAZADO"
+    ANULADO = "ANULADO"
+
+
+# =========================
+# Inbound Fotos
+# =========================
+
+class InboundFotoTipo(str, enum.Enum):
+    GENERAL = "GENERAL"
+    INCIDENCIA = "INCIDENCIA"
+    SELLO = "SELLO"
+    PLACA = "PLACA"
+    PRODUCTO = "PRODUCTO"
+    TEMPERATURA = "TEMPERATURA"
+    OTRO = "OTRO"
 
 
 # =========================
@@ -93,3 +105,14 @@ class NegocioEstado(str, enum.Enum):
     ACTIVO = "activo"
     SUSPENDIDO = "suspendido"
     BLOQUEADO = "bloqueado"
+
+
+# =========================
+# Inbound Checklist (SIMPLE V2)
+# =========================
+
+class InboundChecklistItemEstado(str, enum.Enum):
+    PENDIENTE = "PENDIENTE"
+    CUMPLE = "CUMPLE"
+    NO_CUMPLE = "NO_CUMPLE"
+    NA = "NA"

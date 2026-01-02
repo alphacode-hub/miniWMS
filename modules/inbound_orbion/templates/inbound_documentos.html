@@ -1,157 +1,267 @@
-﻿{# templates/inbound_documentos.html #}
+﻿{# modules/inbound_orbion/templates/inbound_documentos.html #}
 {% extends "base/base_app.html" %}
 
-{% block title %}Inbound · Documentos{% endblock %}
+{% block title %}
+ORBION · Documentos · {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
+{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% set recepcion_editable = (recepcion_editable if recepcion_editable is defined else True) %}
+{% set es_cerrada = (not recepcion_editable) %}
 
 {% block content %}
-{% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else (recepcion.codigo if recepcion and recepcion.codigo else ("Recepción #" ~ recepcion.id if recepcion else "Recepción")) %}
+{% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else ("Recepción #" ~ recepcion.id if recepcion else "Recepción") %}
 
-<div class="w-full max-w-6xl mx-auto px-4 py-5 sm:py-7 space-y-5">
+{# =========================
+Helpers UI (template-local)
+========================= #}
+{% macro tipo_badge(t) -%}
+  {%- set v = (t.value if t is not none and t.value is defined else (t|string)) -%}
+  {%- set v = (v or "OTRO") -%}
+<span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-200">
+    {{ v }}
+</span>
+{%- endmacro %}
+
+{% macro fmt_size(n) -%}
+  {%- if n is none -%}
+    —
+  {%- elif n < 1024 -%}
+{{ n }} B
+  {%- elif n < 1024*1024 -%}
+{{ (n/1024)|round(1) }} KB
+  {%- elif n < 1024*1024*1024 -%}
+{{ (n/1024/1024)|round(1) }} MB
+  {%- else -%}
+{{ (n/1024/1024/1024)|round(2) }} GB
+  {%- endif -%}
+{%- endmacro %}
+
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     <!-- Header -->
-    <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-            <h1 class="text-lg sm:text-xl font-semibold text-slate-100">Documentos</h1>
-            <p class="text-xs sm:text-sm text-slate-300 mt-1">
-                Recepción: <span class="font-medium text-slate-100">{{ recep_codigo }}</span>
+    <header class="flex items-start sm:items-center justify-between gap-3">
+        <div class="min-w-0 space-y-1">
+            <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                Módulo inbound · Recepción · Documentos
             </p>
-            <p class="text-xs text-slate-400 mt-1">
-                Adjunta guía, factura, certificados, evidencias o cualquier respaldo operativo.
+
+            <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
+                {{ recep_codigo }}
+                <span class="text-slate-500 font-normal">
+                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                </span>
+            </h1>
+
+            <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl truncate">
+                {% if recepcion and recepcion.documento_ref %}Ref: {{ recepcion.documento_ref }}{% else %}Sin documento de referencia{% endif %}
             </p>
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
-            {% if recepcion %}
-            <a href="/inbound/recepciones/{{ recepcion.id }}"
+        <div class="flex flex-col items-end gap-2 shrink-0">
+            <a href="/inbound/recepciones/{{ recepcion.id if recepcion else '' }}"
                class="inline-flex items-center rounded-full border border-slate-700 px-3 py-1.5
                 text-[11px] font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition-colors">
                 ← Volver a recepción
             </a>
-            {% endif %}
         </div>
-    </div>
+    </header>
 
-    <!-- Alerts -->
+    {% if es_cerrada %}
+    <section class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-[11px] text-emerald-200">
+            Recepción cerrada: <span class="font-semibold">solo lectura</span>. No se permiten cambios.
+        </p>
+    </section>
+    {% endif %}
+
+    <!-- Alertas -->
     {% if error %}
-    <div class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-rose-100">
-        <div class="text-sm font-semibold">Error</div>
-        <div class="text-sm text-rose-100/90 mt-1">{{ error }}</div>
-    </div>
+    <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-rose-200">No se pudo completar</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ error }}</p>
+    </section>
     {% endif %}
 
     {% if ok %}
-    <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-100">
-        <div class="text-sm font-semibold">Listo</div>
-        <div class="text-sm text-emerald-100/90 mt-1">{{ ok }}</div>
-    </div>
+    <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-xs font-semibold text-emerald-200">Operación realizada</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+    </section>
     {% endif %}
 
-    {% if recepcion %}
-
-    <!-- Upload -->
-    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
-        <div class="flex items-center justify-between gap-3">
+    <!-- Subir documento -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5">
+        <div class="flex items-start justify-between gap-3">
             <div>
-                <div class="text-sm font-semibold text-slate-100">Subir documento</div>
-                <div class="text-xs text-slate-400 mt-1">PDF, imagen u otros. Baseline v1: guardado local.</div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Subir documento</p>
+                <p class="text-[11px] text-slate-500 mt-1">
+                    Adjunta guía, factura, certificados u otros respaldos. Baseline v1: guardado local.
+                </p>
             </div>
         </div>
 
         <form method="post"
               action="/inbound/recepciones/{{ recepcion.id }}/documentos"
               enctype="multipart/form-data"
-              class="mt-4 grid grid-cols-1 md:grid-cols-12 gap-3">
+              class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
 
-            <div class="md:col-span-3">
-                <label class="block text-xs font-semibold text-slate-300 mb-2">Tipo</label>
-                <select name="tipo"
-                        class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
-                    <option value="guia">Guía</option>
-                    <option value="factura">Factura</option>
-                    <option value="certificado">Certificado</option>
-                    <option value="foto">Foto / evidencia</option>
-                    <option value="otro">Otro</option>
+            <!-- Tipo -->
+            <div class="lg:col-span-3 space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Tipo <span class="text-rose-400">*</span>
+                </label>
+                <select name="tipo" required
+                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                       text-xs sm:text-sm text-slate-100
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    {# Valores compatibles con _parse_tipo() del servicio #}
+                    <option value="GUIA">Guía</option>
+                    <option value="FACTURA">Factura</option>
+                    <option value="CERTIFICADO">Certificado</option>
+                    <option value="BL">BL</option>
+                    <option value="OTRO">Otro</option>
                 </select>
             </div>
 
-            <div class="md:col-span-5">
-                <label class="block text-xs font-semibold text-slate-300 mb-2">Archivo</label>
+            <!-- Archivo -->
+            <div class="lg:col-span-6 space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">
+                    Archivo <span class="text-rose-400">*</span>
+                </label>
                 <input type="file" name="archivo" required
-                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30" />
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                      text-xs sm:text-sm text-slate-100
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                <p class="text-[11px] text-slate-500">
+                    Consejo: nombres claros (ej: guia_1234.pdf, cert_temp.jpg).
+                </p>
             </div>
 
-            <div class="md:col-span-4">
-                <label class="block text-xs font-semibold text-slate-300 mb-2">Descripción (opcional)</label>
+            <!-- Descripción -->
+            <div class="lg:col-span-3 space-y-1">
+                <label class="block text-[11px] font-semibold text-slate-200">Descripción</label>
                 <input type="text" name="descripcion"
-                       class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700/60 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-                       placeholder="Ej: Guía firmada, Certificado temperatura, Foto sellos..." />
+                       class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
+                      text-xs sm:text-sm text-slate-100 placeholder-slate-500
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                       placeholder="Ej: Guía firmada / Cert temp / Sellos..." />
             </div>
 
-            <div class="md:col-span-12 flex items-center justify-end">
+            {# Opcional: asociar a línea (por ahora hidden; luego lo volvemos selector como incidencias) #}
+            <input type="hidden" name="linea_id" value="" />
+
+            <!-- Submit -->
+            <div class="lg:col-span-12 flex items-center justify-end gap-2 pt-1">
                 <button type="submit"
-                        class="px-3 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-cyan-950 text-xs font-semibold border border-cyan-400/40">
-                    Subir
+                        class="inline-flex items-center rounded-full px-5 py-1.5
+                       text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
+                       hover:bg-cyan-300 active:scale-[0.97]
+                       transition-transform transition-colors
+                       {% if es_cerrada %}opacity-50 pointer-events-none{% endif %}">
+                    + Subir documento
                 </button>
             </div>
         </form>
-    </div>
+    </section>
 
-    <!-- List -->
-    <div class="rounded-2xl bg-slate-900/50 border border-slate-800/60 overflow-hidden">
-        <div class="p-4 border-b border-slate-800/60 flex items-center justify-between">
-            <div class="text-sm font-semibold text-slate-100">Documentos adjuntos</div>
-            <div class="text-xs text-slate-400">{{ documentos|length }} item(s)</div>
+    <!-- Lista documentos -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-4 sm:px-4 sm:py-5 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Documentos</p>
+                <p class="text-[11px] text-slate-500">
+                    Evidencias operativas asociadas a la recepción (versionado simple por grupo).
+                </p>
+            </div>
+
+            <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-3 py-1 text-[10px] font-semibold text-slate-300">
+                Total: {{ documentos|length if documentos else 0 }}
+            </span>
         </div>
 
-        {% if documentos %}
-        <div class="divide-y divide-slate-800/60">
+        {% if documentos and documentos|length > 0 %}
+        <div class="space-y-2">
             {% for d in documentos %}
-            <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-500/10 text-slate-200 border border-slate-700/60">
-                            {{ (d.tipo or "otro")|upper }}
-                        </span>
+            {% set tipo_val = (d.tipo.value if d.tipo is not none and d.tipo.value is defined else (d.tipo|string)) %}
+            {% set estado_val = (d.estado.value if d.estado is not none and d.estado.value is defined else (d.estado|string)) %}
 
-                        <div class="text-sm font-semibold text-slate-100 truncate">
-                            {{ d.nombre }}
+            <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            {{ tipo_badge(d.tipo) }}
+
+                            {% if d.is_current %}
+                            <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
+                           bg-emerald-500/15 text-emerald-200 border-emerald-500/20">
+                                VIGENTE
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
+                           bg-slate-500/15 text-slate-200 border-slate-500/20">
+                                {{ estado_val|replace("InboundDocumentoEstado.", "") }}
+                            </span>
+                            {% endif %}
+
+                            {% if d.version %}
+                            <span class="inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold
+                           bg-slate-500/15 text-slate-200 border-slate-500/20">
+                                v{{ d.version }}
+                            </span>
+                            {% endif %}
+
+                            <p class="text-xs font-semibold text-slate-100 truncate">
+                                {{ d.nombre }}
+                                <span class="text-slate-500 font-normal">#{{ d.id }}</span>
+                            </p>
                         </div>
+
+                        {% if d.descripcion %}
+                        <p class="text-[11px] text-slate-400 mt-1">{{ d.descripcion }}</p>
+                        {% endif %}
+
+                        <p class="text-[11px] text-slate-500 mt-2">
+                            {% if d.creado_por %}{{ d.creado_por }} · {% endif %}
+                            {{ d.creado_en|cl_datetime(short=True, no_tz=True) }}
+                            · <span class="text-slate-400">{{ fmt_size(d.size_bytes) }}</span>
+                            {% if d.sha256 %} · <span class="font-mono text-slate-400">sha…{{ d.sha256[-8:] }}</span>{% endif %}
+                            {% if d.linea_id %} · <span class="text-slate-400">Línea #{{ d.linea_id }}</span>{% endif %}
+                        </p>
+
                     </div>
 
-                    {% if d.descripcion %}
-                    <div class="text-xs text-slate-400 mt-1">{{ d.descripcion }}</div>
-                    {% endif %}
+                    <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+                        <a href="/inbound/recepciones/{{ recepcion.id }}/documentos/{{ d.id }}/download"
+                           class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40
+                      px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300">
+                            Descargar
+                        </a>
 
-                    <div class="text-[11px] text-slate-500 mt-1">
-                        {% if d.creado_por %}{{ d.creado_por }} · {% endif %}
-                        {{ d.creado_en }}
+                        <form method="post"
+                              action="/inbound/recepciones/{{ recepcion.id }}/documentos/{{ d.id }}/eliminar"
+                              onsubmit="return confirm('¿Eliminar este documento? (soft delete)');">
+                            <button type="submit"
+                                    class="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10
+                             px-3 py-1.5 text-[11px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100
+                             {% if es_cerrada %}opacity-50 pointer-events-none{% endif %}">
+                                Eliminar (soft)
+                            </button>
+                        </form>
                     </div>
-                </div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                    <a href="/inbound/recepciones/{{ recepcion.id }}/documentos/{{ d.id }}/download"
-                       class="px-3 py-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-slate-200 text-xs font-medium border border-slate-700/50">
-                        Descargar
-                    </a>
-
-                    <form method="post" action="/inbound/recepciones/{{ recepcion.id }}/documentos/{{ d.id }}/eliminar">
-                        <button type="submit"
-                                class="px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/15 text-rose-200 text-xs font-semibold border border-rose-500/20">
-                            Eliminar
-                        </button>
-                    </form>
                 </div>
             </div>
+
             {% endfor %}
         </div>
         {% else %}
-        <div class="p-6 text-center text-slate-400">
-            Aún no hay documentos adjuntos.
+        <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
+            <p class="text-[11px] text-slate-300">Aún no hay documentos adjuntos en esta recepción.</p>
         </div>
         {% endif %}
-    </div>
-
-    {% endif %}
+    </section>
 
 </div>
 {% endblock %}

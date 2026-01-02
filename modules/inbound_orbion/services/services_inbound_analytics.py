@@ -13,7 +13,7 @@ from core.models.inbound.recepciones import InboundRecepcion
 from core.models.inbound.lineas import InboundLinea
 from core.models.inbound.incidencias import InboundIncidencia
 from core.models.inbound.proveedores import Proveedor
-from core.models.inbound.checklist import InboundChecklistRecepcion  # ajusta import si tu path difiere
+from core.models.inbound.checklist import InboundChecklistPlantilla, InboundChecklistSeccion, InboundChecklistItem, InboundChecklistEjecucion, InboundChecklistRespuesta
 from core.models.inbound.analytics_snapshots import InboundAnalyticsSnapshot
 
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError

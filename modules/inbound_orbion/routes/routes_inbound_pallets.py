@@ -35,6 +35,11 @@ from modules.inbound_orbion.services.services_inbound_pallets import (
     reabrir_pallet,
 )
 
+# ✅ FIX: reconciliar después de mutaciones de pallets/items
+from modules.inbound_orbion.services.services_inbound_reconciliacion import (
+    reconciliar_recepcion,
+)
+
 from .inbound_common import inbound_roles_dep, templates
 
 router = APIRouter()
@@ -110,6 +115,30 @@ def _pallet_estado_up(pallet: InboundPallet) -> str:
     return str(estado_txt).replace("PalletEstado.", "").upper()
 
 
+def _post_mutation_recon(db: Session, *, negocio_id: int, recepcion_id: int) -> None:
+    """
+    Enterprise FIX:
+    Cada vez que mutas pallets/items, recalculamos el snapshot de conciliación
+    en InboundLinea para que la lista de líneas NO quede con valores pegados.
+
+    strict=True (baseline): solo pallets LISTO cuentan.
+    - Si un pallet LISTO se elimina o se reabre => el físico vuelve a 0.
+    - Si se marca LISTO => físico se actualiza.
+    """
+    # Asegura que la DB "vea" los cambios del transaction actual.
+    db.flush()
+
+    reconciliar_recepcion(
+        db=db,
+        negocio_id=negocio_id,
+        recepcion_id=recepcion_id,
+        include_lineas=False,
+        require_editable=False,  # no bloquea si luego esto se usa en lectura
+        strict=True,
+        commit=False,  # commit se hace al final de la ruta
+    )
+
+
 # ============================================================
 # LISTA DE PALLETS
 # ============================================================
@@ -137,7 +166,6 @@ async def inbound_pallets_lista(
         .all()
     )
 
-    # Enterprise: resumen coalesce(real, estimado) para que UI no quede en 0
     resumen = construir_resumen_pallets(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
     log_inbound_event(
@@ -177,7 +205,6 @@ async def inbound_pallet_detalle(
     negocio_id = user["negocio_id"]
     recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
 
-    # ✅ Baseline: el detalle puede ser lectura si recepción cerrada
     recepcion_editable = True
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
@@ -212,7 +239,6 @@ async def inbound_pallet_detalle(
         .all()
     )
 
-    # ✅ Enterprise perf: sumas por línea en UNA query (REAL oficiales)
     sums = (
         db.query(
             InboundPalletItem.linea_id.label("linea_id"),
@@ -229,12 +255,11 @@ async def inbound_pallet_detalle(
     )
     sums_by_linea = {int(r.linea_id): (float(r.cant_asig or 0.0), float(r.kg_asig or 0.0)) for r in sums}
 
-    # UI: vista (modo + pendientes + unidad + conv) — ocultamos líneas inválidas
     lineas_ui: list[dict[str, Any]] = []
     for l in lineas:
         try:
             v = normalizar_linea(l, allow_draft=False)
-            modo = v.modo.value  # "CANTIDAD" | "PESO"
+            modo = v.modo.value
             base = v.base_cantidad if modo == "CANTIDAD" else v.base_peso_kg
         except Exception:
             continue
@@ -253,7 +278,6 @@ async def inbound_pallet_detalle(
         if not nombre:
             nombre = f"Línea #{l.id}"
 
-        # conv kg/u (solo informativo para UI)
         peso_unitario_kg = None
         try:
             v1 = getattr(l, "peso_unitario_kg_override", None)
@@ -321,7 +345,6 @@ async def inbound_pallet_editar_get(
 
     recepcion = obtener_recepcion_segura(db, recepcion_id, negocio_id)
 
-    # ✅ Editar solo si recepción editable
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
     except InboundDomainError as e:
@@ -329,7 +352,6 @@ async def inbound_pallet_editar_get(
 
     pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
-    # ✅ Enterprise UX: si pallet LISTO/BLOQUEADO, no se edita metadata
     estado_up = _pallet_estado_up(pallet)
     if estado_up in {"LISTO", "BLOQUEADO"}:
         return _redirect(
@@ -396,6 +418,10 @@ async def inbound_pallet_editar_post(
             peso_tara_kg=_to_float_or_none(peso_tara_kg),
         )
 
+        # (editar metadata no cambia conciliación de líneas)
+
+        db.commit()
+
         log_inbound_event(
             "pallet_editado",
             negocio_id=negocio_id,
@@ -407,6 +433,7 @@ async def inbound_pallet_editar_post(
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet actualizado.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_editar_domain_error",
             negocio_id=negocio_id,
@@ -416,6 +443,10 @@ async def inbound_pallet_editar_post(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}/editar", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}/editar", error="Error inesperado.")
 
 
 # ============================================================
@@ -451,6 +482,8 @@ async def inbound_pallet_nuevo(
             creado_por_id=user.get("id"),
         )
 
+        db.commit()
+
         log_inbound_event(
             "pallet_creado",
             negocio_id=negocio_id,
@@ -462,6 +495,7 @@ async def inbound_pallet_nuevo(
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", ok="Pallet creado.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_crear_domain_error",
             negocio_id=negocio_id,
@@ -470,6 +504,10 @@ async def inbound_pallet_nuevo(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", error="Error inesperado al crear pallet.")
 
 
 # ============================================================
@@ -490,7 +528,7 @@ async def inbound_pallet_item_agregar(
 
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+        pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         linea_id_i = _to_int_or_none(linea_id)
         if not linea_id_i:
@@ -507,6 +545,11 @@ async def inbound_pallet_item_agregar(
             items=[{"linea_id": linea_id_i, "cantidad": cant_f, "peso_kg": kg_f}],
         )
 
+        # ✅ Reconciliación post-mutation (solo afecta snapshot si pallet LISTO)
+        _post_mutation_recon(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
+
+        db.commit()
+
         log_inbound_event(
             "pallet_item_agregado",
             negocio_id=negocio_id,
@@ -514,11 +557,13 @@ async def inbound_pallet_item_agregar(
             recepcion_id=recepcion_id,
             pallet_id=pallet_id,
             linea_id=linea_id_i,
+            pallet_estado=_pallet_estado_up(pallet),
         )
 
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Ítem agregado.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_item_agregar_domain_error",
             negocio_id=negocio_id,
@@ -528,6 +573,10 @@ async def inbound_pallet_item_agregar(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error="Error inesperado al agregar ítem.")
 
 
 # ============================================================
@@ -546,7 +595,7 @@ async def inbound_pallet_item_quitar(
 
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+        pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         quitar_item_de_pallet(
             db=db,
@@ -556,6 +605,11 @@ async def inbound_pallet_item_quitar(
             pallet_item_id=pallet_item_id,
         )
 
+        # ✅ Reconciliación post-mutation
+        _post_mutation_recon(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
+
+        db.commit()
+
         log_inbound_event(
             "pallet_item_quitado",
             negocio_id=negocio_id,
@@ -563,11 +617,13 @@ async def inbound_pallet_item_quitar(
             recepcion_id=recepcion_id,
             pallet_id=pallet_id,
             pallet_item_id=pallet_item_id,
+            pallet_estado=_pallet_estado_up(pallet),
         )
 
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Ítem removido.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_item_quitar_domain_error",
             negocio_id=negocio_id,
@@ -577,6 +633,10 @@ async def inbound_pallet_item_quitar(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error="Error inesperado al quitar ítem.")
 
 
 # ============================================================
@@ -593,9 +653,14 @@ async def inbound_pallet_cerrar(
     negocio_id = user["negocio_id"]
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+        pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         marcar_pallet_listo(db, negocio_id, recepcion_id, pallet_id, user["id"])
+
+        # ✅ Al pasar a LISTO, ahora sí cuenta para strict=True → actualiza snapshot
+        _post_mutation_recon(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
+
+        db.commit()
 
         log_inbound_event(
             "pallet_cerrado_listo",
@@ -605,10 +670,10 @@ async def inbound_pallet_cerrar(
             pallet_id=pallet_id,
         )
 
-        # ✅ UX: vuelves al detalle para ver estado + acciones
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet marcado LISTO.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_cerrar_domain_error",
             negocio_id=negocio_id,
@@ -618,6 +683,10 @@ async def inbound_pallet_cerrar(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error="Error inesperado al cerrar pallet.")
 
 
 @router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/reabrir", response_class=HTMLResponse)
@@ -630,9 +699,14 @@ async def inbound_pallet_reabrir(
     negocio_id = user["negocio_id"]
     try:
         _ = obtener_recepcion_editable(db, recepcion_id, negocio_id)
-        _ = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
+        pallet = obtener_pallet_seguro(db, negocio_id=negocio_id, recepcion_id=recepcion_id, pallet_id=pallet_id)
 
         reabrir_pallet(db, negocio_id, recepcion_id, pallet_id)
+
+        # ✅ Si estaba LISTO, deja de contar → snapshot vuelve a 0 (strict=True)
+        _post_mutation_recon(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
+
+        db.commit()
 
         log_inbound_event(
             "pallet_reabierto",
@@ -645,6 +719,7 @@ async def inbound_pallet_reabrir(
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", ok="Pallet reabierto.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_reabrir_domain_error",
             negocio_id=negocio_id,
@@ -654,6 +729,10 @@ async def inbound_pallet_reabrir(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets/{pallet_id}", error="Error inesperado al reabrir pallet.")
 
 
 @router.post("/recepciones/{recepcion_id}/pallets/{pallet_id}/eliminar", response_class=HTMLResponse)
@@ -670,6 +749,11 @@ async def inbound_pallet_eliminar(
 
         eliminar_pallet_inbound(db, negocio_id, recepcion_id, pallet_id)
 
+        # ✅ Si el pallet eliminado era LISTO, ahora ya no cuenta → snapshot se recalcula
+        _post_mutation_recon(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
+
+        db.commit()
+
         log_inbound_event(
             "pallet_eliminado",
             negocio_id=negocio_id,
@@ -681,6 +765,7 @@ async def inbound_pallet_eliminar(
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", ok="Pallet eliminado.")
 
     except InboundDomainError as e:
+        db.rollback()
         log_inbound_error(
             "pallet_eliminar_domain_error",
             negocio_id=negocio_id,
@@ -690,3 +775,7 @@ async def inbound_pallet_eliminar(
             error=e.message,
         )
         return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", error=e.message)
+
+    except Exception:
+        db.rollback()
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/pallets", error="Error inesperado al eliminar pallet.")

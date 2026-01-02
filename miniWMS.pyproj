@@ -42,7 +42,6 @@
     <Compile Include="core\models\inbound\lineas.py" />
     <Compile Include="core\models\inbound\pallets.py" />
     <Compile Include="core\models\inbound\plantillas.py" />
-    <Compile Include="core\models\inbound\plantillas_checklist.py" />
     <Compile Include="core\models\inbound\prealertas.py" />
     <Compile Include="core\models\inbound\proveedores.py" />
     <Compile Include="core\models\inbound\recepciones.py" />
@@ -152,9 +151,8 @@
     <Content Include="modules\inbound_orbion\templates\inbound_checklist_recepcion.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_citas.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_documentos.html" />
-    <Content Include="modules\inbound_orbion\templates\inbound_fotos_recepcion.html" />
+    <Content Include="modules\inbound_orbion\templates\inbound_fotos.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_incidencias.html" />
-    <Content Include="modules\inbound_orbion\templates\inbound_incidencia_detalle.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_lineas_lista.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_linea_editar.html" />
     <Content Include="modules\inbound_orbion\templates\inbound_linea_form.html" />

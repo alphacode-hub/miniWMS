@@ -1,6 +1,7 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_documentos.py
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Request, Depends, Form, UploadFile, File
@@ -15,6 +16,7 @@ from modules.inbound_orbion.services.services_inbound_documentos import (
     crear_documento,
     obtener_documento,
     eliminar_documento,
+    STORAGE_ROOT,  # 👈 usamos el mismo root del service
 )
 
 from .inbound_common import templates, inbound_roles_dep
@@ -56,6 +58,19 @@ def _get_user_email(user) -> str | None:
     if isinstance(user, dict):
         return user.get("email") or None
     return getattr(user, "email", None) or None
+
+
+def _abs_doc_path(uri: str) -> Path:
+    """
+    DB guarda uri relativo (ej: inbound/negocio_1/recepcion_10/xxx.pdf)
+    => reconstruimos path absoluto usando STORAGE_ROOT.
+    """
+    u = (uri or "").strip().replace("\\", "/")
+    if not u:
+        raise InboundDomainError("Documento inválido: uri vacía.")
+    # evita traversal (defensa básica)
+    u = u.lstrip("/")
+    return (Path(STORAGE_ROOT) / u).resolve()
 
 
 # =========================================================
@@ -111,6 +126,8 @@ async def inbound_documentos_upload(
     recepcion_id: int,
     tipo: str = Form(...),
     descripcion: str | None = Form(None),
+    # opcional: asociar a línea (si tu UI lo agrega después)
+    linea_id: int | None = Form(None),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(inbound_roles_dep()),
@@ -119,6 +136,9 @@ async def inbound_documentos_upload(
     email = _get_user_email(user)
 
     try:
+        if archivo is None or not archivo.filename:
+            raise InboundDomainError("Debes adjuntar un archivo.")
+
         await crear_documento(
             db,
             negocio_id=negocio_id,
@@ -127,6 +147,7 @@ async def inbound_documentos_upload(
             descripcion=descripcion,
             file=archivo,
             creado_por=email,
+            linea_id=linea_id,
         )
         db.commit()
         return _redirect(f"/inbound/recepciones/{recepcion_id}/documentos", ok="Documento subido.")
@@ -135,7 +156,10 @@ async def inbound_documentos_upload(
         return _redirect(f"/inbound/recepciones/{recepcion_id}/documentos", error=str(e))
     except Exception:
         db.rollback()
-        return _redirect(f"/inbound/recepciones/{recepcion_id}/documentos", error="Error inesperado al subir documento. Revisa logs.")
+        return _redirect(
+            f"/inbound/recepciones/{recepcion_id}/documentos",
+            error="Error inesperado al subir documento. Revisa logs.",
+        )
 
 
 # =========================================================
@@ -150,14 +174,26 @@ async def inbound_documentos_download(
     user=Depends(inbound_roles_dep()),
 ):
     negocio_id = _get_negocio_id(user)
-    doc = obtener_documento(db, negocio_id=negocio_id, recepcion_id=recepcion_id, documento_id=documento_id)
 
-    # baseline local: FileResponse
-    return FileResponse(
-        path=doc.uri,
-        media_type=doc.mime_type or "application/octet-stream",
-        filename=doc.nombre,
-    )
+    try:
+        doc = obtener_documento(db, negocio_id=negocio_id, recepcion_id=recepcion_id, documento_id=documento_id)
+        abs_path = _abs_doc_path(doc.uri)
+
+        if not abs_path.exists():
+            raise InboundDomainError("El archivo no existe en storage. Revisa ORBION_STORAGE_DIR.")
+
+        return FileResponse(
+            path=str(abs_path),
+            media_type=doc.mime_type or "application/octet-stream",
+            filename=doc.nombre,
+        )
+    except InboundDomainError as e:
+        return _redirect(f"/inbound/recepciones/{recepcion_id}/documentos", error=str(e))
+    except Exception:
+        return _redirect(
+            f"/inbound/recepciones/{recepcion_id}/documentos",
+            error="Error inesperado al descargar documento. Revisa logs.",
+        )
 
 
 # =========================================================
