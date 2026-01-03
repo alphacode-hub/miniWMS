@@ -1,6 +1,7 @@
 ﻿# modules/inbound_orbion/routes/routes_inbound_checklist.py
 from __future__ import annotations
 
+from datetime import datetime
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Request
@@ -64,8 +65,6 @@ def _is_locked(recepcion, checklist_vm) -> tuple[bool, str]:
     if recep_estado == "CERRADO":
         return True, "Recepción cerrada: checklist en solo lectura."
 
-    # SIMPLE V2: no existe estado/firma en cabecera.
-    # Bloqueo se calcula en el VM (resumen["bloqueado"]).
     try:
         resumen = getattr(checklist_vm, "resumen", None) or {}
         if bool(resumen.get("bloqueado")):
@@ -74,6 +73,60 @@ def _is_locked(recepcion, checklist_vm) -> tuple[bool, str]:
         pass
 
     return False, ""
+
+
+# =========================================================
+# JSON SERIALIZERS (evita datetime not JSON serializable)
+# =========================================================
+
+def _dt_iso(x: datetime | None) -> str | None:
+    return x.isoformat() if isinstance(x, datetime) else None
+
+
+def _item_to_json(it) -> dict:
+    return {
+        "item_id": it.item_id,
+        "seccion_id": it.seccion_id,
+        "seccion_codigo": it.seccion_codigo,
+        "seccion_titulo": it.seccion_titulo,
+        "seccion_orden": it.seccion_orden,
+        "codigo": it.codigo,
+        "nombre": it.nombre,
+        "descripcion": it.descripcion,
+        "requerido": bool(it.requerido),
+        "critico": bool(it.critico),
+        "orden": it.orden,
+        "activo": bool(it.activo),
+        "estado": it.estado,
+        "nota": it.nota,
+        "respondido_por": it.respondido_por,
+        "respondido_en": _dt_iso(it.respondido_en),
+        "actualizado_en": _dt_iso(it.actualizado_en),
+    }
+
+
+def _vm_to_json(vm) -> dict:
+    return {
+        "recepcion_id": vm.recepcion_id,
+        "ejecucion_id": vm.ejecucion_id,
+        "plantilla_id": vm.plantilla_id,
+        "plantilla_nombre": vm.plantilla_nombre,
+        "creado_en": _dt_iso(vm.creado_en),
+        "actualizado_en": _dt_iso(vm.actualizado_en),
+        "resumen": vm.resumen,
+        "items": [_item_to_json(i) for i in (vm.items or [])],
+        "secciones": [
+            {
+                "seccion_id": s.seccion_id,
+                "codigo": s.codigo,
+                "titulo": s.titulo,
+                "orden": s.orden,
+                "resumen": s.resumen,
+                "items": [_item_to_json(i) for i in (s.items or [])],
+            }
+            for s in (vm.secciones or [])
+        ],
+    }
 
 
 # =========================================================
@@ -156,31 +209,9 @@ async def inbound_checklist_vm_json(
         vm = obtener_checklist_vm(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
         locked, why = _is_locked(recepcion, vm)
 
-        # vm es dataclass: __dict__ sirve OK para payload plano
-        return JSONResponse(
-            {
-                "ok": True,
-                "locked": locked,
-                "locked_reason": why,
-                "resumen": vm.resumen,
-                "items": [i.__dict__ for i in vm.items],
-                "secciones": [
-                    {
-                        "seccion_id": s.seccion_id,
-                        "codigo": s.codigo,
-                        "titulo": s.titulo,
-                        "orden": s.orden,
-                        "resumen": s.resumen,
-                        "items": [i.__dict__ for i in s.items],
-                    }
-                    for s in vm.secciones
-                ],
-                "plantilla_id": vm.plantilla_id,
-                "plantilla_nombre": vm.plantilla_nombre,
-                "ejecucion_id": vm.ejecucion_id,
-                "actualizado_en": (vm.actualizado_en.isoformat() if vm.actualizado_en else None),
-            }
-        )
+        payload = _vm_to_json(vm)
+        payload.update({"ok": True, "locked": locked, "locked_reason": why})
+        return JSONResponse(payload)
 
     except InboundDomainError as e:
         msg = getattr(e, "message", None) or str(e)
@@ -202,16 +233,12 @@ async def inbound_checklist_autosave(
 ):
     """
     Autosave SIMPLE V2 (JSON)
-
     payload:
       {
         "item_id": 123,
         "estado": "PENDIENTE|CUMPLE|NO_CUMPLE|NA",
         "nota": "..." (opcional)
       }
-
-    response:
-      { ok, resumen, item_updated, server_updated_at }
     """
     negocio_id = _get_negocio_id(user)
     respondido_por = _get_user_identity(user)
@@ -226,21 +253,13 @@ async def inbound_checklist_autosave(
 
         payload = await request.json()
 
-        # Compat: aceptamos item_id (nuevo) o checklist_item_id (legacy)
-        raw_item_id = payload.get("item_id", None)
-        if raw_item_id is None:
-            raw_item_id = payload.get("checklist_item_id", None)
-
+        raw_item_id = payload.get("item_id", None) or payload.get("checklist_item_id", None)
         if raw_item_id is None:
             raise InboundDomainError("Falta item_id en payload.")
 
         item_id = int(raw_item_id)
 
-        estado = payload.get("estado", None)
-        # Compat legacy: venía como 'valor'
-        if estado is None:
-            estado = payload.get("valor", None)
-
+        estado = payload.get("estado", None) or payload.get("valor", None)
         nota = payload.get("nota", None)
 
         guardar_respuesta_item(
@@ -257,18 +276,25 @@ async def inbound_checklist_autosave(
         vm2 = obtener_checklist_vm(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
         item_updated = None
-        for it in vm2.items:
+        for it in (vm2.items or []):
             if it.item_id == item_id:
-                item_updated = it.__dict__
+                item_updated = _item_to_json(it)
                 break
+
+        # 🔥 NUEVO: devolver resumen por sección para actualizar barras/contadores UI
+        secciones_payload = [
+            {"codigo": s.codigo, "resumen": (s.resumen or {})}
+            for s in (vm2.secciones or [])
+        ]
 
         return JSONResponse(
             {
                 "ok": True,
                 "locked": _is_locked(recepcion, vm2)[0],
                 "resumen": vm2.resumen,
+                "secciones": secciones_payload,
                 "item_updated": item_updated,
-                "server_updated_at": (vm2.actualizado_en.isoformat() if vm2.actualizado_en else None),
+                "server_updated_at": _dt_iso(vm2.actualizado_en),
             }
         )
 

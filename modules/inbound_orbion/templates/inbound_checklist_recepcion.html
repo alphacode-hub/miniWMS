@@ -51,7 +51,7 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
 {%- endmacro %}
 
 
-<div class="max-w-5xl mx-auto px-4 py-5 sm:py-7 space-y-6 sm:space-y-8">
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     {# =========================
     HEADER
@@ -220,10 +220,19 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
                     {% set spct = sres.get("progreso_pct", 0) %}
                     {% set stot = sres.get("items_total", 0) %}
                     {% set sresp = sres.get("items_respondidos", 0) %}
-                    <p class="text-[10px] text-slate-500">{{ sec.codigo }} · {{ sresp }}/{{ stot }} · {{ spct }}%</p>
+
+                    {# ✅ NUEVO: nodos actualizables por JS #}
+                    <p class="text-[10px] text-slate-500">
+                        <span data-role="sec-meta" data-sec="{{ sec.codigo }}">
+                            {{ sec.codigo }} · {{ sresp }}/{{ stot }} · {{ spct }}%
+                        </span>
+                    </p>
                 </div>
+
                 <div class="h-2 w-40 rounded-full bg-slate-800 overflow-hidden">
-                    <div class="h-full bg-cyan-400/80" style="width: {{ spct }}%"></div>
+                    <div data-role="sec-bar" data-sec="{{ sec.codigo }}"
+                         class="h-full bg-cyan-400/80"
+                         style="width: {{ spct }}%"></div>
                 </div>
             </div>
 
@@ -378,7 +387,6 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
       }
     }
 
-    // badge global (BLOQUEADO/ACTIVO)
     const chkBadge = document.getElementById("chkEstadoBadge");
     if (chkBadge) {
       if (bloqueado) {
@@ -389,6 +397,27 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
         chkBadge.className = "inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold border bg-slate-700/40 text-slate-100 border-slate-600";
       }
     }
+  }
+
+  // ✅ NUEVO: actualizar barras/contador por sección
+  function updateSecciones(secciones) {
+    if (!Array.isArray(secciones)) return;
+
+    secciones.forEach((s) => {
+      const codigo = (s.codigo || "").toString().trim();
+      const r = s.resumen || {};
+      if (!codigo) return;
+
+      const total = r.items_total ?? 0;
+      const resp = r.items_respondidos ?? 0;
+      const pct = r.progreso_pct ?? 0;
+
+      const meta = document.querySelector(`[data-role="sec-meta"][data-sec="${codigo}"]`);
+      if (meta) meta.textContent = `${codigo} · ${resp}/${total} · ${pct}%`;
+
+      const bar = document.querySelector(`[data-role="sec-bar"][data-sec="${codigo}"]`);
+      if (bar) bar.style.width = `${pct}%`;
+    });
   }
 
   function pillClass(state, active) {
@@ -449,12 +478,16 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
 
   function applyTempVisibility() {
     const hide = shouldHideTemp();
-    const targets = Array.from(document.querySelectorAll('.checklist-item[data-role="item"]')).filter((it) => {
+    const all = Array.from(document.querySelectorAll('.checklist-item[data-role="item"]'));
+    all.forEach((it) => {
       const chip = it.querySelector('[data-role="item-code"]');
-      const code = chip ? (chip.textContent || "").trim() : "";
-      return code === "TEMP_INGRESO" || code === "TEMP_CONFORME";
+      const code = chip ? (chip.textContent || "").trim().toUpperCase() : "";
+      if (!code) return;
+
+      if (code.startsWith("TEMP_") && code !== "TEMP_APLICA") {
+        it.style.display = hide ? "none" : "";
+      }
     });
-    targets.forEach((it) => { it.style.display = hide ? "none" : ""; });
   }
 
   const timers = new Map();
@@ -501,6 +534,7 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
       }
 
       updateResumen(data.resumen);
+      updateSecciones(data.secciones);
 
       if (data.item_updated && data.item_updated.item_id) {
         const upd = data.item_updated;
@@ -510,7 +544,6 @@ ORBION · Checklist · {{ recepcion.codigo_recepcion if recepcion else "Recepci�
           setEstadoUI(target, st);
           const note = target.querySelector(".chk-note");
           if (note && typeof upd.nota === "string") {
-            // no pisamos si el user está escribiendo
             if (document.activeElement !== note) note.value = upd.nota;
           }
         }

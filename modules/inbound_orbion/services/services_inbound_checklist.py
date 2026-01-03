@@ -1,4 +1,5 @@
-﻿from __future__ import annotations
+﻿# modules/inbound_orbion/services/checklist.py
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -96,8 +97,10 @@ class ChecklistRecepcionVM:
 def _s(v: Optional[str]) -> str:
     return (v or "").strip()
 
+
 def _upper(v: Optional[str]) -> str:
     return _s(v).upper()
+
 
 def _estado_normalize(valor: Any) -> str:
     """
@@ -127,12 +130,13 @@ def _estado_normalize(valor: Any) -> str:
 
 
 def _es_respondido(estado: str, nota: Optional[str]) -> bool:
+    """
+    ENTERPRISE RULE (alineado a UI):
+    Un ítem cuenta como 'respondido' SOLO si estado != PENDIENTE.
+    La nota NO suma progreso.
+    """
     st = _upper(estado)
-    if st in (EST_CUMPLE, EST_NO_CUMPLE, EST_NA):
-        return True
-    if _s(nota) != "":
-        return True
-    return False
+    return st in (EST_CUMPLE, EST_NO_CUMPLE, EST_NA)
 
 
 def _build_secciones(vm_items: List[ChecklistItemVM]) -> List[ChecklistSeccionVM]:
@@ -333,7 +337,6 @@ def asegurar_plantilla_checklist_simple_v2(db: Session, negocio_id: int) -> Inbo
 def seleccionar_plantilla_para_recepcion(db: Session, negocio_id: int, recepcion: InboundRecepcion) -> InboundChecklistPlantilla:
     """
     SIMPLE V2: por ahora solo selecciona plantilla activa más reciente del negocio.
-    (Si mañana quieres “por proveedor”, se agrega un campo en plantilla y listo.)
     """
     tpl = (
         db.query(InboundChecklistPlantilla)
@@ -409,7 +412,6 @@ def _seed_respuestas_para_ejecucion(
 
     now = utcnow()
 
-    # evitar duplicar si algo raro pasó
     existentes = (
         db.query(InboundChecklistRespuesta.item_id)
         .filter(
@@ -568,7 +570,6 @@ def obtener_checklist_vm(db: Session, negocio_id: int, recepcion_id: int) -> Che
     progreso = round((respondidos / total) * 100.0, 1) if total > 0 else 0.0
     req_pend = max(requeridos_total - requeridos_ok, 0)
 
-    # “Resultado sugerido” (no DB)
     if criticos_no_cumple > 0:
         sugerido_ui = "BLOQUEADO"
     elif no_cumple > 0:
@@ -654,6 +655,9 @@ def guardar_respuesta_item(
         .first()
     )
 
+    # respondido_en: solo si estado != PENDIENTE (nota no afecta)
+    responded_ts = (now if (estado_clean != EST_PENDIENTE) else None)
+
     if resp is None:
         resp = InboundChecklistRespuesta(
             negocio_id=negocio_id,
@@ -664,7 +668,7 @@ def guardar_respuesta_item(
             estado=estado_clean,
             nota=nota_clean,
             respondido_por=actor,
-            respondido_en=(now if (estado_clean != EST_PENDIENTE or nota_clean) else None),
+            respondido_en=responded_ts,
             creado_en=now,
             actualizado_en=now,
         )
@@ -673,8 +677,66 @@ def guardar_respuesta_item(
         resp.estado = estado_clean
         resp.nota = nota_clean
         resp.respondido_por = actor
-        resp.respondido_en = (now if (estado_clean != EST_PENDIENTE or nota_clean) else None)
+        resp.respondido_en = responded_ts
         resp.actualizado_en = now
+
+    # =========================================================
+    # ENTERPRISE RULE: TEMP_APLICA = NA => auto-NA resto TEMP_*
+    # =========================================================
+    if str(it.codigo or "").strip().upper() == "TEMP_APLICA" and estado_clean == EST_NA:
+        temp_items = (
+            db.query(InboundChecklistItem)
+            .join(InboundChecklistSeccion, InboundChecklistSeccion.id == InboundChecklistItem.seccion_id)
+            .filter(
+                InboundChecklistItem.negocio_id == negocio_id,
+                InboundChecklistItem.plantilla_id == execu.plantilla_id,
+                InboundChecklistItem.activo.is_(True),
+                InboundChecklistSeccion.activo.is_(True),
+                InboundChecklistSeccion.codigo == "TEMP",
+            )
+            .all()
+        )
+
+        temp_ids = [
+            int(x.id) for x in temp_items
+            if str(getattr(x, "codigo", "") or "").strip().upper() != "TEMP_APLICA"
+        ]
+
+        if temp_ids:
+            existing = (
+                db.query(InboundChecklistRespuesta)
+                .filter(
+                    InboundChecklistRespuesta.negocio_id == negocio_id,
+                    InboundChecklistRespuesta.recepcion_id == recepcion_id,
+                    InboundChecklistRespuesta.ejecucion_id == execu.id,
+                    InboundChecklistRespuesta.item_id.in_(temp_ids),
+                )
+                .all()
+            )
+            by_item = {int(r.item_id): r for r in existing}
+
+            for tid in temp_ids:
+                r2 = by_item.get(tid)
+                if r2 is None:
+                    r2 = InboundChecklistRespuesta(
+                        negocio_id=negocio_id,
+                        recepcion_id=recepcion_id,
+                        ejecucion_id=execu.id,
+                        plantilla_id=execu.plantilla_id,
+                        item_id=tid,
+                        estado=EST_NA,
+                        nota=None,
+                        respondido_por=actor,
+                        respondido_en=now,
+                        creado_en=now,
+                        actualizado_en=now,
+                    )
+                    db.add(r2)
+                else:
+                    r2.estado = EST_NA
+                    r2.respondido_por = actor
+                    r2.respondido_en = now
+                    r2.actualizado_en = now
 
     execu.actualizado_en = now
     db.flush()
