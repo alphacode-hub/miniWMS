@@ -55,7 +55,13 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
                 <span class="text-slate-500 font-normal">
-                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                    ·
+                    {# ✅ Baseline: proveedor robusto #}
+                    {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                    {{ recepcion.proveedor.nombre }}
+                    {% else %}
+                    Sin proveedor
+                    {% endif %}
                 </span>
             </h1>
 
@@ -136,7 +142,7 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             <div class="sm:col-span-2">
                 <label class="block text-[10px] text-slate-500 mb-1">Bruto (kg)</label>
                 <input name="peso_bruto_kg"
-                       placeholder="0.000"
+                       placeholder="0,000"
                        inputmode="decimal"
                        class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                       focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
@@ -147,7 +153,7 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             <div class="sm:col-span-2">
                 <label class="block text-[10px] text-slate-500 mb-1">Tara (kg)</label>
                 <input name="peso_tara_kg"
-                       placeholder="0.000"
+                       placeholder="0,000"
                        inputmode="decimal"
                        class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                       focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
@@ -158,7 +164,7 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             <div class="sm:col-span-2">
                 <label class="block text-[10px] text-slate-500 mb-1">Temp (°C)</label>
                 <input name="temperatura_promedio"
-                       placeholder="0.0"
+                       placeholder="0,0"
                        inputmode="decimal"
                        class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                       focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
@@ -232,6 +238,10 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             {% set cant_real = (r.get("cant") if r else 0.0) %}
             {% set kg_real = (r.get("kg") if r else 0.0) %}
 
+            {# ✅ Baseline: evitar "or" con cl_num (string) y mantener default numérico #}
+            {% set kg_val = (kg_real if kg_real is not none else 0) %}
+            {% set cant_val = (cant_real if cant_real is not none else 0) %}
+
             {% set estado_txt = (p.estado.value if p.estado is not none and p.estado.value is defined else (p.estado|string)) %}
             {% set estado_txt = estado_txt.replace("PalletEstado.", "") %}
 
@@ -254,19 +264,19 @@ ORBION · Pallets · {{ recepcion.codigo_recepcion if recepcion else "Recepción
                             <span class="text-slate-600">·</span> <span class="text-slate-300">{{ p.bultos }} bultos</span>
                             {% endif %}
                             {% if p.temperatura_promedio is not none %}
-                            <span class="text-slate-600">·</span> <span class="text-slate-300">{{ '%.1f'|format(p.temperatura_promedio) }}°C</span>
+                            <span class="text-slate-600">·</span>
+                            {# ✅ Baseline: formato Chile (sin %.1f) #}
+                            <span class="text-slate-300">{{ p.temperatura_promedio|cl_num }}°C</span>
                             {% endif %}
                         </p>
 
                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                            
                             <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
-                                Kg: {{ kg_real|cl_num or 0.0 }}
+                                Kg: {{ kg_val|cl_num }}
                             </span>
                             <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/40 px-2 py-[2px] text-[10px] font-semibold text-slate-300">
-                                Cant: {{ cant_real|cl_num or 0.0 }}
+                                Cant: {{ cant_val|cl_num }}
                             </span>
-                            
                         </div>
 
                         <p class="text-[11px] text-slate-500 mt-2 truncate">

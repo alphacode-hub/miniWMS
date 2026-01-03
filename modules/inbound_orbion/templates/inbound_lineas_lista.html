@@ -7,7 +7,13 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
 
 {% block page_header %}{% endblock %}
 
+{# Recepción editable viene desde backend (baseline). Si no viene, asumimos True. #}
+{% set recepcion_editable = (recepcion_editable if recepcion_editable is defined else True) %}
 {% set es_cerrada = (not recepcion_editable) %}
+
+{# Compat: si ruta no envía qs_success/qs_error, usamos query_params #}
+{% set qs_success = (qs_success if qs_success is defined else (request.query_params.get("success") if request and request.query_params else None)) %}
+{% set qs_error = (qs_error if qs_error is defined else (request.query_params.get("error") if request and request.query_params else None)) %}
 
 {# ✅ show_recon viene desde backend (ruta), si no viene, fallback a querystring #}
 {% set show_recon = (show_recon if show_recon is defined else (request.query_params.get("recon") == "1")) %}
@@ -32,7 +38,13 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 {{ recepcion.codigo_recepcion if recepcion else "Recepción" }}
                 <span class="text-slate-500 font-normal">
-                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                    ·
+                    {# ✅ proveedor defensivo: puede existir proveedor pero nombre NULL #}
+                    {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                    {{ recepcion.proveedor.nombre }}
+                    {% else %}
+                    Sin proveedor
+                    {% endif %}
                 </span>
             </h1>
 
@@ -259,7 +271,7 @@ ORBION · Líneas · {{ recepcion.codigo_recepcion if recepcion else "Recepción
                             Lote: {{ l.lote or "—" }}
                             · Venc: {{ l.fecha_vencimiento.strftime('%d-%m-%Y') if l.fecha_vencimiento else "—" }}
                             {% if l.temperatura_recibida is not none %}
-                            · Temp: {{ l.temperatura_recibida|cl_num }}°C
+                            · Temp: {{ l.temperatura_recibida|cl_num }} °C
                             {% endif %}
                         </p>
                     </div>

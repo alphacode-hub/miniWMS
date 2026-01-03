@@ -68,7 +68,12 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
             </h1>
 
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl truncate">
-                {% if recepcion and recepcion.proveedor %}Proveedor: {{ recepcion.proveedor.nombre }}{% else %}Sin proveedor{% endif %}
+                {# ✅ Baseline: proveedor robusto #}
+                {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                Proveedor: {{ recepcion.proveedor.nombre }}
+                {% else %}
+                Sin proveedor
+                {% endif %}
                 {% if recepcion and recepcion.documento_ref %} · Ref: {{ recepcion.documento_ref }}{% endif %}
             </p>
         </div>
@@ -83,7 +88,7 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
             <div class="flex flex-wrap items-center justify-end gap-2">
                 {{ estado_badge(estado_txt) }}
 
-                {# ✅ Editar SOLO en detalle. Visible solo si no está bloqueado total (recepción editable y pallet no LISTO/BLOQUEADO) #}
+                {# ✅ Editar SOLO en detalle. Visible solo si no está bloqueado total #}
                 {% if not bloqueado_total %}
                 <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/editar"
                    class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-[11px] font-semibold
@@ -148,11 +153,26 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
             <div class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-3">
                 <p class="text-[10px] text-slate-500 uppercase tracking-wide">Bruto / Tara / Neto</p>
                 <p class="text-[11px] text-slate-300 mt-2">
-                    Bruto: <span class="font-semibold text-slate-100">{{ pallet.peso_bruto_kg|cl_num if pallet.peso_bruto_kg|cl_num is not none else "—" }} K</span>
+                    Bruto:
+                    {% if pallet.peso_bruto_kg is not none %}
+                    <span class="font-semibold text-slate-100">{{ pallet.peso_bruto_kg|cl_num }}</span> kg
+                    {% else %}
+                    <span class="text-slate-500">—</span>
+                    {% endif %}
                     <span class="text-slate-600">·</span>
-                    Tara: <span class="font-semibold text-slate-100">{{ pallet.peso_tara_kg|cl_num if pallet.peso_tara_kg|cl_num is not none else "—" }} K</span>
+                    Tara:
+                    {% if pallet.peso_tara_kg is not none %}
+                    <span class="font-semibold text-slate-100">{{ pallet.peso_tara_kg|cl_num }}</span> kg
+                    {% else %}
+                    <span class="text-slate-500">—</span>
+                    {% endif %}
                     <span class="text-slate-600">·</span>
-                    Neto: <span class="font-semibold text-slate-100">{{ pallet.peso_neto_kg|cl_num if pallet.peso_neto_kg|cl_num is not none else "—" }} K</span>
+                    Neto:
+                    {% if pallet.peso_neto_kg is not none %}
+                    <span class="font-semibold text-slate-100">{{ pallet.peso_neto_kg|cl_num }}</span> kg
+                    {% else %}
+                    <span class="text-slate-500">—</span>
+                    {% endif %}
                 </p>
                 <p class="text-[10px] text-slate-500 mt-2">Neto se valida: tara no puede superar bruto.</p>
             </div>
@@ -162,7 +182,7 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                 <p class="text-[11px] text-slate-300 mt-2">
                     Temp:
                     {% if pallet.temperatura_promedio is not none %}
-                    <span class="font-semibold text-slate-100">{{ '%.1f'|format(pallet.temperatura_promedio) }}</span>°C
+                    <span class="font-semibold text-slate-100">{{ pallet.temperatura_promedio|cl_num }}</span> °C
                     {% else %}
                     <span class="text-slate-500">—</span>
                     {% endif %}
@@ -242,12 +262,12 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                     <option value="{{ l.id }}"
                             data-modo="{{ l.modo }}"
                             {% if l.pendiente <= 0 %}disabled{% endif %}>
-                {{ l.nombre }} · {{ l.modo }}
-                · Pend: {{ l.pendiente|cl_num }}
-                {% if l.modo == "PESO" %} kg {% else %} {{ l.unidad or "u" }} {% endif %}
-                {% if l.peso_unitario_kg is not none %} · Conv: {{ l.peso_unitario_kg|cl_num }} kg/u{% endif %}
-                {% if l.pendiente <= 0 %} · (sin pendiente){% endif %}
-              </option>
+                      {{ l.nombre }} · {{ l.modo }}
+                      · Pend: {{ l.pendiente|cl_num }}
+                      {% if l.modo == "PESO" %} kg {% else %} {{ l.unidad or "u" }} {% endif %}
+                      {% if l.peso_unitario_kg is not none %} · Conv: {{ l.peso_unitario_kg|cl_num }} kg/u{% endif %}
+                      {% if l.pendiente <= 0 %} · (sin pendiente){% endif %}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -267,7 +287,7 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                 <label class="block text-[10px] text-slate-500 mb-1">Peso (kg)</label>
                 <input name="peso_kg"
                        id="inpKg"
-                       placeholder="Ej: 25.500"
+                       placeholder="Ej: 25,500"
                        inputmode="decimal"
                        class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                         focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400" />
@@ -367,8 +387,6 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                                 {% set cant_ui = (it.cantidad if it.cantidad is not none else it.cantidad_estimada) %}
                                 {% if cant_ui is not none %}
                                 <span class="font-semibold text-slate-100">{{ cant_ui|cl_num }}</span> {{ (l.unidad if l and l.unidad else "u") }}
-                                {% if it.cantidad is none and it.cantidad_estimada is not none %}
-                                {% endif %}
                                 {% else %}
                                 <span class="text-slate-500">—</span>
                                 {% endif %}
@@ -379,14 +397,11 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
                                 {% set kg_ui = (it.peso_kg if it.peso_kg is not none else it.peso_estimado_kg) %}
                                 {% if kg_ui is not none %}
                                 <span class="font-semibold text-slate-100">{{ kg_ui|cl_num }}</span>
-                                {% if it.peso_kg is none and it.peso_estimado_kg is not none %}
-                                {% endif %}
                                 {% else %}
                                 <span class="font-semibold text-slate-500">—</span>
                                 {% endif %}
                             </span>
                         </p>
-
 
                         <p class="text-[11px] text-slate-500 mt-2">
                             Línea: #{{ l.id if l else "—" }}
@@ -447,7 +462,6 @@ ORBION · Pallet · {{ recepcion.codigo_recepcion if recepcion else "Recepción"
             {% endif %}
 
             {% if not bloqueado_total %}
-            {# ✅ Editar SOLO en detalle: acción primaria/neutral junto a acciones #}
             <a href="/inbound/recepciones/{{ recepcion.id }}/pallets/{{ pallet.id }}/editar"
                class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1.5 text-[11px] font-semibold text-slate-200
               hover:border-cyan-400 hover:text-cyan-300 transition-colors">

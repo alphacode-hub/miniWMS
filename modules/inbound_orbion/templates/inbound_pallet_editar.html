@@ -68,7 +68,12 @@ ORBION · Pallet · Editar · {{ recepcion.codigo_recepcion if recepcion else "R
             </h1>
 
             <p class="text-[11px] sm:text-xs text-slate-400 leading-snug max-w-xl truncate">
-                {% if recepcion and recepcion.proveedor %}Proveedor: {{ recepcion.proveedor.nombre }}{% else %}Sin proveedor{% endif %}
+                {# ✅ Baseline: proveedor robusto #}
+                {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                Proveedor: {{ recepcion.proveedor.nombre }}
+                {% else %}
+                Sin proveedor
+                {% endif %}
                 {% if recepcion and recepcion.documento_ref %} · Ref: {{ recepcion.documento_ref }}{% endif %}
             </p>
         </div>
@@ -158,9 +163,9 @@ ORBION · Pallet · Editar · {{ recepcion.codigo_recepcion if recepcion else "R
                 <div class="sm:col-span-3">
                     <label class="block text-[10px] text-slate-500 mb-1">Bruto (kg)</label>
                     <input name="peso_bruto_kg"
-                           placeholder="Ej: 120.500"
+                           placeholder="Ej: 120,500"
                            inputmode="decimal"
-                           value="{% if pallet.peso_bruto_kg is not none %}{{ '%.3f'|format(pallet.peso_bruto_kg) }}{% endif %}"
+                           value="{% if pallet.peso_bruto_kg is not none %}{{ pallet.peso_bruto_kg|cl_num }}{% endif %}"
                            class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                                   focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
                                   {% if bloqueado_total %}opacity-60{% endif %}"
@@ -170,9 +175,9 @@ ORBION · Pallet · Editar · {{ recepcion.codigo_recepcion if recepcion else "R
                 <div class="sm:col-span-3">
                     <label class="block text-[10px] text-slate-500 mb-1">Tara (kg)</label>
                     <input name="peso_tara_kg"
-                           placeholder="Ej: 20.000"
+                           placeholder="Ej: 20,000"
                            inputmode="decimal"
-                           value="{% if pallet.peso_tara_kg is not none %}{{ '%.3f'|format(pallet.peso_tara_kg) }}{% endif %}"
+                           value="{% if pallet.peso_tara_kg is not none %}{{ pallet.peso_tara_kg|cl_num }}{% endif %}"
                            class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                                   focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
                                   {% if bloqueado_total %}opacity-60{% endif %}"
@@ -182,9 +187,9 @@ ORBION · Pallet · Editar · {{ recepcion.codigo_recepcion if recepcion else "R
                 <div class="sm:col-span-3">
                     <label class="block text-[10px] text-slate-500 mb-1">Temperatura (°C)</label>
                     <input name="temperatura_promedio"
-                           placeholder="Ej: 0.0"
+                           placeholder="Ej: 0,0"
                            inputmode="decimal"
-                           value="{% if pallet.temperatura_promedio is not none %}{{ '%.1f'|format(pallet.temperatura_promedio) }}{% endif %}"
+                           value="{% if pallet.temperatura_promedio is not none %}{{ pallet.temperatura_promedio|cl_num }}{% endif %}"
                            class="w-full h-10 rounded-xl border border-slate-800 bg-slate-950/40 px-3 text-[12px] text-slate-100 placeholder:text-slate-600
                                   focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400
                                   {% if bloqueado_total %}opacity-60{% endif %}"

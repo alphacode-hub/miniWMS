@@ -10,6 +10,10 @@ ORBION · Documentos · {{ recepcion.codigo_recepcion if recepcion else "Recepci
 {% set recepcion_editable = (recepcion_editable if recepcion_editable is defined else True) %}
 {% set es_cerrada = (not recepcion_editable) %}
 
+{# Compat: si ruta no envía ok/error, usamos query_params success/error #}
+{% set qs_success = (ok if ok is defined and ok else (request.query_params.get("success") if request and request.query_params else None)) %}
+{% set qs_error = (error if error is defined and error else (request.query_params.get("error") if request and request.query_params else None)) %}
+
 {% block content %}
 {% set recep_codigo = recepcion.codigo_recepcion if recepcion and recepcion.codigo_recepcion else ("Recepción #" ~ recepcion.id if recepcion else "Recepción") %}
 
@@ -50,7 +54,12 @@ Helpers UI (template-local)
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 {{ recep_codigo }}
                 <span class="text-slate-500 font-normal">
-                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                    ·
+                    {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                    {{ recepcion.proveedor.nombre }}
+                    {% else %}
+                    Sin proveedor
+                    {% endif %}
                 </span>
             </h1>
 
@@ -77,17 +86,17 @@ Helpers UI (template-local)
     {% endif %}
 
     <!-- Alertas -->
-    {% if error %}
+    {% if qs_error %}
     <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-rose-200">No se pudo completar</p>
-        <p class="text-[11px] text-rose-200/90 mt-1">{{ error }}</p>
+        <p class="text-[11px] text-rose-200/90 mt-1">{{ qs_error }}</p>
     </section>
     {% endif %}
 
-    {% if ok %}
+    {% if qs_success %}
     <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-emerald-200">Operación realizada</p>
-        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_success }}</p>
     </section>
     {% endif %}
 
@@ -113,9 +122,11 @@ Helpers UI (template-local)
                     Tipo <span class="text-rose-400">*</span>
                 </label>
                 <select name="tipo" required
+                        {% if es_cerrada %}disabled{% endif %}
                         class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                        text-xs sm:text-sm text-slate-100
-                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                       {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}">
                     {# Valores compatibles con _parse_tipo() del servicio #}
                     <option value="GUIA">Guía</option>
                     <option value="FACTURA">Factura</option>
@@ -131,9 +142,11 @@ Helpers UI (template-local)
                     Archivo <span class="text-rose-400">*</span>
                 </label>
                 <input type="file" name="archivo" required
+                       {% if es_cerrada %}disabled{% endif %}
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                       text-xs sm:text-sm text-slate-100
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                      {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}" />
                 <p class="text-[11px] text-slate-500">
                     Consejo: nombres claros (ej: guia_1234.pdf, cert_temp.jpg).
                 </p>
@@ -143,9 +156,11 @@ Helpers UI (template-local)
             <div class="lg:col-span-3 space-y-1">
                 <label class="block text-[11px] font-semibold text-slate-200">Descripción</label>
                 <input type="text" name="descripcion"
+                       {% if es_cerrada %}disabled{% endif %}
                        class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
                       text-xs sm:text-sm text-slate-100 placeholder-slate-500
-                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500
+                      {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}"
                        placeholder="Ej: Guía firmada / Cert temp / Sellos..." />
             </div>
 
@@ -155,11 +170,12 @@ Helpers UI (template-local)
             <!-- Submit -->
             <div class="lg:col-span-12 flex items-center justify-end gap-2 pt-1">
                 <button type="submit"
+                        {% if es_cerrada %}disabled{% endif %}
                         class="inline-flex items-center rounded-full px-5 py-1.5
                        text-[11px] font-semibold text-slate-900 bg-[#00E4FF]
                        hover:bg-cyan-300 active:scale-[0.97]
                        transition-transform transition-colors
-                       {% if es_cerrada %}opacity-50 pointer-events-none{% endif %}">
+                       {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}">
                     + Subir documento
                 </button>
             </div>
@@ -244,9 +260,10 @@ Helpers UI (template-local)
                               action="/inbound/recepciones/{{ recepcion.id }}/documentos/{{ d.id }}/eliminar"
                               onsubmit="return confirm('¿Eliminar este documento? (soft delete)');">
                             <button type="submit"
+                                    {% if es_cerrada %}disabled{% endif %}
                                     class="inline-flex items-center rounded-full border border-rose-500/30 bg-rose-500/10
                              px-3 py-1.5 text-[11px] font-semibold text-rose-200 hover:border-rose-400 hover:text-rose-100
-                             {% if es_cerrada %}opacity-50 pointer-events-none{% endif %}">
+                             {% if es_cerrada %}opacity-50 cursor-not-allowed{% endif %}">
                                 Eliminar (soft)
                             </button>
                         </form>

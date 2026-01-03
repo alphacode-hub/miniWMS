@@ -25,7 +25,13 @@ ORBION · Incidencias · {{ recepcion.codigo_recepcion if recepcion else "Recepc
             <h1 class="text-base sm:text-lg font-semibold text-slate-100 tracking-tight truncate">
                 {{ recep_codigo }}
                 <span class="text-slate-500 font-normal">
-                    · {{ recepcion.proveedor.nombre if recepcion and recepcion.proveedor else "Sin proveedor" }}
+                    ·
+                    {# ✅ Cambio 1: proveedor robusto (si existe pero sin nombre) #}
+                    {% if recepcion and recepcion.proveedor and recepcion.proveedor.nombre %}
+                    {{ recepcion.proveedor.nombre }}
+                    {% else %}
+                    Sin proveedor
+                    {% endif %}
                 </span>
             </h1>
 
@@ -51,18 +57,21 @@ ORBION · Incidencias · {{ recepcion.codigo_recepcion if recepcion else "Recepc
     </section>
     {% endif %}
 
-    <!-- Alertas -->
-    {% if error %}
+    {# ✅ Cambio 2: Alertas (querystring ok/error) #}
+    {% set qs_ok = ok if ok is defined else (request.query_params.get("ok") if request and request.query_params is defined else None) %}
+    {% set qs_error = error if error is defined else (request.query_params.get("error") if request and request.query_params is defined else None) %}
+
+    {% if qs_error %}
     <section class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-rose-200">No se pudo completar</p>
-        <p class="text-[11px] text-rose-200/90 mt-1">{{ error }}</p>
+        <p class="text-[11px] text-rose-200/90 mt-1 whitespace-pre-line">{{ qs_error }}</p>
     </section>
     {% endif %}
 
-    {% if ok %}
+    {% if qs_ok %}
     <section class="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 sm:px-4 sm:py-4">
         <p class="text-xs font-semibold text-emerald-200">Operación realizada</p>
-        <p class="text-[11px] text-emerald-200/90 mt-1">{{ ok }}</p>
+        <p class="text-[11px] text-emerald-200/90 mt-1">{{ qs_ok }}</p>
     </section>
     {% endif %}
 
@@ -199,7 +208,6 @@ ORBION · Incidencias · {{ recepcion.codigo_recepcion if recepcion else "Recepc
                                    class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2
                             text-xs sm:text-sm text-slate-200 placeholder-slate-600"
                                    placeholder="—" />
-                            {# ✅ se envía al backend #}
                             <input type="hidden" name="unidad" id="inc_new_unidad_hidden" value="">
                         </div>
 
@@ -458,7 +466,6 @@ ORBION · Incidencias · {{ recepcion.codigo_recepcion if recepcion else "Recepc
                                                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2
               text-[11px] text-slate-100 placeholder-slate-500
               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
-
                                         </div>
 
                                         <div class="lg:col-span-1 space-y-1">
@@ -466,7 +473,6 @@ ORBION · Incidencias · {{ recepcion.codigo_recepcion if recepcion else "Recepc
                                             <input id="{{ uid }}_unidad" readonly value="{{ i.unidad or '' }}"
                                                    class="w-full rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2
                                     text-[11px] text-slate-200 placeholder-slate-600" />
-                                            {# ✅ se envía al backend #}
                                             <input type="hidden" name="unidad" id="{{ uid }}_unidad_hidden" value="{{ i.unidad or '' }}">
                                         </div>
 

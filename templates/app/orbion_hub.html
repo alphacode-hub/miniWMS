@@ -1,4 +1,5 @@
-﻿{% extends "base/base_app.html" %}
+﻿{# templates/app/orbion_hub.html #}
+{% extends "base/base_app.html" %}
 
 {% block title %}ORBION · Plataforma{% endblock %}
 
@@ -9,10 +10,10 @@
 {% set is_superadmin = (u.get("rol") == "superadmin") %}
 {% set is_superadmin_global = is_superadmin and not acting_id %}
 
-{% set neg = negocio_ctx or {} %}
-{% set has_negocio_ctx = (neg is mapping) and (neg|length > 0) %}
+{% set neg = (negocio_ctx if negocio_ctx is defined else {}) %}
+{% set has_negocio_ctx = (neg is not none and (neg|length > 0)) %}
 
-<div class="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
+<div class="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
 
     <header class="flex items-start sm:items-center justify-between gap-3">
         <div class="min-w-0 space-y-1">
@@ -154,6 +155,12 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
         {% for m in (dashboard_modules or []) %}
+
+        {# Normalizaciones defensivas #}
+        {% set status_val = (m.status.value if m.status is not none and m.status.value is defined else (m.status|string)) %}
+        {% set status_val = (status_val or "")|lower %}
+        {% set badge_val = (m.badge or ( "Próximamente" if m.coming_soon else ("Activo" if m.enabled else "Ver plan") )) %}
+
         <article class="relative rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 hover:border-cyan-400/40 transition">
             <div class="absolute inset-0 rounded-2xl bg-cyan-500/5 blur-xl pointer-events-none"></div>
 
@@ -172,16 +179,16 @@
                         border-slate-700 text-slate-400
                     {% elif not m.enabled %}
                         border-slate-700 text-slate-400
-                    {% elif m.status == 'trial' %}
+                    {% elif status_val == 'trial' %}
                         border-cyan-400/60 text-cyan-300
-                    {% elif m.status == 'active' %}
+                    {% elif status_val == 'active' %}
                         border-emerald-500/60 text-emerald-300
-                    {% elif m.status in ('past_due', 'suspended') %}
+                    {% elif status_val in ('past_due', 'suspended') %}
                         border-amber-500/60 text-amber-300
                     {% else %}
                         border-slate-600 text-slate-300
                     {% endif %}">
-                    {{ m.badge }}
+                    {{ badge_val }}
                 </span>
             </div>
 
@@ -189,11 +196,17 @@
             <div class="space-y-1">
                 <div class="flex justify-between text-[10px] text-slate-400">
                     <span>{{ m.metric_label }}</span>
-                    <span>{{ cl_num(m.metric_used, 0) }} / {{ cl_num(m.metric_limit, 0) }}</span>
+                    <span>
+                        {{ (m.metric_used if m.metric_used is not none else 0)|cl_num }}
+                        /
+                        {{ (m.metric_limit if m.metric_limit is not none else 0)|cl_num }}
+                    </span>
                 </div>
 
                 <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                    {% set pct = (m.metric_used / m.metric_limit * 100) if m.metric_limit and m.metric_limit > 0 else 0 %}
+                    {% set used = (m.metric_used if m.metric_used is not none else 0) %}
+                    {% set lim = (m.metric_limit if m.metric_limit is not none else 0) %}
+                    {% set pct = (used / lim * 100) if lim and lim > 0 else 0 %}
                     <div class="h-full
                          {% if pct < 80 %}bg-emerald-400
                          {% elif pct < 100 %}bg-amber-400
