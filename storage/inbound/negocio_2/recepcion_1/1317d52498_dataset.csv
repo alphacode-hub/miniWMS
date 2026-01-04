@@ -1,0 +1,1700 @@
+Fecha,NFactura,Vendedor,Cliente,Producto,Lote,Cantidad,PrecioUnitario,CostoUnitario,Categoria,StockInicial,StockFinal,Bodega
+2023-08-02,F00001,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L230823,17,3922,2505,Limpieza,70,53,Bodega Norte
+2023-08-02,F00001,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L230805,47,4606,3222,Químicos,108,61,Bodega Norte
+2023-08-02,F00001,Pedro Ruiz,Servicios Mineros Z,Sellador Epóxico,L230822,10,12240,8874,Químicos,34,24,Bodega Norte
+2023-08-02,F00002,Ana Torres,Química Valpo,Solvente Multiuso,L230810,13,7174,4698,Solventes,47,34,Bodega Sur
+2023-08-02,F00002,Ana Torres,Química Valpo,Detergente Enzimático,L230812,43,6081,4084,Limpieza,138,95,Bodega Sur
+2023-08-02,F00002,Ana Torres,Química Valpo,Detergente Enzimático,L230807,8,6081,4084,Limpieza,25,17,Bodega Sur
+2023-08-02,F00002,Ana Torres,Química Valpo,Desinfectante Amonio,L230817,150,5459,3273,Limpieza,354,204,Bodega Sur
+2023-08-02,F00003,María López,Química Valpo,Removedor de Ceras,L230817,11,9106,5430,Solventes,40,29,Bodega Centro
+2023-08-03,F00004,Pedro Ruiz,Alimentos Andinos,Desinfectante Amonio,L230813,26,5122,2972,Limpieza,81,55,Bodega Sur
+2023-08-03,F00005,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L230820,35,4576,2891,Químicos,122,87,Bodega Sur
+2023-08-03,F00005,Pedro Ruiz,Logística Andes,Removedor de Ceras,L230807,4,9279,5186,Solventes,11,7,Bodega Sur
+2023-08-03,F00005,Pedro Ruiz,Logística Andes,Sellador Epóxico,L230809,1,13679,9451,Químicos,2,1,Bodega Sur
+2023-08-04,F00006,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L230816,12,7255,4581,Solventes,18,6,Bodega Centro
+2023-08-04,F00006,Pedro Ruiz,MetalMaq Ltda,Detergente Enzimático,L230806,41,6369,3943,Limpieza,81,40,Bodega Centro
+2023-08-04,F00006,Pedro Ruiz,MetalMaq Ltda,Removedor de Ceras,L230806,6,8795,4956,Solventes,14,8,Bodega Centro
+2023-08-04,F00007,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L230820,18,5551,2983,Limpieza,61,43,Bodega Sur
+2023-08-04,F00007,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L230815,2,12497,8944,Químicos,5,3,Bodega Sur
+2023-08-04,F00007,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L230804,10,9091,4928,Solventes,32,22,Bodega Sur
+2023-08-04,F00007,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L230809,66,6633,3741,Limpieza,150,84,Bodega Sur
+2023-08-04,F00008,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L230806,9,7602,4547,Solventes,22,13,Bodega Norte
+2023-08-04,F00008,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L230805,3,7602,4547,Solventes,5,2,Bodega Norte
+2023-08-04,F00008,Pedro Ruiz,Comercial FríoSur,Desinfectante Amonio,L230814,9,5635,3360,Limpieza,28,19,Bodega Norte
+2023-08-05,F00009,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L230822,21,7166,4943,Solventes,54,33,Bodega Norte
+2023-08-05,F00009,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L230815,30,4783,3200,Químicos,85,55,Bodega Norte
+2023-08-05,F00009,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L230828,31,4783,3200,Químicos,136,105,Bodega Norte
+2023-08-09,F00010,María López,Logística Andes,Removedor de Ceras,L230824,9,8523,5555,Solventes,24,15,Bodega Sur
+2023-08-09,F00010,María López,Logística Andes,Solvente Multiuso,L230818,28,7348,5008,Solventes,88,60,Bodega Sur
+2023-08-09,F00010,María López,Logística Andes,Sellador Epóxico,L230817,1,13687,9043,Químicos,2,1,Bodega Sur
+2023-08-09,F00010,María López,Logística Andes,Sellador Epóxico,L230813,1,13687,9043,Químicos,2,1,Bodega Sur
+2023-08-09,F00011,Ana Torres,MetalMaq Ltda,Removedor de Ceras,L230828,10,8667,5251,Solventes,52,42,Bodega Centro
+2023-08-10,F00012,Ana Torres,Comercial FríoSur,Removedor de Ceras,L230819,1,8672,5416,Solventes,5,4,Bodega Centro
+2023-08-10,F00012,Ana Torres,Comercial FríoSur,Removedor de Ceras,L230826,1,8672,5416,Solventes,2,1,Bodega Centro
+2023-08-10,F00012,Ana Torres,Comercial FríoSur,Solvente Multiuso,L230802,22,7190,5005,Solventes,57,35,Bodega Centro
+2023-08-10,F00013,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L230804,5,8430,5297,Solventes,15,10,Bodega Sur
+2023-08-10,F00014,María López,Alimentos Andinos,Solvente Multiuso,L230826,14,7293,4542,Solventes,47,33,Bodega Sur
+2023-08-10,F00014,María López,Alimentos Andinos,Sellador Epóxico,L230812,2,12066,9353,Químicos,2,0,Bodega Sur
+2023-08-11,F00015,María López,Comercial FríoSur,Detergente Alcalino,L230819,17,4006,2481,Limpieza,46,29,Bodega Norte
+2023-08-11,F00015,María López,Comercial FríoSur,Detergente Enzimático,L230810,42,6232,3848,Limpieza,162,120,Bodega Norte
+2023-08-11,F00015,María López,Comercial FríoSur,Solvente Multiuso,L230825,6,7360,5025,Solventes,25,19,Bodega Norte
+2023-08-11,F00015,María López,Comercial FríoSur,Solvente Multiuso,L230814,11,7360,5025,Solventes,37,26,Bodega Norte
+2023-08-11,F00015,María López,Comercial FríoSur,Desinfectante Amonio,L230806,33,5356,3239,Limpieza,60,27,Bodega Norte
+2023-08-11,F00016,María López,Química Valpo,Removedor de Ceras,L230828,10,8472,5561,Solventes,24,14,Bodega Centro
+2023-08-11,F00016,María López,Química Valpo,Sellador Epóxico,L230828,12,13649,8596,Químicos,27,15,Bodega Centro
+2023-08-11,F00016,María López,Química Valpo,Solvente Multiuso,L230827,22,7547,4731,Solventes,101,79,Bodega Centro
+2023-08-11,F00017,Juan Pérez,Supermercados Nova,Desengrasante Industrial,L230822,16,4861,3198,Químicos,51,35,Bodega Centro
+2023-08-11,F00017,Juan Pérez,Supermercados Nova,Sellador Epóxico,L230810,6,12465,8471,Químicos,23,17,Bodega Centro
+2023-08-11,F00017,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L230818,24,5785,3707,Químicos,72,48,Bodega Centro
+2023-08-12,F00018,María López,Servicios Mineros Z,Solvente Multiuso,L230825,18,7792,4378,Solventes,25,7,Bodega Sur
+2023-08-12,F00018,María López,Servicios Mineros Z,Removedor de Ceras,L230816,1,8759,5548,Solventes,1,0,Bodega Sur
+2023-08-12,F00018,María López,Servicios Mineros Z,Detergente Enzimático,L230804,40,5892,4179,Limpieza,125,85,Bodega Sur
+2023-08-14,F00019,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L230827,29,4703,3260,Químicos,83,54,Bodega Norte
+2023-08-14,F00020,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L230827,9,5172,2876,Químicos,28,19,Bodega Centro
+2023-08-14,F00020,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L230825,1,5172,2876,Químicos,4,3,Bodega Centro
+2023-08-15,F00021,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L230802,19,4203,2239,Limpieza,50,31,Bodega Norte
+2023-08-15,F00022,María López,Química Valpo,Detergente Alcalino,L230811,23,4222,2430,Limpieza,56,33,Bodega Centro
+2023-08-15,F00022,María López,Química Valpo,Removedor de Ceras,L230803,1,9200,5283,Solventes,4,3,Bodega Centro
+2023-08-15,F00022,María López,Química Valpo,Aditivo Antiespuma,L230814,34,5865,3710,Químicos,113,79,Bodega Centro
+2023-08-15,F00023,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L230829,20,3955,2396,Limpieza,43,23,Bodega Centro
+2023-08-15,F00023,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L230812,1,8408,5165,Solventes,4,3,Bodega Centro
+2023-08-15,F00024,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L230819,21,5368,3146,Limpieza,117,96,Bodega Norte
+2023-08-15,F00024,Pedro Ruiz,Retail Pacífico,Removedor de Ceras,L230808,6,9576,5230,Solventes,20,14,Bodega Norte
+2023-08-15,F00024,Pedro Ruiz,Retail Pacífico,Sellador Epóxico,L230824,2,12010,9364,Químicos,5,3,Bodega Norte
+2023-08-15,F00025,Juan Pérez,Servicios Mineros Z,Removedor de Ceras,L230807,5,9491,5130,Solventes,7,2,Bodega Centro
+2023-08-15,F00025,Juan Pérez,Servicios Mineros Z,Detergente Alcalino,L230818,1,4157,2292,Limpieza,1,0,Bodega Centro
+2023-08-16,F00026,Juan Pérez,Logística Andes,Removedor de Ceras,L230817,8,8579,5485,Solventes,16,8,Bodega Centro
+2023-08-16,F00026,Juan Pérez,Logística Andes,Removedor de Ceras,L230824,1,8579,5485,Solventes,2,1,Bodega Centro
+2023-08-16,F00027,Ana Torres,MetalMaq Ltda,Aditivo Antiespuma,L230808,61,5714,3307,Químicos,210,149,Bodega Sur
+2023-08-16,F00027,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L230827,7,7681,4710,Solventes,9,2,Bodega Sur
+2023-08-16,F00028,María López,Química Valpo,Sellador Epóxico,L230823,6,12510,9367,Químicos,19,13,Bodega Norte
+2023-08-16,F00028,María López,Química Valpo,Detergente Enzimático,L230817,70,6332,4095,Limpieza,174,104,Bodega Norte
+2023-08-16,F00028,María López,Química Valpo,Solvente Multiuso,L230815,12,7730,4492,Solventes,44,32,Bodega Norte
+2023-08-16,F00028,María López,Química Valpo,Removedor de Ceras,L230813,5,8766,5303,Solventes,10,5,Bodega Norte
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L230821,1,8511,5405,Solventes,2,1,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Sellador Epóxico,L230819,6,12415,9223,Químicos,8,2,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L230808,7,6148,3467,Químicos,16,9,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L230812,13,6148,3467,Químicos,55,42,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L230828,30,6548,3631,Limpieza,58,28,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Solvente Multiuso,L230812,1,7991,4880,Solventes,2,1,Bodega Centro
+2023-08-17,F00029,Juan Pérez,MetalMaq Ltda,Solvente Multiuso,L230802,20,7991,4880,Solventes,89,69,Bodega Centro
+2023-08-18,F00030,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L230801,15,3844,2479,Limpieza,83,68,Bodega Centro
+2023-08-18,F00030,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L230820,33,6046,4115,Limpieza,116,83,Bodega Centro
+2023-08-18,F00031,María López,Alimentos Andinos,Desengrasante Industrial,L230822,42,4974,3299,Químicos,132,90,Bodega Centro
+2023-08-18,F00031,María López,Alimentos Andinos,Solvente Multiuso,L230818,16,7436,4416,Solventes,53,37,Bodega Centro
+2023-08-18,F00031,María López,Alimentos Andinos,Desinfectante Amonio,L230815,13,5268,3391,Limpieza,34,21,Bodega Centro
+2023-08-18,F00032,Ana Torres,Retail Pacífico,Desinfectante Amonio,L230809,15,5450,3084,Limpieza,50,35,Bodega Norte
+2023-08-18,F00032,Ana Torres,Retail Pacífico,Sellador Epóxico,L230810,15,13345,8837,Químicos,63,48,Bodega Norte
+2023-08-18,F00032,Ana Torres,Retail Pacífico,Detergente Alcalino,L230810,15,4166,2249,Limpieza,38,23,Bodega Norte
+2023-08-18,F00032,Ana Torres,Retail Pacífico,Detergente Enzimático,L230803,33,5828,4157,Limpieza,73,40,Bodega Norte
+2023-08-18,F00033,María López,Supermercados Nova,Sellador Epóxico,L230814,5,12084,8767,Químicos,10,5,Bodega Sur
+2023-08-18,F00033,María López,Supermercados Nova,Desengrasante Industrial,L230813,26,4860,2851,Químicos,77,51,Bodega Sur
+2023-08-19,F00034,Ana Torres,Industrias Polar,Desinfectante Amonio,L230813,17,5192,3058,Limpieza,35,18,Bodega Sur
+2023-08-19,F00034,Ana Torres,Industrias Polar,Desengrasante Industrial,L230806,61,4595,3057,Químicos,216,155,Bodega Sur
+2023-08-19,F00035,Ana Torres,Logística Andes,Detergente Alcalino,L230806,154,3770,2399,Limpieza,644,490,Bodega Centro
+2023-08-19,F00036,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L230817,56,6578,3755,Limpieza,282,226,Bodega Sur
+2023-08-19,F00036,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L230814,10,6578,3755,Limpieza,47,37,Bodega Sur
+2023-08-19,F00036,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L230815,10,9415,5305,Solventes,37,27,Bodega Sur
+2023-08-19,F00036,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L230813,8,11911,8481,Químicos,37,29,Bodega Sur
+2023-08-21,F00037,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L230817,23,5274,2852,Químicos,89,66,Bodega Sur
+2023-08-21,F00037,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L230829,20,4019,2400,Limpieza,45,25,Bodega Sur
+2023-08-21,F00037,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L230805,1,13443,8289,Químicos,4,3,Bodega Sur
+2023-08-21,F00037,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L230807,6,8883,5363,Solventes,24,18,Bodega Sur
+2023-08-22,F00038,Ana Torres,Logística Andes,Detergente Enzimático,L230812,24,6168,3664,Limpieza,77,53,Bodega Norte
+2023-08-22,F00038,Ana Torres,Logística Andes,Detergente Enzimático,L230814,12,6168,3664,Limpieza,22,10,Bodega Norte
+2023-08-22,F00038,Ana Torres,Logística Andes,Aditivo Antiespuma,L230805,32,6087,3338,Químicos,36,4,Bodega Norte
+2023-08-23,F00039,Pedro Ruiz,Alimentos Andinos,Solvente Multiuso,L230825,1,7146,4994,Solventes,2,1,Bodega Centro
+2023-08-23,F00039,Pedro Ruiz,Alimentos Andinos,Solvente Multiuso,L230824,1,7146,4994,Solventes,4,3,Bodega Centro
+2023-08-23,F00039,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L230812,42,4832,3174,Químicos,141,99,Bodega Centro
+2023-08-23,F00039,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L230811,25,4832,3174,Químicos,96,71,Bodega Centro
+2023-08-23,F00040,Ana Torres,Supermercados Nova,Sellador Epóxico,L230810,4,12582,8779,Químicos,13,9,Bodega Centro
+2023-08-23,F00040,Ana Torres,Supermercados Nova,Desengrasante Industrial,L230810,2,4631,3189,Químicos,7,5,Bodega Centro
+2023-08-23,F00040,Ana Torres,Supermercados Nova,Desengrasante Industrial,L230809,8,4631,3189,Químicos,13,5,Bodega Centro
+2023-08-24,F00041,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L230804,11,3995,2223,Limpieza,31,20,Bodega Norte
+2023-08-24,F00041,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L230809,5,9657,5574,Solventes,16,11,Bodega Norte
+2023-08-25,F00042,María López,Comercial FríoSur,Desinfectante Amonio,L230804,6,5069,3063,Limpieza,13,7,Bodega Sur
+2023-08-25,F00043,Ana Torres,Comercial FríoSur,Solvente Multiuso,L230807,23,7260,5020,Solventes,39,16,Bodega Norte
+2023-08-25,F00043,Ana Torres,Comercial FríoSur,Detergente Enzimático,L230826,41,6173,3866,Limpieza,163,122,Bodega Norte
+2023-08-25,F00043,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L230809,29,5354,3061,Limpieza,61,32,Bodega Norte
+2023-08-25,F00044,María López,Alimentos Andinos,Detergente Enzimático,L230814,4,5916,3682,Limpieza,18,14,Bodega Centro
+2023-08-25,F00044,María López,Alimentos Andinos,Detergente Enzimático,L230805,33,5916,3682,Limpieza,118,85,Bodega Centro
+2023-08-25,F00044,María López,Alimentos Andinos,Desinfectante Amonio,L230805,10,5033,3371,Limpieza,34,24,Bodega Centro
+2023-08-25,F00044,María López,Alimentos Andinos,Desengrasante Industrial,L230822,47,4695,3295,Químicos,59,12,Bodega Centro
+2023-08-25,F00044,María López,Alimentos Andinos,Desengrasante Industrial,L230825,11,4695,3295,Químicos,38,27,Bodega Centro
+2023-08-25,F00044,María López,Alimentos Andinos,Solvente Multiuso,L230805,10,7912,4800,Solventes,34,24,Bodega Centro
+2023-08-26,F00045,Ana Torres,Supermercados Nova,Detergente Alcalino,L230813,19,3741,2343,Limpieza,54,35,Bodega Centro
+2023-08-26,F00045,Ana Torres,Supermercados Nova,Desinfectante Amonio,L230805,21,5506,3159,Limpieza,33,12,Bodega Centro
+2023-08-26,F00046,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L230822,2,11950,8852,Químicos,7,5,Bodega Centro
+2023-08-26,F00046,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L230822,4,11950,8852,Químicos,10,6,Bodega Centro
+2023-08-26,F00046,Juan Pérez,Alimentos Andinos,Aditivo Antiespuma,L230826,32,5628,3607,Químicos,120,88,Bodega Centro
+2023-08-26,F00047,María López,MetalMaq Ltda,Removedor de Ceras,L230824,9,8899,5182,Solventes,33,24,Bodega Norte
+2023-08-26,F00047,María López,MetalMaq Ltda,Detergente Enzimático,L230828,17,6094,3723,Limpieza,33,16,Bodega Norte
+2023-08-28,F00048,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L230808,17,8040,4510,Solventes,17,0,Bodega Centro
+2023-08-28,F00049,Pedro Ruiz,Servicios Mineros Z,Sellador Epóxico,L230811,1,12625,9407,Químicos,3,2,Bodega Sur
+2023-08-28,F00049,Pedro Ruiz,Servicios Mineros Z,Removedor de Ceras,L230813,8,9007,5329,Solventes,17,9,Bodega Sur
+2023-08-28,F00049,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L230807,31,6142,3610,Químicos,168,137,Bodega Sur
+2023-08-28,F00049,Pedro Ruiz,Servicios Mineros Z,Desinfectante Amonio,L230823,8,5166,3065,Limpieza,22,14,Bodega Sur
+2023-08-28,F00049,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L230814,31,3803,2188,Limpieza,137,106,Bodega Sur
+2023-08-28,F00050,Juan Pérez,Servicios Mineros Z,Solvente Multiuso,L230801,18,8138,4503,Solventes,104,86,Bodega Centro
+2023-08-29,F00051,Ana Torres,Industrias Polar,Desengrasante Industrial,L230826,33,4687,3041,Químicos,99,66,Bodega Sur
+2023-08-29,F00051,Ana Torres,Industrias Polar,Detergente Enzimático,L230820,51,6709,3904,Limpieza,202,151,Bodega Sur
+2023-08-29,F00051,Ana Torres,Industrias Polar,Sellador Epóxico,L230822,10,11971,9142,Químicos,37,27,Bodega Sur
+2023-08-29,F00051,Ana Torres,Industrias Polar,Desinfectante Amonio,L230815,2,5191,3293,Limpieza,5,3,Bodega Sur
+2023-08-29,F00051,Ana Torres,Industrias Polar,Desinfectante Amonio,L230808,7,5191,3293,Limpieza,21,14,Bodega Sur
+2023-08-29,F00051,Ana Torres,Industrias Polar,Solvente Multiuso,L230805,29,7105,4406,Solventes,65,36,Bodega Sur
+2023-08-30,F00052,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L230805,8,6545,3663,Limpieza,34,26,Bodega Centro
+2023-08-30,F00052,Juan Pérez,MetalMaq Ltda,Desinfectante Amonio,L230812,20,5525,3161,Limpieza,49,29,Bodega Centro
+2023-08-30,F00052,Juan Pérez,MetalMaq Ltda,Sellador Epóxico,L230802,2,12206,8494,Químicos,7,5,Bodega Centro
+2023-08-30,F00052,Juan Pérez,MetalMaq Ltda,Sellador Epóxico,L230812,4,12206,8494,Químicos,13,9,Bodega Centro
+2023-08-30,F00053,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L230826,62,5505,3565,Químicos,92,30,Bodega Sur
+2023-08-30,F00053,Juan Pérez,MetalMaq Ltda,Detergente Alcalino,L230827,12,4121,2194,Limpieza,13,1,Bodega Sur
+2023-08-30,F00053,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L230818,5,9451,5274,Solventes,16,11,Bodega Sur
+2023-08-30,F00054,María López,Industrias Polar,Desinfectante Amonio,L230823,4,5106,3361,Limpieza,11,7,Bodega Norte
+2023-08-30,F00054,María López,Industrias Polar,Detergente Alcalino,L230805,32,3740,2259,Limpieza,56,24,Bodega Norte
+2023-08-30,F00055,Pedro Ruiz,Química Valpo,Detergente Alcalino,L230807,16,4208,2296,Limpieza,33,17,Bodega Norte
+2023-08-30,F00055,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L230803,52,5493,3683,Químicos,84,32,Bodega Norte
+2023-08-30,F00055,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L230802,22,5493,3683,Químicos,22,0,Bodega Norte
+2023-08-30,F00055,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L230813,3,5150,3087,Químicos,10,7,Bodega Norte
+2023-08-30,F00055,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L230802,19,5150,3087,Químicos,70,51,Bodega Norte
+2023-08-30,F00056,María López,Retail Pacífico,Solvente Multiuso,L230829,10,7453,4644,Solventes,30,20,Bodega Centro
+2023-08-30,F00056,María López,Retail Pacífico,Removedor de Ceras,L230820,8,9503,5296,Solventes,32,24,Bodega Centro
+2023-08-30,F00056,María López,Retail Pacífico,Desengrasante Industrial,L230812,41,4842,2998,Químicos,185,144,Bodega Centro
+2023-08-30,F00056,María López,Retail Pacífico,Aditivo Antiespuma,L230816,28,5589,3406,Químicos,70,42,Bodega Centro
+2023-08-30,F00057,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L230804,16,7948,5010,Solventes,72,56,Bodega Norte
+2023-08-30,F00057,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L230820,61,4977,2852,Químicos,281,220,Bodega Norte
+2023-08-30,F00057,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L230814,7,9485,5225,Solventes,22,15,Bodega Norte
+2023-08-30,F00058,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L220613,70,4676,3199,Químicos,269,199,Bodega Sur
+2023-08-30,F00058,Ana Torres,Distribuidora Austral,Aditivo Antiespuma,L230816,16,5819,3678,Químicos,16,0,Bodega Sur
+2023-08-31,F00059,Ana Torres,Industrias Polar,Sellador Epóxico,L230809,1,12097,9302,Químicos,3,2,Bodega Centro
+2023-08-31,F00059,Ana Torres,Industrias Polar,Sellador Epóxico,L230822,9,12097,9302,Químicos,25,16,Bodega Centro
+2023-08-31,F00059,Ana Torres,Industrias Polar,Solvente Multiuso,L230826,23,7211,4831,Solventes,33,10,Bodega Centro
+2023-08-31,F00059,Ana Torres,Industrias Polar,Aditivo Antiespuma,L230815,43,5500,3301,Químicos,82,39,Bodega Centro
+2023-09-01,F00060,Juan Pérez,Logística Andes,Solvente Multiuso,L230929,23,7734,4666,Solventes,79,56,Bodega Centro
+2023-09-01,F00060,Juan Pérez,Logística Andes,Detergente Alcalino,L230916,15,3729,2428,Limpieza,41,26,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L230905,34,5654,3457,Químicos,43,9,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L230921,7,5254,2892,Químicos,10,3,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L230904,45,5254,2892,Químicos,153,108,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L230907,6,4024,2373,Limpieza,25,19,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L230929,1,4024,2373,Limpieza,1,0,Bodega Centro
+2023-09-02,F00061,Pedro Ruiz,Industrias Polar,Sellador Epóxico,L230917,4,12609,8382,Químicos,8,4,Bodega Centro
+2023-09-02,F00062,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L230907,1,6267,4144,Limpieza,2,1,Bodega Centro
+2023-09-02,F00062,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L230911,10,6267,4144,Limpieza,25,15,Bodega Centro
+2023-09-02,F00062,Pedro Ruiz,Alimentos Andinos,Sellador Epóxico,L230905,3,12882,9082,Químicos,7,4,Bodega Centro
+2023-09-02,F00062,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L230912,73,4810,2891,Químicos,289,216,Bodega Centro
+2023-09-02,F00062,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L230913,6,8601,5090,Solventes,12,6,Bodega Centro
+2023-09-02,F00063,Ana Torres,Logística Andes,Detergente Enzimático,L230921,51,5893,3894,Limpieza,148,97,Bodega Centro
+2023-09-02,F00063,Ana Torres,Logística Andes,Detergente Alcalino,L230922,16,3985,2331,Limpieza,71,55,Bodega Centro
+2023-09-04,F00064,Pedro Ruiz,Retail Pacífico,Sellador Epóxico,L230929,12,11988,9338,Químicos,31,19,Bodega Centro
+2023-09-04,F00065,María López,Distribuidora Austral,Detergente Enzimático,L230925,41,6410,4158,Limpieza,141,100,Bodega Sur
+2023-09-04,F00065,María López,Distribuidora Austral,Removedor de Ceras,L230911,9,8967,5010,Solventes,37,28,Bodega Sur
+2023-09-07,F00066,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L230928,34,4941,3247,Químicos,128,94,Bodega Sur
+2023-09-07,F00067,Pedro Ruiz,Alimentos Andinos,Solvente Multiuso,L230911,9,7372,4458,Solventes,17,8,Bodega Centro
+2023-09-11,F00068,María López,Logística Andes,Detergente Enzimático,L230927,30,6223,3833,Limpieza,149,119,Bodega Norte
+2023-09-11,F00068,María López,Logística Andes,Removedor de Ceras,L230922,6,8760,5127,Solventes,19,13,Bodega Norte
+2023-09-11,F00069,Pedro Ruiz,Logística Andes,Detergente Enzimático,L230929,1,6519,3873,Limpieza,2,1,Bodega Sur
+2023-09-11,F00069,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L230929,1,5383,3202,Limpieza,2,1,Bodega Sur
+2023-09-11,F00069,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L230904,1,5383,3202,Limpieza,3,2,Bodega Sur
+2023-09-11,F00069,Pedro Ruiz,Logística Andes,Sellador Epóxico,L230922,1,13544,8675,Químicos,4,3,Bodega Sur
+2023-09-11,F00069,Pedro Ruiz,Logística Andes,Detergente Alcalino,L230908,18,3878,2244,Limpieza,40,22,Bodega Sur
+2023-09-12,F00070,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L230907,22,4661,3155,Químicos,52,30,Bodega Centro
+2023-09-12,F00070,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L230910,30,4661,3155,Químicos,94,64,Bodega Centro
+2023-09-12,F00070,Pedro Ruiz,Servicios Mineros Z,Detergente Enzimático,L230928,50,6505,4050,Limpieza,77,27,Bodega Centro
+2023-09-12,F00070,Pedro Ruiz,Servicios Mineros Z,Solvente Multiuso,L230917,54,7073,4514,Solventes,191,137,Bodega Centro
+2023-09-12,F00070,Pedro Ruiz,Servicios Mineros Z,Sellador Epóxico,L230917,3,12572,8511,Químicos,4,1,Bodega Centro
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Detergente Enzimático,L230929,46,6020,4026,Limpieza,196,150,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Removedor de Ceras,L230903,1,8742,5454,Solventes,2,1,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Removedor de Ceras,L230919,1,8742,5454,Solventes,2,1,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Desinfectante Amonio,L230919,5,5254,3049,Limpieza,11,6,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Desinfectante Amonio,L230912,14,5254,3049,Limpieza,50,36,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Sellador Epóxico,L230907,1,13595,9376,Químicos,3,2,Bodega Norte
+2023-09-12,F00071,Ana Torres,Retail Pacífico,Sellador Epóxico,L230925,5,13595,9376,Químicos,8,3,Bodega Norte
+2023-09-13,F00072,María López,Distribuidora Austral,Desengrasante Industrial,L230905,12,4940,3185,Químicos,30,18,Bodega Sur
+2023-09-13,F00072,María López,Distribuidora Austral,Desengrasante Industrial,L230922,1,4940,3185,Químicos,3,2,Bodega Sur
+2023-09-13,F00072,María López,Distribuidora Austral,Removedor de Ceras,L230928,1,9129,5147,Solventes,4,3,Bodega Sur
+2023-09-13,F00072,María López,Distribuidora Austral,Aditivo Antiespuma,L230901,43,5478,3636,Químicos,134,91,Bodega Sur
+2023-09-13,F00072,María López,Distribuidora Austral,Aditivo Antiespuma,L230921,5,5478,3636,Químicos,26,21,Bodega Sur
+2023-09-13,F00073,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L230914,29,5623,3077,Limpieza,84,55,Bodega Norte
+2023-09-13,F00073,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L230909,16,6500,3802,Limpieza,36,20,Bodega Norte
+2023-09-13,F00074,María López,Comercial FríoSur,Detergente Enzimático,L230924,17,6248,3641,Limpieza,55,38,Bodega Norte
+2023-09-14,F00075,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L230926,32,6508,3750,Limpieza,102,70,Bodega Sur
+2023-09-14,F00075,Juan Pérez,Servicios Mineros Z,Desengrasante Industrial,L230904,23,5096,3089,Químicos,74,51,Bodega Sur
+2023-09-14,F00075,Juan Pérez,Servicios Mineros Z,Sellador Epóxico,L230914,10,12530,9020,Químicos,19,9,Bodega Sur
+2023-09-14,F00075,Juan Pérez,Servicios Mineros Z,Desinfectante Amonio,L230906,21,5072,3043,Limpieza,49,28,Bodega Sur
+2023-09-14,F00076,Ana Torres,Supermercados Nova,Desengrasante Industrial,L230913,41,5020,3085,Químicos,160,119,Bodega Norte
+2023-09-14,F00076,Ana Torres,Supermercados Nova,Sellador Epóxico,L230913,1,12364,8465,Químicos,3,2,Bodega Norte
+2023-09-14,F00076,Ana Torres,Supermercados Nova,Detergente Alcalino,L230922,9,3750,2449,Limpieza,20,11,Bodega Norte
+2023-09-14,F00076,Ana Torres,Supermercados Nova,Solvente Multiuso,L230907,15,7352,4752,Solventes,79,64,Bodega Norte
+2023-09-14,F00076,Ana Torres,Supermercados Nova,Detergente Enzimático,L230922,24,6412,3999,Limpieza,68,44,Bodega Norte
+2023-09-14,F00077,Juan Pérez,Servicios Mineros Z,Removedor de Ceras,L230902,9,8673,5480,Solventes,15,6,Bodega Norte
+2023-09-15,F00078,María López,Servicios Mineros Z,Sellador Epóxico,L230916,1,12842,8893,Químicos,3,2,Bodega Centro
+2023-09-15,F00078,María López,Servicios Mineros Z,Sellador Epóxico,L230917,1,12842,8893,Químicos,4,3,Bodega Centro
+2023-09-15,F00078,María López,Servicios Mineros Z,Aditivo Antiespuma,L230914,16,5400,3230,Químicos,43,27,Bodega Centro
+2023-09-15,F00078,María López,Servicios Mineros Z,Solvente Multiuso,L230912,5,7201,5019,Solventes,17,12,Bodega Centro
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Aditivo Antiespuma,L230907,9,5955,3663,Químicos,29,20,Bodega Sur
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Aditivo Antiespuma,L230911,2,5955,3663,Químicos,6,4,Bodega Sur
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Desinfectante Amonio,L230912,4,5351,3242,Limpieza,16,12,Bodega Sur
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Desinfectante Amonio,L230928,12,5351,3242,Limpieza,43,31,Bodega Sur
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Removedor de Ceras,L230917,1,9661,5599,Solventes,3,2,Bodega Sur
+2023-09-15,F00079,Ana Torres,Supermercados Nova,Removedor de Ceras,L230924,1,9661,5599,Solventes,1,0,Bodega Sur
+2023-09-15,F00080,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L230915,6,12500,8697,Químicos,23,17,Bodega Sur
+2023-09-15,F00080,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L230929,17,5107,3099,Químicos,40,23,Bodega Sur
+2023-09-16,F00081,Juan Pérez,Supermercados Nova,Desengrasante Industrial,L230902,29,4672,3123,Químicos,55,26,Bodega Sur
+2023-09-16,F00081,Juan Pérez,Supermercados Nova,Sellador Epóxico,L230916,4,11896,8498,Químicos,12,8,Bodega Sur
+2023-09-16,F00081,Juan Pérez,Supermercados Nova,Sellador Epóxico,L230927,7,11896,8498,Químicos,17,10,Bodega Sur
+2023-09-20,F00082,Ana Torres,Industrias Polar,Solvente Multiuso,L230911,6,7820,4383,Solventes,19,13,Bodega Centro
+2023-09-20,F00082,Ana Torres,Industrias Polar,Removedor de Ceras,L230919,1,9299,4924,Solventes,1,0,Bodega Centro
+2023-09-20,F00083,Juan Pérez,Logística Andes,Sellador Epóxico,L230906,1,12206,9341,Químicos,3,2,Bodega Norte
+2023-09-20,F00083,Juan Pérez,Logística Andes,Sellador Epóxico,L230916,2,12206,9341,Químicos,7,5,Bodega Norte
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Sellador Epóxico,L230920,1,12657,9011,Químicos,1,0,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L230904,40,5748,3389,Químicos,154,114,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L230922,15,5748,3389,Químicos,55,40,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L230911,4,4134,2259,Limpieza,7,3,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L230923,2,4134,2259,Limpieza,4,2,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Detergente Enzimático,L230908,20,6698,3696,Limpieza,44,24,Bodega Centro
+2023-09-22,F00084,Juan Pérez,Distribuidora Austral,Desengrasante Industrial,L230901,26,5103,2978,Químicos,83,57,Bodega Centro
+2023-09-22,F00085,Pedro Ruiz,Industrias Polar,Removedor de Ceras,L230904,3,8547,4962,Solventes,9,6,Bodega Sur
+2023-09-22,F00085,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L230902,38,4936,2976,Químicos,178,140,Bodega Sur
+2023-09-22,F00085,Pedro Ruiz,Industrias Polar,Sellador Epóxico,L230910,1,11901,8589,Químicos,2,1,Bodega Sur
+2023-09-22,F00085,Pedro Ruiz,Industrias Polar,Solvente Multiuso,L230912,20,7054,4725,Solventes,43,23,Bodega Sur
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Aditivo Antiespuma,L230911,45,6100,3730,Químicos,154,109,Bodega Centro
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Detergente Alcalino,L230915,10,3714,2341,Limpieza,17,7,Bodega Centro
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Detergente Alcalino,L230910,12,3714,2341,Limpieza,57,45,Bodega Centro
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L230902,49,5241,2970,Químicos,175,126,Bodega Centro
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L230905,2,7317,4718,Solventes,7,5,Bodega Centro
+2023-09-23,F00086,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L230913,21,7317,4718,Solventes,21,0,Bodega Centro
+2023-09-23,F00087,Ana Torres,Retail Pacífico,Desinfectante Amonio,L230929,16,5246,3038,Limpieza,63,47,Bodega Sur
+2023-09-23,F00087,Ana Torres,Retail Pacífico,Sellador Epóxico,L230919,2,12529,9200,Químicos,4,2,Bodega Sur
+2023-09-25,F00088,Ana Torres,Logística Andes,Aditivo Antiespuma,L230910,51,5520,3611,Químicos,182,131,Bodega Centro
+2023-09-25,F00088,Ana Torres,Logística Andes,Desengrasante Industrial,L230916,32,5074,3297,Químicos,108,76,Bodega Centro
+2023-09-27,F00089,María López,Química Valpo,Detergente Alcalino,L230924,24,3768,2268,Limpieza,58,34,Bodega Sur
+2023-09-27,F00090,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L230907,39,4796,2890,Químicos,123,84,Bodega Sur
+2023-09-27,F00091,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L230921,23,4229,2335,Limpieza,89,66,Bodega Norte
+2023-09-27,F00091,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L230924,27,5114,2892,Químicos,101,74,Bodega Norte
+2023-09-27,F00091,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L230929,4,13482,8393,Químicos,13,9,Bodega Norte
+2023-09-27,F00091,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L230913,53,6184,4111,Limpieza,170,117,Bodega Norte
+2023-09-27,F00091,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L230902,26,7494,4548,Solventes,135,109,Bodega Norte
+2023-09-29,F00092,Ana Torres,Supermercados Nova,Desinfectante Amonio,L230907,16,5051,3190,Limpieza,68,52,Bodega Sur
+2023-09-29,F00092,Ana Torres,Supermercados Nova,Detergente Enzimático,L230924,38,6311,4021,Limpieza,78,40,Bodega Sur
+2023-09-29,F00093,María López,Retail Pacífico,Sellador Epóxico,L230920,2,12224,8687,Químicos,7,5,Bodega Norte
+2023-09-29,F00093,María López,Retail Pacífico,Removedor de Ceras,L230914,1,9680,5193,Solventes,3,2,Bodega Norte
+2023-09-29,F00093,María López,Retail Pacífico,Removedor de Ceras,L230927,2,9680,5193,Solventes,11,9,Bodega Norte
+2023-09-29,F00093,María López,Retail Pacífico,Desengrasante Industrial,L230903,14,4816,3054,Químicos,24,10,Bodega Norte
+2023-09-29,F00093,María López,Retail Pacífico,Detergente Enzimático,L230903,45,5856,3632,Limpieza,145,100,Bodega Norte
+2023-09-30,F00094,María López,Servicios Mineros Z,Desinfectante Amonio,L230910,36,4987,3117,Limpieza,114,78,Bodega Norte
+2023-09-30,F00094,María López,Servicios Mineros Z,Aditivo Antiespuma,L230929,12,5646,3406,Químicos,37,25,Bodega Norte
+2023-09-30,F00094,María López,Servicios Mineros Z,Sellador Epóxico,L230923,8,13581,9301,Químicos,20,12,Bodega Norte
+2023-09-30,F00094,María López,Servicios Mineros Z,Detergente Enzimático,L230921,51,5880,3930,Limpieza,147,96,Bodega Norte
+2023-10-02,F00095,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L231025,11,5109,3345,Limpieza,38,27,Bodega Sur
+2023-10-02,F00095,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L231021,1,12258,8387,Químicos,2,1,Bodega Sur
+2023-10-02,F00095,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L231023,1,12258,8387,Químicos,2,1,Bodega Sur
+2023-10-02,F00095,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L231003,29,7371,4576,Solventes,65,36,Bodega Sur
+2023-10-02,F00095,Ana Torres,MetalMaq Ltda,Removedor de Ceras,L231022,5,9359,5206,Solventes,20,15,Bodega Sur
+2023-10-02,F00096,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L231013,56,5867,3829,Limpieza,194,138,Bodega Centro
+2023-10-02,F00096,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L231028,9,12806,9465,Químicos,32,23,Bodega Centro
+2023-10-02,F00097,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L231025,41,4703,3108,Químicos,123,82,Bodega Centro
+2023-10-03,F00098,Ana Torres,Logística Andes,Detergente Enzimático,L231013,45,6314,3649,Limpieza,186,141,Bodega Centro
+2023-10-03,F00099,Juan Pérez,Distribuidora Austral,Desinfectante Amonio,L231022,3,4959,2971,Limpieza,7,4,Bodega Norte
+2023-10-03,F00099,Juan Pérez,Distribuidora Austral,Desinfectante Amonio,L231007,37,4959,2971,Limpieza,124,87,Bodega Norte
+2023-10-03,F00099,Juan Pérez,Distribuidora Austral,Detergente Enzimático,L231002,30,6700,3696,Limpieza,131,101,Bodega Norte
+2023-10-03,F00099,Juan Pérez,Distribuidora Austral,Detergente Enzimático,L231003,2,6700,3696,Limpieza,6,4,Bodega Norte
+2023-10-03,F00099,Juan Pérez,Distribuidora Austral,Desengrasante Industrial,L231026,45,4824,3085,Químicos,191,146,Bodega Norte
+2023-10-04,F00100,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L231013,6,5060,3231,Químicos,17,11,Bodega Sur
+2023-10-04,F00100,Pedro Ruiz,Química Valpo,Desinfectante Amonio,L231005,16,4975,3293,Limpieza,71,55,Bodega Sur
+2023-10-04,F00101,María López,Industrias Polar,Desinfectante Amonio,L231018,12,5037,3203,Limpieza,43,31,Bodega Norte
+2023-10-04,F00101,María López,Industrias Polar,Sellador Epóxico,L231026,5,12339,8990,Químicos,22,17,Bodega Norte
+2023-10-04,F00101,María López,Industrias Polar,Detergente Enzimático,L231010,63,6287,3888,Limpieza,259,196,Bodega Norte
+2023-10-05,F00102,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L231008,63,5378,3583,Químicos,171,108,Bodega Centro
+2023-10-05,F00102,Juan Pérez,Supermercados Nova,Sellador Epóxico,L231022,9,13182,9514,Químicos,33,24,Bodega Centro
+2023-10-05,F00102,Juan Pérez,Supermercados Nova,Desengrasante Industrial,L231010,56,4675,2941,Químicos,103,47,Bodega Centro
+2023-10-05,F00102,Juan Pérez,Supermercados Nova,Desinfectante Amonio,L231014,16,5396,3251,Limpieza,52,36,Bodega Centro
+2023-10-05,F00103,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L231018,15,6053,3576,Químicos,68,53,Bodega Centro
+2023-10-05,F00103,Pedro Ruiz,Química Valpo,Sellador Epóxico,L231022,1,12988,9037,Químicos,1,0,Bodega Centro
+2023-10-05,F00103,Pedro Ruiz,Química Valpo,Solvente Multiuso,L231013,5,7086,4469,Solventes,25,20,Bodega Centro
+2023-10-05,F00104,Ana Torres,Comercial FríoSur,Removedor de Ceras,L231010,1,9420,4930,Solventes,2,1,Bodega Centro
+2023-10-05,F00104,Ana Torres,Comercial FríoSur,Solvente Multiuso,L231019,22,8011,4730,Solventes,84,62,Bodega Centro
+2023-10-05,F00104,Ana Torres,Comercial FríoSur,Detergente Alcalino,L231007,40,4261,2471,Limpieza,103,63,Bodega Centro
+2023-10-05,F00104,Ana Torres,Comercial FríoSur,Aditivo Antiespuma,L231026,48,5860,3466,Químicos,52,4,Bodega Centro
+2023-10-07,F00105,Pedro Ruiz,Industrias Polar,Detergente Enzimático,L231005,12,6132,3967,Limpieza,39,27,Bodega Centro
+2023-10-07,F00105,Pedro Ruiz,Industrias Polar,Detergente Enzimático,L231002,16,6132,3967,Limpieza,33,17,Bodega Centro
+2023-10-07,F00105,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L231027,36,5900,3238,Químicos,115,79,Bodega Centro
+2023-10-07,F00105,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L231017,4,5900,3238,Químicos,11,7,Bodega Centro
+2023-10-09,F00106,María López,MetalMaq Ltda,Aditivo Antiespuma,L231018,60,5635,3725,Químicos,134,74,Bodega Norte
+2023-10-09,F00106,María López,MetalMaq Ltda,Desengrasante Industrial,L231010,56,5244,2978,Químicos,198,142,Bodega Norte
+2023-10-11,F00107,María López,Logística Andes,Detergente Enzimático,L231001,20,5886,3983,Limpieza,48,28,Bodega Sur
+2023-10-11,F00107,María López,Logística Andes,Detergente Enzimático,L231019,33,5886,3983,Limpieza,146,113,Bodega Sur
+2023-10-11,F00107,María López,Logística Andes,Desengrasante Industrial,L231012,36,5178,2905,Químicos,43,7,Bodega Sur
+2023-10-11,F00107,María López,Logística Andes,Desengrasante Industrial,L231001,12,5178,2905,Químicos,58,46,Bodega Sur
+2023-10-11,F00107,María López,Logística Andes,Removedor de Ceras,L231013,48,8579,5190,Solventes,155,107,Bodega Sur
+2023-10-11,F00108,Ana Torres,Química Valpo,Solvente Multiuso,L231027,7,8085,4654,Solventes,26,19,Bodega Centro
+2023-10-11,F00108,Ana Torres,Química Valpo,Detergente Enzimático,L231002,39,6357,3743,Limpieza,112,73,Bodega Centro
+2023-10-11,F00108,Ana Torres,Química Valpo,Removedor de Ceras,L231011,4,8718,5223,Solventes,17,13,Bodega Centro
+2023-10-11,F00108,Ana Torres,Química Valpo,Desengrasante Industrial,L231017,55,5251,2953,Químicos,176,121,Bodega Centro
+2023-10-11,F00108,Ana Torres,Química Valpo,Desengrasante Industrial,L231021,7,5251,2953,Químicos,8,1,Bodega Centro
+2023-10-11,F00109,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L231008,49,6372,3907,Limpieza,209,160,Bodega Centro
+2023-10-11,F00109,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L231008,5,9363,5285,Solventes,15,10,Bodega Centro
+2023-10-11,F00109,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L231009,6,9363,5285,Solventes,26,20,Bodega Centro
+2023-10-11,F00110,María López,Comercial FríoSur,Sellador Epóxico,L231029,7,12724,9475,Químicos,7,0,Bodega Norte
+2023-10-11,F00110,María López,Comercial FríoSur,Desengrasante Industrial,L231006,55,4846,3027,Químicos,110,55,Bodega Norte
+2023-10-11,F00110,María López,Comercial FríoSur,Detergente Alcalino,L231015,18,3978,2397,Limpieza,46,28,Bodega Norte
+2023-10-11,F00111,María López,Alimentos Andinos,Sellador Epóxico,L231008,5,12515,9310,Químicos,12,7,Bodega Sur
+2023-10-11,F00111,María López,Alimentos Andinos,Sellador Epóxico,L231005,4,12515,9310,Químicos,11,7,Bodega Sur
+2023-10-11,F00111,María López,Alimentos Andinos,Desinfectante Amonio,L231012,12,5139,3183,Limpieza,36,24,Bodega Sur
+2023-10-11,F00111,María López,Alimentos Andinos,Desinfectante Amonio,L231007,18,5139,3183,Limpieza,75,57,Bodega Sur
+2023-10-12,F00112,María López,Supermercados Nova,Detergente Enzimático,L231017,25,6612,3741,Limpieza,134,109,Bodega Sur
+2023-10-12,F00112,María López,Supermercados Nova,Aditivo Antiespuma,L231019,24,6043,3345,Químicos,57,33,Bodega Sur
+2023-10-12,F00112,María López,Supermercados Nova,Detergente Alcalino,L231013,22,4177,2308,Limpieza,34,12,Bodega Sur
+2023-10-12,F00112,María López,Supermercados Nova,Sellador Epóxico,L231005,4,13549,8269,Químicos,14,10,Bodega Sur
+2023-10-12,F00113,Ana Torres,Supermercados Nova,Removedor de Ceras,L231016,2,9119,4916,Solventes,5,3,Bodega Norte
+2023-10-12,F00113,Ana Torres,Supermercados Nova,Removedor de Ceras,L231006,3,9119,4916,Solventes,11,8,Bodega Norte
+2023-10-12,F00113,Ana Torres,Supermercados Nova,Desinfectante Amonio,L231002,14,5328,2960,Limpieza,24,10,Bodega Norte
+2023-10-12,F00114,Juan Pérez,Supermercados Nova,Detergente Enzimático,L231013,39,6434,3994,Limpieza,83,44,Bodega Sur
+2023-10-12,F00115,Ana Torres,Industrias Polar,Detergente Enzimático,L231029,18,6202,3995,Limpieza,59,41,Bodega Centro
+2023-10-12,F00115,Ana Torres,Industrias Polar,Detergente Enzimático,L231009,5,6202,3995,Limpieza,14,9,Bodega Centro
+2023-10-12,F00116,Juan Pérez,Industrias Polar,Solvente Multiuso,L231014,19,7601,4549,Solventes,36,17,Bodega Sur
+2023-10-12,F00117,María López,Supermercados Nova,Detergente Alcalino,L231003,15,4252,2318,Limpieza,27,12,Bodega Centro
+2023-10-12,F00117,María López,Supermercados Nova,Detergente Alcalino,L231007,6,4252,2318,Limpieza,28,22,Bodega Centro
+2023-10-12,F00117,María López,Supermercados Nova,Desinfectante Amonio,L231001,15,5470,3303,Limpieza,32,17,Bodega Centro
+2023-10-12,F00117,María López,Supermercados Nova,Desinfectante Amonio,L231015,1,5470,3303,Limpieza,3,2,Bodega Centro
+2023-10-12,F00117,María López,Supermercados Nova,Desengrasante Industrial,L231001,27,5086,2933,Químicos,101,74,Bodega Centro
+2023-10-12,F00118,Juan Pérez,Logística Andes,Desengrasante Industrial,L231009,25,4990,3046,Químicos,93,68,Bodega Norte
+2023-10-12,F00118,Juan Pérez,Logística Andes,Desengrasante Industrial,L231018,9,4990,3046,Químicos,20,11,Bodega Norte
+2023-10-14,F00119,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L231011,12,6218,4081,Limpieza,34,22,Bodega Sur
+2023-10-14,F00119,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L231019,16,7904,4669,Solventes,72,56,Bodega Sur
+2023-10-14,F00120,María López,Química Valpo,Desinfectante Amonio,L231012,6,5237,3146,Limpieza,17,11,Bodega Norte
+2023-10-14,F00120,María López,Química Valpo,Desinfectante Amonio,L231010,17,5237,3146,Limpieza,37,20,Bodega Norte
+2023-10-14,F00120,María López,Química Valpo,Sellador Epóxico,L231007,3,12734,8806,Químicos,7,4,Bodega Norte
+2023-10-14,F00121,María López,Servicios Mineros Z,Solvente Multiuso,L231001,26,7070,4799,Solventes,42,16,Bodega Centro
+2023-10-14,F00121,María López,Servicios Mineros Z,Desinfectante Amonio,L231001,14,5353,2945,Limpieza,21,7,Bodega Centro
+2023-10-16,F00122,Pedro Ruiz,Alimentos Andinos,Desinfectante Amonio,L231018,12,5039,3013,Limpieza,16,4,Bodega Norte
+2023-10-16,F00122,Pedro Ruiz,Alimentos Andinos,Desinfectante Amonio,L231016,10,5039,3013,Limpieza,20,10,Bodega Norte
+2023-10-16,F00122,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L231009,8,8915,5139,Solventes,33,25,Bodega Norte
+2023-10-16,F00122,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L231005,1,8915,5139,Solventes,3,2,Bodega Norte
+2023-10-17,F00123,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L231004,50,5932,3914,Limpieza,142,92,Bodega Sur
+2023-10-17,F00124,María López,Distribuidora Austral,Removedor de Ceras,L231018,6,8370,4968,Solventes,9,3,Bodega Centro
+2023-10-17,F00124,María López,Distribuidora Austral,Desinfectante Amonio,L231002,25,5484,3221,Limpieza,113,88,Bodega Centro
+2023-10-18,F00125,Ana Torres,Logística Andes,Detergente Enzimático,L231029,11,5999,4074,Limpieza,37,26,Bodega Sur
+2023-10-18,F00125,Ana Torres,Logística Andes,Solvente Multiuso,L231003,22,8093,4974,Solventes,69,47,Bodega Sur
+2023-10-18,F00126,María López,Distribuidora Austral,Detergente Alcalino,L231022,19,4171,2520,Limpieza,58,39,Bodega Centro
+2023-10-18,F00126,María López,Distribuidora Austral,Removedor de Ceras,L231018,2,9117,4985,Solventes,5,3,Bodega Centro
+2023-10-18,F00126,María López,Distribuidora Austral,Solvente Multiuso,L231007,20,7940,4821,Solventes,59,39,Bodega Centro
+2023-10-18,F00126,María López,Distribuidora Austral,Sellador Epóxico,L231021,1,13012,8352,Químicos,3,2,Bodega Centro
+2023-10-19,F00127,María López,Industrias Polar,Removedor de Ceras,L231025,9,8984,5346,Solventes,37,28,Bodega Norte
+2023-10-19,F00127,María López,Industrias Polar,Sellador Epóxico,L231029,10,13273,8375,Químicos,22,12,Bodega Norte
+2023-10-19,F00127,María López,Industrias Polar,Solvente Multiuso,L231014,33,7355,4984,Solventes,112,79,Bodega Norte
+2023-10-19,F00128,Ana Torres,Distribuidora Austral,Detergente Enzimático,L231006,51,6474,3880,Limpieza,158,107,Bodega Centro
+2023-10-19,F00128,Ana Torres,Distribuidora Austral,Aditivo Antiespuma,L231010,42,5638,3633,Químicos,127,85,Bodega Centro
+2023-10-19,F00128,Ana Torres,Distribuidora Austral,Sellador Epóxico,L231017,1,13033,8272,Químicos,2,1,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L231015,1,9573,5035,Solventes,2,1,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L231003,1,9573,5035,Solventes,3,2,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L231007,20,5934,3733,Limpieza,72,52,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L231018,64,5695,3439,Químicos,341,277,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L231020,52,13232,9399,Químicos,53,1,Bodega Centro
+2023-10-19,F00129,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L231010,2,13232,9399,Químicos,8,6,Bodega Centro
+2023-10-20,F00130,María López,Supermercados Nova,Desinfectante Amonio,L231022,17,5187,3040,Limpieza,57,40,Bodega Centro
+2023-10-20,F00131,Pedro Ruiz,Química Valpo,Desinfectante Amonio,L231028,32,5244,3065,Limpieza,52,20,Bodega Sur
+2023-10-20,F00131,Pedro Ruiz,Química Valpo,Solvente Multiuso,L231028,13,7780,4599,Solventes,53,40,Bodega Sur
+2023-10-20,F00131,Pedro Ruiz,Química Valpo,Detergente Alcalino,L231014,23,4121,2411,Limpieza,48,25,Bodega Sur
+2023-10-20,F00131,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L231019,32,5456,3400,Químicos,141,109,Bodega Sur
+2023-10-20,F00132,María López,Supermercados Nova,Detergente Enzimático,L231016,5,6659,3853,Limpieza,13,8,Bodega Sur
+2023-10-20,F00132,María López,Supermercados Nova,Detergente Enzimático,L231003,21,6659,3853,Limpieza,87,66,Bodega Sur
+2023-10-21,F00133,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L231008,17,7222,5057,Solventes,54,37,Bodega Centro
+2023-10-21,F00134,Juan Pérez,Supermercados Nova,Detergente Enzimático,L231018,108,5908,3716,Limpieza,348,240,Bodega Norte
+2023-10-21,F00134,Juan Pérez,Supermercados Nova,Desengrasante Industrial,L231002,32,5267,3284,Químicos,135,103,Bodega Norte
+2023-10-21,F00134,Juan Pérez,Supermercados Nova,Sellador Epóxico,L210419,2,12019,9053,Químicos,10,8,Bodega Norte
+2023-10-21,F00134,Juan Pérez,Supermercados Nova,Sellador Epóxico,L231020,1,12019,9053,Químicos,3,2,Bodega Norte
+2023-10-23,F00135,Juan Pérez,MetalMaq Ltda,Desengrasante Industrial,L231028,41,4602,2886,Químicos,154,113,Bodega Centro
+2023-10-23,F00135,Juan Pérez,MetalMaq Ltda,Sellador Epóxico,L231007,7,11925,8987,Químicos,22,15,Bodega Centro
+2023-10-23,F00135,Juan Pérez,MetalMaq Ltda,Desinfectante Amonio,L231024,16,5667,3299,Limpieza,53,37,Bodega Centro
+2023-10-23,F00135,Juan Pérez,MetalMaq Ltda,Desinfectante Amonio,L231027,9,5667,3299,Limpieza,33,24,Bodega Centro
+2023-10-23,F00135,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L231002,12,8486,5114,Solventes,42,30,Bodega Centro
+2023-10-23,F00136,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L231011,18,3865,2465,Limpieza,85,67,Bodega Centro
+2023-10-23,F00136,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L231005,6,12240,9111,Químicos,34,28,Bodega Centro
+2023-10-23,F00136,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L231013,17,7177,5028,Solventes,62,45,Bodega Centro
+2023-10-23,F00137,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L231018,2,12918,8716,Químicos,7,5,Bodega Centro
+2023-10-23,F00137,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L231026,1,12918,8716,Químicos,1,0,Bodega Centro
+2023-10-23,F00137,Juan Pérez,Alimentos Andinos,Aditivo Antiespuma,L231024,52,5351,3640,Químicos,185,133,Bodega Centro
+2023-10-23,F00138,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L231015,9,5312,3102,Limpieza,27,18,Bodega Norte
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Solvente Multiuso,L231028,28,7567,4738,Solventes,74,46,Bodega Centro
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L231004,47,5480,3556,Químicos,174,127,Bodega Centro
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L231007,24,5079,3111,Químicos,106,82,Bodega Centro
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Detergente Enzimático,L231015,41,5819,4147,Limpieza,120,79,Bodega Centro
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L231016,5,3747,2507,Limpieza,20,15,Bodega Centro
+2023-10-23,F00139,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L231016,3,3747,2507,Limpieza,11,8,Bodega Centro
+2023-10-24,F00140,Pedro Ruiz,Comercial FríoSur,Desengrasante Industrial,L231013,6,5070,3211,Químicos,23,17,Bodega Centro
+2023-10-25,F00141,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L231008,4,12563,8724,Químicos,12,8,Bodega Norte
+2023-10-25,F00141,Pedro Ruiz,Supermercados Nova,Desinfectante Amonio,L231021,11,5581,3018,Limpieza,29,18,Bodega Norte
+2023-10-25,F00142,María López,Alimentos Andinos,Removedor de Ceras,L231009,5,8411,5097,Solventes,13,8,Bodega Sur
+2023-10-25,F00142,María López,Alimentos Andinos,Desengrasante Industrial,L231011,66,4789,3006,Químicos,108,42,Bodega Sur
+2023-10-25,F00142,María López,Alimentos Andinos,Sellador Epóxico,L231001,10,13089,8441,Químicos,24,14,Bodega Sur
+2023-10-25,F00143,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L231027,20,5247,2979,Químicos,69,49,Bodega Sur
+2023-10-25,F00143,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L231016,22,5247,2979,Químicos,43,21,Bodega Sur
+2023-10-25,F00143,Pedro Ruiz,Logística Andes,Sellador Epóxico,L231006,4,12378,8445,Químicos,15,11,Bodega Sur
+2023-10-25,F00143,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L231014,18,4998,2996,Limpieza,68,50,Bodega Sur
+2023-10-25,F00143,Pedro Ruiz,Logística Andes,Detergente Alcalino,L231019,27,4219,2465,Limpieza,81,54,Bodega Sur
+2023-10-26,F00144,Ana Torres,Química Valpo,Removedor de Ceras,L231002,5,9178,5447,Solventes,18,13,Bodega Sur
+2023-10-26,F00144,Ana Torres,Química Valpo,Detergente Alcalino,L231025,8,3795,2367,Limpieza,24,16,Bodega Sur
+2023-10-26,F00144,Ana Torres,Química Valpo,Solvente Multiuso,L231022,23,7649,5049,Solventes,56,33,Bodega Sur
+2023-10-26,F00145,María López,Supermercados Nova,Removedor de Ceras,L231003,5,8608,4876,Solventes,13,8,Bodega Norte
+2023-10-26,F00145,María López,Supermercados Nova,Desengrasante Industrial,L231026,44,5152,3161,Químicos,131,87,Bodega Norte
+2023-10-26,F00146,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L231029,17,3717,2458,Limpieza,39,22,Bodega Sur
+2023-10-27,F00147,Pedro Ruiz,MetalMaq Ltda,Aditivo Antiespuma,L231014,32,5689,3458,Químicos,67,35,Bodega Norte
+2023-10-27,F00147,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L231012,17,8065,4759,Solventes,68,51,Bodega Norte
+2023-10-27,F00147,Pedro Ruiz,MetalMaq Ltda,Desengrasante Industrial,L231023,17,5100,3154,Químicos,50,33,Bodega Norte
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Detergente Enzimático,L231001,54,5796,3978,Limpieza,313,259,Bodega Centro
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Removedor de Ceras,L231008,4,9626,5386,Solventes,10,6,Bodega Centro
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Removedor de Ceras,L231029,3,9626,5386,Solventes,9,6,Bodega Centro
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Detergente Alcalino,L231004,7,4153,2365,Limpieza,21,14,Bodega Centro
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Detergente Alcalino,L231024,2,4153,2365,Limpieza,5,3,Bodega Centro
+2023-10-30,F00148,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L231015,56,5727,3255,Químicos,79,23,Bodega Centro
+2023-10-30,F00149,Juan Pérez,Retail Pacífico,Detergente Enzimático,L231022,35,5936,3783,Limpieza,108,73,Bodega Norte
+2023-10-30,F00149,Juan Pérez,Retail Pacífico,Detergente Enzimático,L231016,15,5936,3783,Limpieza,23,8,Bodega Norte
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L231110,35,6251,4138,Limpieza,97,62,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L231125,45,4693,3288,Químicos,183,138,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L231117,12,4693,3288,Químicos,39,27,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L231125,6,12711,8686,Químicos,26,20,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L231118,19,4153,2458,Limpieza,69,50,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L231121,1,9389,5069,Solventes,1,0,Bodega Centro
+2023-11-01,F00150,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L231107,1,9389,5069,Solventes,1,0,Bodega Centro
+2023-11-02,F00151,Ana Torres,Comercial FríoSur,Detergente Enzimático,L231115,46,5996,4143,Limpieza,65,19,Bodega Centro
+2023-11-02,F00151,Ana Torres,Comercial FríoSur,Solvente Multiuso,L231127,2,7394,4794,Solventes,5,3,Bodega Centro
+2023-11-02,F00151,Ana Torres,Comercial FríoSur,Solvente Multiuso,L231118,10,7394,4794,Solventes,43,33,Bodega Centro
+2023-11-02,F00151,Ana Torres,Comercial FríoSur,Sellador Epóxico,L231105,7,13041,8627,Químicos,22,15,Bodega Centro
+2023-11-02,F00151,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L231125,22,5441,3033,Limpieza,89,67,Bodega Centro
+2023-11-02,F00152,Juan Pérez,Servicios Mineros Z,Removedor de Ceras,L231102,10,9065,5057,Solventes,35,25,Bodega Norte
+2023-11-02,F00152,Juan Pérez,Servicios Mineros Z,Sellador Epóxico,L231113,2,12531,8773,Químicos,7,5,Bodega Norte
+2023-11-02,F00152,Juan Pérez,Servicios Mineros Z,Desinfectante Amonio,L231125,10,5188,2984,Limpieza,29,19,Bodega Norte
+2023-11-02,F00153,Juan Pérez,Industrias Polar,Detergente Alcalino,L231107,22,3846,2330,Limpieza,67,45,Bodega Sur
+2023-11-02,F00154,Ana Torres,Comercial FríoSur,Desengrasante Industrial,L231111,24,5129,3245,Químicos,115,91,Bodega Centro
+2023-11-02,F00154,Ana Torres,Comercial FríoSur,Sellador Epóxico,L231103,7,12196,8821,Químicos,27,20,Bodega Centro
+2023-11-02,F00155,Ana Torres,Química Valpo,Detergente Alcalino,L231107,31,4056,2217,Limpieza,112,81,Bodega Sur
+2023-11-02,F00155,Ana Torres,Química Valpo,Desinfectante Amonio,L231113,3,5275,3356,Limpieza,12,9,Bodega Sur
+2023-11-02,F00156,María López,Logística Andes,Sellador Epóxico,L231122,2,12698,9223,Químicos,10,8,Bodega Norte
+2023-11-02,F00156,María López,Logística Andes,Sellador Epóxico,L231117,5,12698,9223,Químicos,10,5,Bodega Norte
+2023-11-03,F00157,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L231114,18,5276,3326,Limpieza,29,11,Bodega Norte
+2023-11-03,F00157,Ana Torres,Comercial FríoSur,Detergente Enzimático,L231120,16,6652,4127,Limpieza,41,25,Bodega Norte
+2023-11-03,F00157,Ana Torres,Comercial FríoSur,Solvente Multiuso,L231117,30,7913,4674,Solventes,108,78,Bodega Norte
+2023-11-03,F00158,María López,Comercial FríoSur,Removedor de Ceras,L231108,6,8472,5236,Solventes,18,12,Bodega Centro
+2023-11-03,F00158,María López,Comercial FríoSur,Aditivo Antiespuma,L231105,23,5554,3703,Químicos,37,14,Bodega Centro
+2023-11-03,F00158,María López,Comercial FríoSur,Desengrasante Industrial,L231129,69,5129,3081,Químicos,245,176,Bodega Centro
+2023-11-03,F00158,María López,Comercial FríoSur,Sellador Epóxico,L231111,6,13151,9332,Químicos,26,20,Bodega Centro
+2023-11-03,F00159,Juan Pérez,Retail Pacífico,Removedor de Ceras,L231111,5,9464,5559,Solventes,9,4,Bodega Sur
+2023-11-04,F00160,María López,Alimentos Andinos,Aditivo Antiespuma,L231111,28,5340,3308,Químicos,80,52,Bodega Norte
+2023-11-04,F00161,María López,Química Valpo,Aditivo Antiespuma,L231108,41,5470,3240,Químicos,134,93,Bodega Norte
+2023-11-04,F00161,María López,Química Valpo,Desinfectante Amonio,L231107,20,5383,3009,Limpieza,72,52,Bodega Norte
+2023-11-04,F00161,María López,Química Valpo,Detergente Enzimático,L231102,44,6423,4089,Limpieza,135,91,Bodega Norte
+2023-11-06,F00162,María López,Logística Andes,Removedor de Ceras,L231110,2,9180,5162,Solventes,7,5,Bodega Centro
+2023-11-06,F00162,María López,Logística Andes,Aditivo Antiespuma,L231126,29,5988,3374,Químicos,72,43,Bodega Centro
+2023-11-06,F00162,María López,Logística Andes,Desinfectante Amonio,L231119,18,5124,3077,Limpieza,59,41,Bodega Centro
+2023-11-06,F00163,María López,Distribuidora Austral,Removedor de Ceras,L231118,9,9292,4907,Solventes,30,21,Bodega Norte
+2023-11-06,F00163,María López,Distribuidora Austral,Detergente Enzimático,L231105,48,6092,3931,Limpieza,162,114,Bodega Norte
+2023-11-06,F00164,Juan Pérez,Industrias Polar,Solvente Multiuso,L231101,5,7488,4371,Solventes,12,7,Bodega Norte
+2023-11-06,F00164,Juan Pérez,Industrias Polar,Solvente Multiuso,L231111,25,7488,4371,Solventes,65,40,Bodega Norte
+2023-11-06,F00164,Juan Pérez,Industrias Polar,Sellador Epóxico,L231125,6,11949,9553,Químicos,17,11,Bodega Norte
+2023-11-06,F00164,Juan Pérez,Industrias Polar,Sellador Epóxico,L231127,2,11949,9553,Químicos,5,3,Bodega Norte
+2023-11-07,F00165,María López,Logística Andes,Sellador Epóxico,L231122,1,12125,8516,Químicos,2,1,Bodega Norte
+2023-11-07,F00165,María López,Logística Andes,Solvente Multiuso,L231124,18,7932,4978,Solventes,82,64,Bodega Norte
+2023-11-07,F00166,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L231126,39,4933,3095,Químicos,126,87,Bodega Norte
+2023-11-07,F00166,Pedro Ruiz,Industrias Polar,Removedor de Ceras,L231108,1,9578,5004,Solventes,3,2,Bodega Norte
+2023-11-07,F00167,María López,Logística Andes,Sellador Epóxico,L231103,4,12832,8312,Químicos,4,0,Bodega Sur
+2023-11-08,F00168,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L231103,48,4688,3247,Químicos,88,40,Bodega Sur
+2023-11-08,F00168,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L231104,40,6673,4148,Limpieza,51,11,Bodega Sur
+2023-11-11,F00169,Juan Pérez,Química Valpo,Detergente Alcalino,L231121,16,3996,2240,Limpieza,53,37,Bodega Sur
+2023-11-11,F00169,Juan Pérez,Química Valpo,Removedor de Ceras,L231127,1,8620,4903,Solventes,3,2,Bodega Sur
+2023-11-11,F00170,Ana Torres,Alimentos Andinos,Desengrasante Industrial,L231113,36,4729,3017,Químicos,50,14,Bodega Norte
+2023-11-11,F00170,Ana Torres,Alimentos Andinos,Aditivo Antiespuma,L231107,19,5675,3271,Químicos,28,9,Bodega Norte
+2023-11-11,F00171,Ana Torres,Industrias Polar,Detergente Enzimático,L231112,8,6450,3814,Limpieza,20,12,Bodega Sur
+2023-11-11,F00171,Ana Torres,Industrias Polar,Detergente Enzimático,L231107,68,6450,3814,Limpieza,114,46,Bodega Sur
+2023-11-14,F00172,Ana Torres,Distribuidora Austral,Solvente Multiuso,L231127,17,7308,4682,Solventes,26,9,Bodega Sur
+2023-11-14,F00172,Ana Torres,Distribuidora Austral,Aditivo Antiespuma,L231119,8,6078,3636,Químicos,25,17,Bodega Sur
+2023-11-14,F00172,Ana Torres,Distribuidora Austral,Aditivo Antiespuma,L231118,10,6078,3636,Químicos,34,24,Bodega Sur
+2023-11-14,F00172,Ana Torres,Distribuidora Austral,Detergente Alcalino,L231114,20,4024,2228,Limpieza,74,54,Bodega Sur
+2023-11-15,F00173,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L231103,29,6016,3761,Limpieza,64,35,Bodega Centro
+2023-11-15,F00173,Pedro Ruiz,Alimentos Andinos,Sellador Epóxico,L231121,9,13428,9374,Químicos,22,13,Bodega Centro
+2023-11-15,F00173,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L231107,5,9289,4969,Solventes,16,11,Bodega Centro
+2023-11-15,F00173,Pedro Ruiz,Alimentos Andinos,Aditivo Antiespuma,L231104,43,5472,3430,Químicos,161,118,Bodega Centro
+2023-11-15,F00174,María López,Alimentos Andinos,Desengrasante Industrial,L231101,36,4672,3053,Químicos,123,87,Bodega Sur
+2023-11-15,F00175,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L231127,35,4688,2895,Químicos,82,47,Bodega Norte
+2023-11-15,F00175,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L231115,1,9140,5321,Solventes,2,1,Bodega Norte
+2023-11-15,F00175,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L231127,23,5648,2989,Limpieza,108,85,Bodega Norte
+2023-11-16,F00176,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L231110,16,7327,4777,Solventes,32,16,Bodega Sur
+2023-11-16,F00176,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L231121,1,7327,4777,Solventes,3,2,Bodega Sur
+2023-11-16,F00176,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L231128,5,12161,8942,Químicos,11,6,Bodega Sur
+2023-11-16,F00177,María López,MetalMaq Ltda,Detergente Enzimático,L231115,41,6578,4014,Limpieza,116,75,Bodega Sur
+2023-11-16,F00177,María López,MetalMaq Ltda,Aditivo Antiespuma,L231103,31,5719,3360,Químicos,110,79,Bodega Sur
+2023-11-16,F00177,María López,MetalMaq Ltda,Sellador Epóxico,L231121,7,12696,8884,Químicos,20,13,Bodega Sur
+2023-11-16,F00177,María López,MetalMaq Ltda,Removedor de Ceras,L231116,6,8634,5246,Solventes,17,11,Bodega Sur
+2023-11-17,F00178,María López,Química Valpo,Sellador Epóxico,L231112,5,13200,9564,Químicos,13,8,Bodega Norte
+2023-11-17,F00178,María López,Química Valpo,Desengrasante Industrial,L231123,32,5031,3254,Químicos,69,37,Bodega Norte
+2023-11-17,F00179,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L231112,51,4610,3072,Químicos,181,130,Bodega Centro
+2023-11-17,F00179,Ana Torres,Distribuidora Austral,Removedor de Ceras,L231121,9,8515,5522,Solventes,43,34,Bodega Centro
+2023-11-17,F00180,Ana Torres,Química Valpo,Desengrasante Industrial,L231104,59,4697,2878,Químicos,209,150,Bodega Norte
+2023-11-17,F00180,Ana Torres,Química Valpo,Solvente Multiuso,L231103,13,7156,4762,Solventes,48,35,Bodega Norte
+2023-11-18,F00181,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L231110,35,5827,3320,Químicos,102,67,Bodega Centro
+2023-11-18,F00181,Ana Torres,Servicios Mineros Z,Detergente Alcalino,L231115,11,4157,2208,Limpieza,70,59,Bodega Centro
+2023-11-18,F00181,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L231112,22,5312,3182,Limpieza,63,41,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L231110,29,5169,2882,Químicos,48,19,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L231120,8,4224,2283,Limpieza,23,15,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L231110,1,4224,2283,Limpieza,4,3,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Aditivo Antiespuma,L231103,21,5722,3642,Químicos,71,50,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Aditivo Antiespuma,L231107,28,5722,3642,Químicos,93,65,Bodega Centro
+2023-11-18,F00182,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L231123,3,7038,4615,Solventes,10,7,Bodega Centro
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L231109,59,4880,3115,Químicos,59,0,Bodega Norte
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L231120,48,5806,3682,Limpieza,197,149,Bodega Norte
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L231101,5,4172,2274,Limpieza,21,16,Bodega Norte
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L231113,12,4172,2274,Limpieza,41,29,Bodega Norte
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L231128,12,9087,5318,Solventes,27,15,Bodega Norte
+2023-11-21,F00183,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L231119,7,13450,9466,Químicos,14,7,Bodega Norte
+2023-11-21,F00184,Ana Torres,Distribuidora Austral,Solvente Multiuso,L231101,168,7931,4458,Solventes,315,147,Bodega Norte
+2023-11-21,F00184,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L231113,27,5112,3245,Químicos,64,37,Bodega Norte
+2023-11-21,F00185,Ana Torres,Comercial FríoSur,Solvente Multiuso,L231121,17,7798,5027,Solventes,69,52,Bodega Norte
+2023-11-22,F00186,Juan Pérez,Logística Andes,Solvente Multiuso,L231129,16,7193,4668,Solventes,66,50,Bodega Centro
+2023-11-22,F00186,Juan Pérez,Logística Andes,Detergente Enzimático,L231122,37,5950,4022,Limpieza,139,102,Bodega Centro
+2023-11-23,F00187,María López,Distribuidora Austral,Detergente Alcalino,L231114,1,3795,2433,Limpieza,2,1,Bodega Sur
+2023-11-23,F00187,María López,Distribuidora Austral,Desinfectante Amonio,L231113,18,5220,3149,Limpieza,62,44,Bodega Sur
+2023-11-23,F00188,Pedro Ruiz,MetalMaq Ltda,Sellador Epóxico,L231111,5,12992,9465,Químicos,16,11,Bodega Norte
+2023-11-23,F00188,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L231126,36,7197,4547,Solventes,121,85,Bodega Norte
+2023-11-23,F00188,Pedro Ruiz,MetalMaq Ltda,Aditivo Antiespuma,L231115,258,5471,3543,Químicos,589,331,Bodega Norte
+2023-11-23,F00189,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L231105,2,9551,5481,Solventes,9,7,Bodega Sur
+2023-11-23,F00189,Pedro Ruiz,Alimentos Andinos,Detergente Alcalino,L231108,10,3878,2289,Limpieza,30,20,Bodega Sur
+2023-11-24,F00190,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L231118,17,5337,3660,Químicos,59,42,Bodega Centro
+2023-11-24,F00190,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L231119,21,5337,3660,Químicos,58,37,Bodega Centro
+2023-11-27,F00191,Ana Torres,Distribuidora Austral,Detergente Enzimático,L231124,52,6682,3710,Limpieza,136,84,Bodega Centro
+2023-11-28,F00192,Juan Pérez,Retail Pacífico,Sellador Epóxico,L231127,5,12804,9119,Químicos,19,14,Bodega Norte
+2023-11-28,F00192,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L210715,2,5129,2959,Químicos,6,4,Bodega Norte
+2023-11-28,F00192,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L231109,4,5129,2959,Químicos,9,5,Bodega Norte
+2023-11-29,F00193,María López,Alimentos Andinos,Desinfectante Amonio,L231107,6,5219,3168,Limpieza,19,13,Bodega Norte
+2023-11-29,F00193,María López,Alimentos Andinos,Solvente Multiuso,L231125,20,7541,4460,Solventes,46,26,Bodega Norte
+2023-11-29,F00194,Ana Torres,Retail Pacífico,Removedor de Ceras,L231122,11,9518,4938,Solventes,31,20,Bodega Norte
+2023-11-29,F00195,María López,MetalMaq Ltda,Solvente Multiuso,L231123,13,7888,4957,Solventes,48,35,Bodega Centro
+2023-11-29,F00195,María López,MetalMaq Ltda,Desinfectante Amonio,L231118,8,5370,3303,Limpieza,12,4,Bodega Centro
+2023-11-30,F00196,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L231120,45,4581,3295,Químicos,91,46,Bodega Sur
+2023-11-30,F00197,Ana Torres,Alimentos Andinos,Aditivo Antiespuma,L231108,24,5894,3231,Químicos,72,48,Bodega Norte
+2023-11-30,F00197,Ana Torres,Alimentos Andinos,Sellador Epóxico,L231129,1,11921,9183,Químicos,2,1,Bodega Norte
+2023-11-30,F00197,Ana Torres,Alimentos Andinos,Sellador Epóxico,L231108,1,11921,9183,Químicos,2,1,Bodega Norte
+2023-12-06,F00198,Ana Torres,Supermercados Nova,Desinfectante Amonio,L231218,35,5581,2982,Limpieza,122,87,Bodega Norte
+2023-12-06,F00199,María López,Industrias Polar,Desengrasante Industrial,L231207,31,5217,3140,Químicos,145,114,Bodega Centro
+2023-12-06,F00199,María López,Industrias Polar,Desengrasante Industrial,L231229,6,5217,3140,Químicos,20,14,Bodega Centro
+2023-12-06,F00199,María López,Industrias Polar,Solvente Multiuso,L231222,13,7232,4599,Solventes,21,8,Bodega Centro
+2023-12-06,F00199,María López,Industrias Polar,Aditivo Antiespuma,L231207,21,5908,3394,Químicos,79,58,Bodega Centro
+2023-12-06,F00199,María López,Industrias Polar,Aditivo Antiespuma,L231204,3,5908,3394,Químicos,13,10,Bodega Centro
+2023-12-07,F00200,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L231222,4,7599,4519,Solventes,10,6,Bodega Norte
+2023-12-07,F00200,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L231219,10,7599,4519,Solventes,12,2,Bodega Norte
+2023-12-07,F00200,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L231216,1,8720,5187,Solventes,3,2,Bodega Norte
+2023-12-07,F00200,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L231208,1,12205,8553,Químicos,2,1,Bodega Norte
+2023-12-07,F00201,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L231216,4,4783,3059,Químicos,12,8,Bodega Centro
+2023-12-07,F00201,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L231224,11,4783,3059,Químicos,11,0,Bodega Centro
+2023-12-07,F00201,Ana Torres,Distribuidora Austral,Removedor de Ceras,L231224,9,9118,4964,Solventes,43,34,Bodega Centro
+2023-12-07,F00202,María López,Distribuidora Austral,Aditivo Antiespuma,L231220,37,5606,3676,Químicos,83,46,Bodega Centro
+2023-12-08,F00203,Pedro Ruiz,Retail Pacífico,Sellador Epóxico,L231210,5,13645,8326,Químicos,16,11,Bodega Centro
+2023-12-08,F00203,Pedro Ruiz,Retail Pacífico,Aditivo Antiespuma,L231222,38,5716,3355,Químicos,142,104,Bodega Centro
+2023-12-08,F00203,Pedro Ruiz,Retail Pacífico,Detergente Alcalino,L231214,13,3985,2366,Limpieza,58,45,Bodega Centro
+2023-12-08,F00204,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L231214,29,5679,3315,Químicos,108,79,Bodega Norte
+2023-12-08,F00204,Juan Pérez,Industrias Polar,Solvente Multiuso,L231224,22,7245,4608,Solventes,66,44,Bodega Norte
+2023-12-08,F00205,Ana Torres,Alimentos Andinos,Removedor de Ceras,L231208,2,8453,5103,Solventes,9,7,Bodega Centro
+2023-12-08,F00205,Ana Torres,Alimentos Andinos,Removedor de Ceras,L231208,2,8453,5103,Solventes,5,3,Bodega Centro
+2023-12-08,F00206,Pedro Ruiz,Logística Andes,Aditivo Antiespuma,L231210,1,5893,3255,Químicos,3,2,Bodega Centro
+2023-12-08,F00206,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L231216,22,5163,2978,Limpieza,27,5,Bodega Centro
+2023-12-09,F00207,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L231206,36,6096,3508,Químicos,162,126,Bodega Sur
+2023-12-11,F00208,María López,Logística Andes,Desengrasante Industrial,L231222,19,4756,3146,Químicos,65,46,Bodega Centro
+2023-12-11,F00208,María López,Logística Andes,Solvente Multiuso,L231215,6,7526,4374,Solventes,8,2,Bodega Centro
+2023-12-12,F00209,María López,MetalMaq Ltda,Removedor de Ceras,L231227,10,8781,5418,Solventes,25,15,Bodega Norte
+2023-12-12,F00209,María López,MetalMaq Ltda,Desinfectante Amonio,L231208,140,5186,3029,Limpieza,266,126,Bodega Norte
+2023-12-12,F00209,María López,MetalMaq Ltda,Detergente Enzimático,L231214,56,5986,3636,Limpieza,83,27,Bodega Norte
+2023-12-13,F00210,Ana Torres,Retail Pacífico,Aditivo Antiespuma,L231216,20,5680,3238,Químicos,60,40,Bodega Norte
+2023-12-13,F00210,Ana Torres,Retail Pacífico,Desinfectante Amonio,L231229,22,5154,3254,Limpieza,58,36,Bodega Norte
+2023-12-13,F00210,Ana Torres,Retail Pacífico,Removedor de Ceras,L231212,1,9560,5299,Solventes,2,1,Bodega Norte
+2023-12-13,F00211,María López,Alimentos Andinos,Detergente Alcalino,L231203,17,4219,2332,Limpieza,70,53,Bodega Norte
+2023-12-13,F00211,María López,Alimentos Andinos,Desinfectante Amonio,L231202,13,5452,3009,Limpieza,13,0,Bodega Norte
+2023-12-13,F00211,María López,Alimentos Andinos,Detergente Enzimático,L231206,26,6664,3874,Limpieza,70,44,Bodega Norte
+2023-12-13,F00212,Pedro Ruiz,Servicios Mineros Z,Sellador Epóxico,L231226,4,12091,8648,Químicos,15,11,Bodega Sur
+2023-12-13,F00212,Pedro Ruiz,Servicios Mineros Z,Detergente Enzimático,L231209,35,6432,3943,Limpieza,70,35,Bodega Sur
+2023-12-14,F00213,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L231205,28,7984,4953,Solventes,128,100,Bodega Norte
+2023-12-14,F00213,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L231220,17,5159,3151,Limpieza,36,19,Bodega Norte
+2023-12-14,F00214,Pedro Ruiz,Química Valpo,Sellador Epóxico,L231221,1,12416,8500,Químicos,1,0,Bodega Sur
+2023-12-14,F00214,Pedro Ruiz,Química Valpo,Sellador Epóxico,L231210,3,12416,8500,Químicos,14,11,Bodega Sur
+2023-12-14,F00214,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L231226,35,5711,3428,Químicos,117,82,Bodega Sur
+2023-12-14,F00214,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L231210,5,5711,3428,Químicos,19,14,Bodega Sur
+2023-12-15,F00215,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L231210,40,6107,3733,Limpieza,97,57,Bodega Sur
+2023-12-15,F00215,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L231221,15,7309,4805,Solventes,15,0,Bodega Sur
+2023-12-15,F00216,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L231225,2,12872,9310,Químicos,5,3,Bodega Centro
+2023-12-15,F00216,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L231207,17,5943,3351,Químicos,23,6,Bodega Centro
+2023-12-15,F00216,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L231213,11,5943,3351,Químicos,11,0,Bodega Centro
+2023-12-15,F00216,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L231225,16,5941,3887,Limpieza,29,13,Bodega Centro
+2023-12-16,F00217,Juan Pérez,Distribuidora Austral,Sellador Epóxico,L231212,1,12469,9404,Químicos,4,3,Bodega Centro
+2023-12-16,F00217,Juan Pérez,Distribuidora Austral,Desengrasante Industrial,L231212,10,5216,2951,Químicos,36,26,Bodega Centro
+2023-12-19,F00218,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L231210,231,4117,2308,Limpieza,590,359,Bodega Norte
+2023-12-21,F00219,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L231225,18,5283,3305,Limpieza,50,32,Bodega Centro
+2023-12-21,F00219,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L231221,9,13237,8522,Químicos,26,17,Bodega Centro
+2023-12-21,F00220,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L231213,3,9191,5331,Solventes,12,9,Bodega Norte
+2023-12-21,F00220,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L231201,3,13472,8326,Químicos,5,2,Bodega Norte
+2023-12-21,F00221,Ana Torres,Distribuidora Austral,Desinfectante Amonio,L231226,2,5128,3015,Limpieza,6,4,Bodega Sur
+2023-12-22,F00222,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L231216,18,3952,2378,Limpieza,47,29,Bodega Sur
+2023-12-22,F00222,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L231224,10,7092,4486,Solventes,24,14,Bodega Sur
+2023-12-23,F00223,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L231228,27,3877,2304,Limpieza,31,4,Bodega Norte
+2023-12-23,F00223,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L231215,48,5614,3596,Químicos,112,64,Bodega Norte
+2023-12-25,F00224,María López,Retail Pacífico,Desengrasante Industrial,L231204,15,5106,3005,Químicos,38,23,Bodega Centro
+2023-12-25,F00224,María López,Retail Pacífico,Desinfectante Amonio,L231229,11,5612,3207,Limpieza,35,24,Bodega Centro
+2023-12-25,F00224,María López,Retail Pacífico,Solvente Multiuso,L231220,2,7213,4569,Solventes,7,5,Bodega Centro
+2023-12-25,F00224,María López,Retail Pacífico,Sellador Epóxico,L231225,1,12094,9474,Químicos,2,1,Bodega Centro
+2023-12-26,F00225,Pedro Ruiz,Retail Pacífico,Removedor de Ceras,L231215,1,8940,5009,Solventes,3,2,Bodega Norte
+2023-12-26,F00225,Pedro Ruiz,Retail Pacífico,Removedor de Ceras,L231229,1,8940,5009,Solventes,3,2,Bodega Norte
+2023-12-26,F00225,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L231225,5,5330,2971,Limpieza,12,7,Bodega Norte
+2023-12-26,F00225,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L231203,3,5229,2999,Químicos,3,0,Bodega Norte
+2023-12-26,F00225,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L231226,11,5229,2999,Químicos,31,20,Bodega Norte
+2023-12-26,F00226,Pedro Ruiz,Química Valpo,Detergente Enzimático,L231203,49,5798,3795,Limpieza,181,132,Bodega Norte
+2023-12-26,F00226,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L231209,20,4650,3037,Químicos,20,0,Bodega Norte
+2023-12-26,F00227,Pedro Ruiz,Alimentos Andinos,Detergente Alcalino,L231208,7,3732,2245,Limpieza,21,14,Bodega Sur
+2023-12-26,F00227,Pedro Ruiz,Alimentos Andinos,Sellador Epóxico,L231206,4,12597,8269,Químicos,15,11,Bodega Sur
+2023-12-26,F00227,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L231207,17,5204,3108,Químicos,71,54,Bodega Sur
+2023-12-27,F00228,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L231222,38,4683,3057,Químicos,117,79,Bodega Centro
+2023-12-27,F00228,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L231205,3,12012,8854,Químicos,9,6,Bodega Centro
+2023-12-27,F00228,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L231228,6,8410,5069,Solventes,31,25,Bodega Centro
+2023-12-27,F00228,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L231202,17,6235,3862,Limpieza,37,20,Bodega Centro
+2023-12-27,F00229,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L231212,28,5073,3132,Químicos,100,72,Bodega Centro
+2023-12-27,F00229,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L231204,44,5577,3363,Químicos,117,73,Bodega Centro
+2023-12-29,F00230,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L231224,32,5675,3448,Químicos,110,78,Bodega Norte
+2023-12-29,F00230,Pedro Ruiz,Química Valpo,Sellador Epóxico,L231226,2,12566,8330,Químicos,6,4,Bodega Norte
+2023-12-29,F00230,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L231226,55,5154,3237,Químicos,167,112,Bodega Norte
+2023-12-29,F00230,Pedro Ruiz,Química Valpo,Desinfectante Amonio,L231229,26,5510,3390,Limpieza,76,50,Bodega Norte
+2023-12-29,F00231,Juan Pérez,Química Valpo,Aditivo Antiespuma,L231219,56,5578,3540,Químicos,292,236,Bodega Sur
+2023-12-30,F00232,Ana Torres,MetalMaq Ltda,Detergente Enzimático,L231208,29,6356,4024,Limpieza,84,55,Bodega Norte
+2023-12-30,F00232,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L231229,4,12220,8633,Químicos,15,11,Bodega Norte
+2023-12-30,F00232,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L231208,16,4971,3372,Limpieza,70,54,Bodega Norte
+2024-01-01,F00233,María López,MetalMaq Ltda,Solvente Multiuso,L240109,12,7412,4898,Solventes,31,19,Bodega Norte
+2024-01-01,F00233,María López,MetalMaq Ltda,Aditivo Antiespuma,L240108,11,5879,3653,Químicos,25,14,Bodega Norte
+2024-01-01,F00233,María López,MetalMaq Ltda,Desinfectante Amonio,L240122,9,5173,2977,Limpieza,30,21,Bodega Norte
+2024-01-01,F00233,María López,MetalMaq Ltda,Desengrasante Industrial,L240109,35,5034,3143,Químicos,49,14,Bodega Norte
+2024-01-01,F00233,María López,MetalMaq Ltda,Desengrasante Industrial,L240127,12,5034,3143,Químicos,29,17,Bodega Norte
+2024-01-02,F00234,María López,Retail Pacífico,Desengrasante Industrial,L240110,1,4868,3203,Químicos,3,2,Bodega Centro
+2024-01-02,F00234,María López,Retail Pacífico,Desengrasante Industrial,L240115,19,4868,3203,Químicos,52,33,Bodega Centro
+2024-01-02,F00234,María López,Retail Pacífico,Desinfectante Amonio,L240129,24,5139,3281,Limpieza,107,83,Bodega Centro
+2024-01-02,F00234,María López,Retail Pacífico,Aditivo Antiespuma,L240120,43,5479,3351,Químicos,167,124,Bodega Centro
+2024-01-02,F00235,Pedro Ruiz,MetalMaq Ltda,Desengrasante Industrial,L240109,17,4894,3045,Químicos,69,52,Bodega Centro
+2024-01-02,F00235,Pedro Ruiz,MetalMaq Ltda,Desinfectante Amonio,L240110,11,5097,3124,Limpieza,28,17,Bodega Centro
+2024-01-03,F00236,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240121,17,6504,3799,Limpieza,81,64,Bodega Norte
+2024-01-04,F00237,María López,Alimentos Andinos,Aditivo Antiespuma,L240119,9,5980,3233,Químicos,20,11,Bodega Sur
+2024-01-04,F00237,María López,Alimentos Andinos,Aditivo Antiespuma,L240109,59,5980,3233,Químicos,235,176,Bodega Sur
+2024-01-04,F00238,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L240102,34,4626,3223,Químicos,95,61,Bodega Sur
+2024-01-04,F00238,Pedro Ruiz,Servicios Mineros Z,Desinfectante Amonio,L240128,15,5516,3392,Limpieza,55,40,Bodega Sur
+2024-01-04,F00238,Pedro Ruiz,Servicios Mineros Z,Sellador Epóxico,L240126,1,11886,9015,Químicos,3,2,Bodega Sur
+2024-01-04,F00239,María López,Supermercados Nova,Aditivo Antiespuma,L240122,37,5896,3286,Químicos,122,85,Bodega Norte
+2024-01-04,F00239,María López,Supermercados Nova,Detergente Alcalino,L240122,25,4008,2218,Limpieza,58,33,Bodega Norte
+2024-01-04,F00240,Ana Torres,Industrias Polar,Solvente Multiuso,L240107,18,7059,4370,Solventes,19,1,Bodega Centro
+2024-01-04,F00240,Ana Torres,Industrias Polar,Detergente Alcalino,L240115,15,3789,2327,Limpieza,49,34,Bodega Centro
+2024-01-04,F00240,Ana Torres,Industrias Polar,Detergente Enzimático,L240110,61,6024,4160,Limpieza,201,140,Bodega Centro
+2024-01-04,F00240,Ana Torres,Industrias Polar,Removedor de Ceras,L240111,2,8509,5324,Solventes,5,3,Bodega Centro
+2024-01-04,F00240,Ana Torres,Industrias Polar,Removedor de Ceras,L240114,2,8509,5324,Solventes,7,5,Bodega Centro
+2024-01-05,F00241,María López,Servicios Mineros Z,Detergente Enzimático,L240116,37,6693,3710,Limpieza,101,64,Bodega Sur
+2024-01-06,F00242,Juan Pérez,Industrias Polar,Detergente Alcalino,L240124,8,3884,2253,Limpieza,9,1,Bodega Centro
+2024-01-06,F00242,Juan Pérez,Industrias Polar,Detergente Alcalino,L240114,1,3884,2253,Limpieza,2,1,Bodega Centro
+2024-01-06,F00242,Juan Pérez,Industrias Polar,Removedor de Ceras,L240125,7,8753,5309,Solventes,21,14,Bodega Centro
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Solvente Multiuso,L240109,26,7535,4569,Solventes,102,76,Bodega Norte
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Removedor de Ceras,L240109,1,8760,5100,Solventes,4,3,Bodega Norte
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Sellador Epóxico,L240105,13,13624,8587,Químicos,30,17,Bodega Norte
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L240110,9,4955,3178,Limpieza,26,17,Bodega Norte
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L240104,2,4955,3178,Limpieza,4,2,Bodega Norte
+2024-01-06,F00243,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L240129,7,4837,2996,Químicos,33,26,Bodega Norte
+2024-01-08,F00244,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240108,9,12971,8277,Químicos,18,9,Bodega Centro
+2024-01-08,F00244,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240114,12,7620,4416,Solventes,41,29,Bodega Centro
+2024-01-08,F00244,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240127,7,7620,4416,Solventes,18,11,Bodega Centro
+2024-01-11,F00245,Pedro Ruiz,Logística Andes,Sellador Epóxico,L240119,4,13442,9055,Químicos,9,5,Bodega Norte
+2024-01-11,F00245,Pedro Ruiz,Logística Andes,Detergente Enzimático,L240103,9,6351,4029,Limpieza,32,23,Bodega Norte
+2024-01-11,F00245,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L240102,21,4995,2998,Limpieza,64,43,Bodega Norte
+2024-01-13,F00246,Juan Pérez,Logística Andes,Desengrasante Industrial,L240123,32,4978,2887,Químicos,83,51,Bodega Centro
+2024-01-13,F00246,Juan Pérez,Logística Andes,Solvente Multiuso,L240121,16,7430,4569,Solventes,61,45,Bodega Centro
+2024-01-13,F00247,María López,MetalMaq Ltda,Aditivo Antiespuma,L240116,5,5429,3337,Químicos,14,9,Bodega Centro
+2024-01-15,F00248,Juan Pérez,Química Valpo,Detergente Enzimático,L240112,13,5946,3939,Limpieza,61,48,Bodega Sur
+2024-01-15,F00248,Juan Pérez,Química Valpo,Sellador Epóxico,L240111,8,12664,8285,Químicos,18,10,Bodega Sur
+2024-01-15,F00248,Juan Pérez,Química Valpo,Solvente Multiuso,L240122,3,7147,4739,Solventes,10,7,Bodega Sur
+2024-01-15,F00248,Juan Pérez,Química Valpo,Solvente Multiuso,L240106,11,7147,4739,Solventes,37,26,Bodega Sur
+2024-01-15,F00248,Juan Pérez,Química Valpo,Aditivo Antiespuma,L240104,12,5402,3262,Químicos,38,26,Bodega Sur
+2024-01-15,F00249,Ana Torres,Distribuidora Austral,Aditivo Antiespuma,L240125,41,5782,3731,Químicos,165,124,Bodega Norte
+2024-01-15,F00249,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240110,37,5885,3667,Limpieza,139,102,Bodega Norte
+2024-01-17,F00250,Ana Torres,Industrias Polar,Sellador Epóxico,L240115,6,13152,9434,Químicos,26,20,Bodega Sur
+2024-01-17,F00250,Ana Torres,Industrias Polar,Desinfectante Amonio,L240128,21,5501,3243,Limpieza,67,46,Bodega Sur
+2024-01-17,F00250,Ana Torres,Industrias Polar,Solvente Multiuso,L240102,5,8089,5038,Solventes,14,9,Bodega Sur
+2024-01-17,F00250,Ana Torres,Industrias Polar,Solvente Multiuso,L240109,14,8089,5038,Solventes,42,28,Bodega Sur
+2024-01-17,F00251,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L240108,36,7296,4407,Solventes,36,0,Bodega Centro
+2024-01-17,F00252,Pedro Ruiz,Distribuidora Austral,Aditivo Antiespuma,L240129,2,5993,3677,Químicos,8,6,Bodega Norte
+2024-01-17,F00252,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L240125,9,7834,4430,Solventes,9,0,Bodega Norte
+2024-01-17,F00252,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L240129,9,7834,4430,Solventes,13,4,Bodega Norte
+2024-01-18,F00253,Pedro Ruiz,Comercial FríoSur,Detergente Enzimático,L240120,41,5899,4050,Limpieza,138,97,Bodega Centro
+2024-01-18,F00253,Pedro Ruiz,Comercial FríoSur,Detergente Alcalino,L240116,17,4059,2447,Limpieza,47,30,Bodega Centro
+2024-01-18,F00253,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L240123,10,7099,4891,Solventes,24,14,Bodega Centro
+2024-01-18,F00253,Pedro Ruiz,Comercial FríoSur,Aditivo Antiespuma,L240103,7,5572,3333,Químicos,18,11,Bodega Centro
+2024-01-18,F00254,María López,Supermercados Nova,Detergente Enzimático,L240106,52,6022,3909,Limpieza,230,178,Bodega Sur
+2024-01-18,F00254,María López,Supermercados Nova,Detergente Alcalino,L240115,18,4026,2218,Limpieza,74,56,Bodega Sur
+2024-01-18,F00254,María López,Supermercados Nova,Detergente Alcalino,L240103,3,4026,2218,Limpieza,9,6,Bodega Sur
+2024-01-18,F00254,María López,Supermercados Nova,Removedor de Ceras,L240106,1,8970,5525,Solventes,3,2,Bodega Sur
+2024-01-18,F00254,María López,Supermercados Nova,Removedor de Ceras,L240121,1,8970,5525,Solventes,3,2,Bodega Sur
+2024-01-20,F00255,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240124,19,5137,3225,Limpieza,60,41,Bodega Sur
+2024-01-20,F00255,Ana Torres,Alimentos Andinos,Desengrasante Industrial,L240107,6,5155,3172,Químicos,18,12,Bodega Sur
+2024-01-20,F00256,María López,Retail Pacífico,Sellador Epóxico,L240129,6,13014,8495,Químicos,21,15,Bodega Sur
+2024-01-20,F00256,María López,Retail Pacífico,Detergente Alcalino,L240109,20,3993,2200,Limpieza,67,47,Bodega Sur
+2024-01-20,F00257,Ana Torres,Retail Pacífico,Solvente Multiuso,L240116,9,7159,4950,Solventes,21,12,Bodega Norte
+2024-01-20,F00257,Ana Torres,Retail Pacífico,Sellador Epóxico,L240119,7,13371,8872,Químicos,29,22,Bodega Norte
+2024-01-20,F00257,Ana Torres,Retail Pacífico,Sellador Epóxico,L240117,5,13371,8872,Químicos,14,9,Bodega Norte
+2024-01-20,F00257,Ana Torres,Retail Pacífico,Desengrasante Industrial,L240109,48,4756,2969,Químicos,115,67,Bodega Norte
+2024-01-20,F00257,Ana Torres,Retail Pacífico,Aditivo Antiespuma,L240124,27,5711,3235,Químicos,56,29,Bodega Norte
+2024-01-20,F00258,María López,Química Valpo,Desinfectante Amonio,L240125,26,4976,3406,Limpieza,137,111,Bodega Norte
+2024-01-20,F00259,Ana Torres,Industrias Polar,Aditivo Antiespuma,L240102,21,5819,3305,Químicos,59,38,Bodega Centro
+2024-01-20,F00259,Ana Torres,Industrias Polar,Aditivo Antiespuma,L240105,3,5819,3305,Químicos,5,2,Bodega Centro
+2024-01-20,F00259,Ana Torres,Industrias Polar,Detergente Alcalino,L240102,31,3972,2343,Limpieza,101,70,Bodega Centro
+2024-01-20,F00259,Ana Torres,Industrias Polar,Desengrasante Industrial,L240103,27,5041,2989,Químicos,29,2,Bodega Centro
+2024-01-20,F00260,Pedro Ruiz,Química Valpo,Detergente Alcalino,L240112,36,4068,2461,Limpieza,101,65,Bodega Centro
+2024-01-20,F00260,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L240102,2,5955,3406,Químicos,5,3,Bodega Centro
+2024-01-20,F00261,María López,Distribuidora Austral,Sellador Epóxico,L240128,5,11955,8758,Químicos,18,13,Bodega Norte
+2024-01-20,F00261,María López,Distribuidora Austral,Sellador Epóxico,L240115,2,11955,8758,Químicos,3,1,Bodega Norte
+2024-01-20,F00261,María López,Distribuidora Austral,Desengrasante Industrial,L240125,2,4831,3111,Químicos,8,6,Bodega Norte
+2024-01-20,F00261,María López,Distribuidora Austral,Desengrasante Industrial,L240115,17,4831,3111,Químicos,59,42,Bodega Norte
+2024-01-22,F00262,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L240125,6,13194,8278,Químicos,10,4,Bodega Norte
+2024-01-22,F00262,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L240126,25,6476,4151,Limpieza,73,48,Bodega Norte
+2024-01-22,F00262,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L240119,23,6476,4151,Limpieza,86,63,Bodega Norte
+2024-01-23,F00263,Ana Torres,Retail Pacífico,Detergente Enzimático,L240104,45,6212,3681,Limpieza,188,143,Bodega Sur
+2024-01-23,F00264,Juan Pérez,Química Valpo,Aditivo Antiespuma,L240124,190,6157,3500,Químicos,896,706,Bodega Sur
+2024-01-23,F00264,Juan Pérez,Química Valpo,Detergente Enzimático,L240112,28,6294,4094,Limpieza,89,61,Bodega Sur
+2024-01-23,F00264,Juan Pérez,Química Valpo,Desinfectante Amonio,L240126,20,5570,3357,Limpieza,54,34,Bodega Sur
+2024-01-23,F00264,Juan Pérez,Química Valpo,Detergente Alcalino,L240112,14,3990,2263,Limpieza,40,26,Bodega Sur
+2024-01-23,F00265,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240124,28,5858,4098,Limpieza,90,62,Bodega Norte
+2024-01-23,F00265,Pedro Ruiz,Supermercados Nova,Desinfectante Amonio,L240125,20,5564,3174,Limpieza,76,56,Bodega Norte
+2024-01-23,F00265,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L240111,18,5830,3726,Químicos,42,24,Bodega Norte
+2024-01-23,F00265,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240125,10,4958,2939,Químicos,25,15,Bodega Norte
+2024-01-23,F00265,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240126,28,4958,2939,Químicos,128,100,Bodega Norte
+2024-01-24,F00266,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L201120,15,7487,4896,Solventes,44,29,Bodega Centro
+2024-01-24,F00266,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240102,40,13163,8711,Químicos,179,139,Bodega Centro
+2024-01-24,F00267,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240116,1,7835,4552,Solventes,1,0,Bodega Norte
+2024-01-24,F00267,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L240123,45,4880,2935,Químicos,144,99,Bodega Norte
+2024-01-24,F00268,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L240128,44,5139,3174,Químicos,150,106,Bodega Norte
+2024-01-24,F00268,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240109,7,5799,4141,Limpieza,28,21,Bodega Norte
+2024-01-24,F00268,Ana Torres,Distribuidora Austral,Sellador Epóxico,L240129,1,13098,9051,Químicos,3,2,Bodega Norte
+2024-01-25,F00269,Juan Pérez,Industrias Polar,Removedor de Ceras,L240113,8,8834,5129,Solventes,21,13,Bodega Norte
+2024-01-25,F00269,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240104,22,5487,3601,Químicos,36,14,Bodega Norte
+2024-01-26,F00270,Juan Pérez,Logística Andes,Detergente Alcalino,L240102,14,3974,2526,Limpieza,51,37,Bodega Norte
+2024-01-26,F00270,Juan Pérez,Logística Andes,Aditivo Antiespuma,L240101,12,5564,3246,Químicos,41,29,Bodega Norte
+2024-01-26,F00270,Juan Pérez,Logística Andes,Aditivo Antiespuma,L240127,11,5564,3246,Químicos,36,25,Bodega Norte
+2024-01-26,F00270,Juan Pérez,Logística Andes,Desengrasante Industrial,L240108,41,4874,3050,Químicos,155,114,Bodega Norte
+2024-01-26,F00270,Juan Pérez,Logística Andes,Solvente Multiuso,L240114,18,7569,4585,Solventes,39,21,Bodega Norte
+2024-01-27,F00271,María López,Servicios Mineros Z,Removedor de Ceras,L240113,7,9205,4981,Solventes,17,10,Bodega Norte
+2024-01-27,F00271,María López,Servicios Mineros Z,Detergente Alcalino,L240106,19,4269,2398,Limpieza,43,24,Bodega Norte
+2024-01-27,F00271,María López,Servicios Mineros Z,Desinfectante Amonio,L240125,11,5657,3248,Limpieza,47,36,Bodega Norte
+2024-01-27,F00271,María López,Servicios Mineros Z,Sellador Epóxico,L240111,1,11977,9184,Químicos,1,0,Bodega Norte
+2024-01-29,F00272,Juan Pérez,MetalMaq Ltda,Detergente Alcalino,L240101,31,3720,2197,Limpieza,117,86,Bodega Norte
+2024-01-29,F00273,María López,MetalMaq Ltda,Detergente Enzimático,L240123,29,6562,3930,Limpieza,56,27,Bodega Norte
+2024-01-29,F00273,María López,MetalMaq Ltda,Removedor de Ceras,L240119,1,9586,5539,Solventes,3,2,Bodega Norte
+2024-01-29,F00273,María López,MetalMaq Ltda,Removedor de Ceras,L240104,1,9586,5539,Solventes,2,1,Bodega Norte
+2024-01-29,F00273,María López,MetalMaq Ltda,Detergente Alcalino,L240118,11,3825,2357,Limpieza,24,13,Bodega Norte
+2024-01-29,F00274,Pedro Ruiz,Logística Andes,Detergente Alcalino,L240128,1,4120,2239,Limpieza,3,2,Bodega Sur
+2024-01-29,F00274,Pedro Ruiz,Logística Andes,Detergente Alcalino,L240105,13,4120,2239,Limpieza,39,26,Bodega Sur
+2024-01-30,F00275,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L240122,7,6342,3715,Limpieza,22,15,Bodega Sur
+2024-01-30,F00275,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L240117,23,6342,3715,Limpieza,51,28,Bodega Sur
+2024-01-30,F00275,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L240114,32,5638,3448,Químicos,128,96,Bodega Sur
+2024-01-30,F00275,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L240105,1,8956,5062,Solventes,3,2,Bodega Sur
+2024-01-30,F00276,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L240123,2,8721,5227,Solventes,4,2,Bodega Centro
+2024-01-30,F00276,Juan Pérez,Alimentos Andinos,Solvente Multiuso,L240128,17,7740,4729,Solventes,74,57,Bodega Centro
+2024-01-30,F00276,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240126,20,6437,4112,Limpieza,84,64,Bodega Centro
+2024-01-31,F00277,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L240113,15,5490,3350,Limpieza,56,41,Bodega Centro
+2024-01-31,F00277,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L240122,4,13705,8528,Químicos,12,8,Bodega Centro
+2024-02-01,F00278,Ana Torres,Distribuidora Austral,Detergente Alcalino,L240203,18,3799,2257,Limpieza,76,58,Bodega Sur
+2024-02-01,F00278,Ana Torres,Distribuidora Austral,Solvente Multiuso,L240216,32,7750,4516,Solventes,87,55,Bodega Sur
+2024-02-01,F00278,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L240204,50,4673,3052,Químicos,94,44,Bodega Sur
+2024-02-01,F00279,Juan Pérez,Distribuidora Austral,Solvente Multiuso,L240204,23,7055,4449,Solventes,67,44,Bodega Norte
+2024-02-01,F00279,Juan Pérez,Distribuidora Austral,Sellador Epóxico,L240214,5,13594,9047,Químicos,14,9,Bodega Norte
+2024-02-01,F00280,Juan Pérez,Comercial FríoSur,Aditivo Antiespuma,L240217,7,6003,3345,Químicos,12,5,Bodega Sur
+2024-02-01,F00280,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L240213,29,7358,4566,Solventes,70,41,Bodega Sur
+2024-02-02,F00281,Ana Torres,Retail Pacífico,Desengrasante Industrial,L240215,54,5075,2970,Químicos,215,161,Bodega Centro
+2024-02-02,F00281,Ana Torres,Retail Pacífico,Detergente Enzimático,L240217,71,6351,4175,Limpieza,218,147,Bodega Centro
+2024-02-05,F00282,María López,Retail Pacífico,Detergente Alcalino,L240208,27,3854,2412,Limpieza,77,50,Bodega Sur
+2024-02-05,F00282,María López,Retail Pacífico,Desengrasante Industrial,L240229,33,5170,2856,Químicos,40,7,Bodega Sur
+2024-02-05,F00282,María López,Retail Pacífico,Removedor de Ceras,L240227,1,8792,5288,Solventes,2,1,Bodega Sur
+2024-02-05,F00282,María López,Retail Pacífico,Removedor de Ceras,L240223,1,8792,5288,Solventes,3,2,Bodega Sur
+2024-02-06,F00283,Ana Torres,Alimentos Andinos,Detergente Enzimático,L240222,49,6225,4027,Limpieza,137,88,Bodega Sur
+2024-02-06,F00283,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240206,6,7274,4606,Solventes,16,10,Bodega Sur
+2024-02-06,F00283,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240209,20,7274,4606,Solventes,60,40,Bodega Sur
+2024-02-06,F00283,Ana Torres,Alimentos Andinos,Desengrasante Industrial,L240215,32,5067,2873,Químicos,163,131,Bodega Sur
+2024-02-09,F00284,María López,MetalMaq Ltda,Detergente Alcalino,L240216,19,4032,2434,Limpieza,96,77,Bodega Centro
+2024-02-09,F00284,María López,MetalMaq Ltda,Aditivo Antiespuma,L240205,43,5454,3424,Químicos,128,85,Bodega Centro
+2024-02-09,F00284,María López,MetalMaq Ltda,Aditivo Antiespuma,L240220,19,5454,3424,Químicos,52,33,Bodega Centro
+2024-02-09,F00285,Juan Pérez,Industrias Polar,Desengrasante Industrial,L240222,24,4974,3076,Químicos,92,68,Bodega Centro
+2024-02-09,F00285,Juan Pérez,Industrias Polar,Detergente Alcalino,L240227,16,3958,2401,Limpieza,49,33,Bodega Centro
+2024-02-10,F00286,Pedro Ruiz,Comercial FríoSur,Detergente Enzimático,L240229,34,6585,3903,Limpieza,152,118,Bodega Sur
+2024-02-10,F00286,Pedro Ruiz,Comercial FríoSur,Aditivo Antiespuma,L240212,54,5613,3355,Químicos,172,118,Bodega Sur
+2024-02-10,F00286,Pedro Ruiz,Comercial FríoSur,Sellador Epóxico,L240203,5,12175,9220,Químicos,18,13,Bodega Sur
+2024-02-10,F00286,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L240221,10,7315,4722,Solventes,46,36,Bodega Sur
+2024-02-12,F00287,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L240211,58,5215,3139,Químicos,230,172,Bodega Norte
+2024-02-12,F00287,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240206,17,4044,2458,Limpieza,95,78,Bodega Norte
+2024-02-12,F00287,Pedro Ruiz,Distribuidora Austral,Aditivo Antiespuma,L240222,61,5340,3647,Químicos,180,119,Bodega Norte
+2024-02-12,F00287,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240217,2,6634,3787,Limpieza,7,5,Bodega Norte
+2024-02-12,F00288,Juan Pérez,Retail Pacífico,Solvente Multiuso,L240221,19,7905,4663,Solventes,59,40,Bodega Sur
+2024-02-12,F00288,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240226,4,5569,3167,Limpieza,17,13,Bodega Sur
+2024-02-14,F00289,María López,MetalMaq Ltda,Detergente Enzimático,L240215,4,6213,3987,Limpieza,6,2,Bodega Norte
+2024-02-14,F00289,María López,MetalMaq Ltda,Detergente Enzimático,L240218,26,6213,3987,Limpieza,48,22,Bodega Norte
+2024-02-14,F00289,María López,MetalMaq Ltda,Sellador Epóxico,L240223,2,12921,8886,Químicos,6,4,Bodega Norte
+2024-02-16,F00290,María López,MetalMaq Ltda,Aditivo Antiespuma,L240210,35,5843,3729,Químicos,65,30,Bodega Sur
+2024-02-16,F00290,María López,MetalMaq Ltda,Removedor de Ceras,L240226,2,8568,4963,Solventes,5,3,Bodega Sur
+2024-02-16,F00290,María López,MetalMaq Ltda,Removedor de Ceras,L240210,3,8568,4963,Solventes,8,5,Bodega Sur
+2024-02-17,F00291,María López,Logística Andes,Desinfectante Amonio,L240208,18,5271,3126,Limpieza,53,35,Bodega Norte
+2024-02-17,F00291,María López,Logística Andes,Sellador Epóxico,L240208,1,13476,9304,Químicos,1,0,Bodega Norte
+2024-02-17,F00291,María López,Logística Andes,Solvente Multiuso,L240209,17,7398,4783,Solventes,49,32,Bodega Norte
+2024-02-17,F00291,María López,Logística Andes,Removedor de Ceras,L240202,8,9054,5193,Solventes,25,17,Bodega Norte
+2024-02-19,F00292,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240220,19,7079,4778,Solventes,52,33,Bodega Norte
+2024-02-19,F00292,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240224,1,7079,4778,Solventes,1,0,Bodega Norte
+2024-02-19,F00292,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L240219,11,8820,5291,Solventes,18,7,Bodega Norte
+2024-02-19,F00292,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L240209,18,5367,3110,Limpieza,55,37,Bodega Norte
+2024-02-19,F00292,Ana Torres,Servicios Mineros Z,Detergente Alcalino,L240212,33,4000,2341,Limpieza,94,61,Bodega Norte
+2024-02-21,F00293,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L240217,17,3797,2326,Limpieza,28,11,Bodega Norte
+2024-02-21,F00293,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240225,6,9055,5572,Solventes,16,10,Bodega Norte
+2024-02-21,F00293,Juan Pérez,Distribuidora Austral,Sellador Epóxico,L240223,3,12816,8516,Químicos,6,3,Bodega Norte
+2024-02-21,F00294,María López,Logística Andes,Desengrasante Industrial,L240229,32,4584,3108,Químicos,89,57,Bodega Sur
+2024-02-21,F00295,Juan Pérez,Servicios Mineros Z,Removedor de Ceras,L240218,5,8574,4888,Solventes,10,5,Bodega Centro
+2024-02-21,F00295,Juan Pérez,Servicios Mineros Z,Desengrasante Industrial,L240223,37,5080,3003,Químicos,201,164,Bodega Centro
+2024-02-21,F00295,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L240203,34,6706,3821,Limpieza,88,54,Bodega Centro
+2024-02-21,F00295,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240210,35,5596,3340,Químicos,120,85,Bodega Centro
+2024-02-24,F00296,María López,MetalMaq Ltda,Desengrasante Industrial,L240219,54,4875,3008,Químicos,161,107,Bodega Sur
+2024-02-24,F00296,María López,MetalMaq Ltda,Sellador Epóxico,L240214,4,12079,8347,Químicos,8,4,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Sellador Epóxico,L240217,6,12165,8427,Químicos,28,22,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Sellador Epóxico,L240201,4,12165,8427,Químicos,5,1,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Removedor de Ceras,L240222,3,8779,5210,Solventes,12,9,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Removedor de Ceras,L240224,6,8779,5210,Solventes,11,5,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Solvente Multiuso,L240227,8,7851,4887,Solventes,26,18,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Solvente Multiuso,L240211,1,7851,4887,Solventes,2,1,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Desinfectante Amonio,L240207,25,5268,3182,Limpieza,73,48,Bodega Sur
+2024-02-26,F00297,María López,Servicios Mineros Z,Detergente Alcalino,L240205,23,3846,2434,Limpieza,60,37,Bodega Sur
+2024-02-27,F00298,Ana Torres,Supermercados Nova,Detergente Enzimático,L240225,66,6341,3828,Limpieza,269,203,Bodega Norte
+2024-02-27,F00298,Ana Torres,Supermercados Nova,Aditivo Antiespuma,L240221,28,6132,3291,Químicos,51,23,Bodega Norte
+2024-02-27,F00298,Ana Torres,Supermercados Nova,Solvente Multiuso,L240210,32,7435,4997,Solventes,119,87,Bodega Norte
+2024-02-27,F00298,Ana Torres,Supermercados Nova,Removedor de Ceras,L240206,4,9070,4977,Solventes,10,6,Bodega Norte
+2024-02-27,F00299,Ana Torres,Comercial FríoSur,Aditivo Antiespuma,L240228,55,5485,3631,Químicos,123,68,Bodega Norte
+2024-02-27,F00299,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240224,26,5187,3238,Limpieza,79,53,Bodega Norte
+2024-02-27,F00299,Ana Torres,Comercial FríoSur,Detergente Enzimático,L240202,31,6625,3906,Limpieza,165,134,Bodega Norte
+2024-02-28,F00300,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L240208,19,5702,3644,Químicos,63,44,Bodega Norte
+2024-02-28,F00300,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240212,8,6452,3749,Limpieza,21,13,Bodega Norte
+2024-02-28,F00300,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240216,8,6452,3749,Limpieza,21,13,Bodega Norte
+2024-02-28,F00300,Pedro Ruiz,Supermercados Nova,Removedor de Ceras,L240201,1,8997,4922,Solventes,4,3,Bodega Norte
+2024-02-28,F00300,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L240214,19,7031,4528,Solventes,66,47,Bodega Norte
+2024-02-28,F00301,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L240203,41,4702,2888,Químicos,167,126,Bodega Centro
+2024-02-28,F00301,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L240228,19,3876,2523,Limpieza,40,21,Bodega Centro
+2024-02-28,F00301,Juan Pérez,Comercial FríoSur,Aditivo Antiespuma,L240209,32,6040,3302,Químicos,88,56,Bodega Centro
+2024-02-28,F00302,Juan Pérez,Industrias Polar,Removedor de Ceras,L240213,2,9429,5396,Solventes,7,5,Bodega Centro
+2024-02-28,F00302,Juan Pérez,Industrias Polar,Removedor de Ceras,L240203,3,9429,5396,Solventes,6,3,Bodega Centro
+2024-02-29,F00303,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240212,4,8091,4928,Solventes,7,3,Bodega Sur
+2024-02-29,F00303,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240224,4,8091,4928,Solventes,12,8,Bodega Sur
+2024-02-29,F00303,Pedro Ruiz,Química Valpo,Detergente Alcalino,L240221,20,3811,2298,Limpieza,43,23,Bodega Sur
+2024-02-29,F00304,María López,Servicios Mineros Z,Solvente Multiuso,L240225,9,7041,4604,Solventes,14,5,Bodega Norte
+2024-02-29,F00304,María López,Servicios Mineros Z,Detergente Enzimático,L240217,36,6315,3802,Limpieza,114,78,Bodega Norte
+2024-02-29,F00304,María López,Servicios Mineros Z,Removedor de Ceras,L240213,11,9425,5531,Solventes,11,0,Bodega Norte
+2024-03-01,F00305,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240313,65,4788,3056,Químicos,240,175,Bodega Norte
+2024-03-01,F00305,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240309,4,4788,3056,Químicos,11,7,Bodega Norte
+2024-03-01,F00305,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L240308,5,13144,8442,Químicos,13,8,Bodega Norte
+2024-03-01,F00306,Pedro Ruiz,Retail Pacífico,Sellador Epóxico,L240311,7,13232,8708,Químicos,12,5,Bodega Sur
+2024-03-01,F00306,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L240322,17,5391,3321,Limpieza,24,7,Bodega Sur
+2024-03-02,F00307,Ana Torres,Retail Pacífico,Aditivo Antiespuma,L240310,21,5990,3705,Químicos,51,30,Bodega Norte
+2024-03-02,F00308,Ana Torres,Química Valpo,Removedor de Ceras,L240311,6,9217,5119,Solventes,9,3,Bodega Norte
+2024-03-02,F00308,Ana Torres,Química Valpo,Detergente Enzimático,L240304,26,6194,4003,Limpieza,36,10,Bodega Norte
+2024-03-02,F00309,Juan Pérez,Logística Andes,Solvente Multiuso,L240310,15,7331,4752,Solventes,52,37,Bodega Sur
+2024-03-02,F00309,Juan Pérez,Logística Andes,Desinfectante Amonio,L240311,13,5490,3267,Limpieza,39,26,Bodega Sur
+2024-03-04,F00310,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240302,5,13351,9125,Químicos,17,12,Bodega Norte
+2024-03-04,F00310,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240313,27,6047,3722,Limpieza,69,42,Bodega Norte
+2024-03-04,F00310,Pedro Ruiz,Distribuidora Austral,Desinfectante Amonio,L240306,21,4961,3093,Limpieza,99,78,Bodega Norte
+2024-03-05,F00311,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240311,5,5224,3236,Limpieza,18,13,Bodega Norte
+2024-03-05,F00312,María López,Alimentos Andinos,Detergente Enzimático,L240329,46,6599,3722,Limpieza,121,75,Bodega Norte
+2024-03-05,F00312,María López,Alimentos Andinos,Removedor de Ceras,L240318,6,9070,4882,Solventes,20,14,Bodega Norte
+2024-03-05,F00313,Pedro Ruiz,Química Valpo,Desengrasante Industrial,L240324,53,4599,2994,Químicos,103,50,Bodega Norte
+2024-03-05,F00313,Pedro Ruiz,Química Valpo,Desinfectante Amonio,L240307,6,4956,3056,Limpieza,16,10,Bodega Norte
+2024-03-05,F00313,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240322,23,7828,4429,Solventes,65,42,Bodega Norte
+2024-03-07,F00314,Juan Pérez,Distribuidora Austral,Desinfectante Amonio,L240317,27,5587,3012,Limpieza,50,23,Bodega Sur
+2024-03-07,F00315,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L240319,6,7560,4737,Solventes,13,7,Bodega Sur
+2024-03-07,F00315,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240321,31,4839,2976,Químicos,69,38,Bodega Sur
+2024-03-07,F00315,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L240318,3,12735,8692,Químicos,11,8,Bodega Sur
+2024-03-07,F00316,Juan Pérez,MetalMaq Ltda,Solvente Multiuso,L240322,24,7337,4664,Solventes,75,51,Bodega Centro
+2024-03-07,F00316,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L240301,67,6077,3558,Químicos,215,148,Bodega Centro
+2024-03-09,F00317,Pedro Ruiz,Retail Pacífico,Desinfectante Amonio,L240303,25,5312,3068,Limpieza,62,37,Bodega Sur
+2024-03-12,F00318,María López,Química Valpo,Sellador Epóxico,L240324,2,12773,9270,Químicos,4,2,Bodega Sur
+2024-03-12,F00318,María López,Química Valpo,Sellador Epóxico,L240305,4,12773,9270,Químicos,8,4,Bodega Sur
+2024-03-12,F00318,María López,Química Valpo,Solvente Multiuso,L240303,15,7361,4950,Solventes,63,48,Bodega Sur
+2024-03-12,F00319,Pedro Ruiz,Química Valpo,Detergente Alcalino,L240306,2,3913,2316,Limpieza,8,6,Bodega Centro
+2024-03-12,F00319,Pedro Ruiz,Química Valpo,Detergente Alcalino,L240302,24,3913,2316,Limpieza,90,66,Bodega Centro
+2024-03-12,F00319,Pedro Ruiz,Química Valpo,Sellador Epóxico,L240304,3,12295,8605,Químicos,4,1,Bodega Centro
+2024-03-14,F00320,María López,Química Valpo,Solvente Multiuso,L240324,20,7387,4726,Solventes,34,14,Bodega Sur
+2024-03-14,F00320,María López,Química Valpo,Sellador Epóxico,L240301,8,13309,9227,Químicos,18,10,Bodega Sur
+2024-03-14,F00321,María López,Supermercados Nova,Detergente Enzimático,L240326,67,5976,3771,Limpieza,125,58,Bodega Centro
+2024-03-14,F00321,María López,Supermercados Nova,Removedor de Ceras,L240319,4,9151,5556,Solventes,8,4,Bodega Centro
+2024-03-14,F00321,María López,Supermercados Nova,Removedor de Ceras,L240319,3,9151,5556,Solventes,9,6,Bodega Centro
+2024-03-14,F00321,María López,Supermercados Nova,Desinfectante Amonio,L240322,3,5115,3371,Limpieza,12,9,Bodega Centro
+2024-03-14,F00321,María López,Supermercados Nova,Desinfectante Amonio,L240324,14,5115,3371,Limpieza,36,22,Bodega Centro
+2024-03-14,F00322,Juan Pérez,Supermercados Nova,Detergente Enzimático,L240319,31,6243,3747,Limpieza,110,79,Bodega Sur
+2024-03-16,F00323,Pedro Ruiz,Comercial FríoSur,Detergente Enzimático,L240319,28,6624,4153,Limpieza,40,12,Bodega Centro
+2024-03-16,F00323,Pedro Ruiz,Comercial FríoSur,Solvente Multiuso,L240324,24,7227,4932,Solventes,67,43,Bodega Centro
+2024-03-16,F00323,Pedro Ruiz,Comercial FríoSur,Removedor de Ceras,L240314,7,8920,5540,Solventes,21,14,Bodega Centro
+2024-03-16,F00324,María López,Servicios Mineros Z,Solvente Multiuso,L240303,9,8081,5060,Solventes,24,15,Bodega Sur
+2024-03-16,F00324,María López,Servicios Mineros Z,Desinfectante Amonio,L240304,13,5456,2956,Limpieza,23,10,Bodega Sur
+2024-03-16,F00324,María López,Servicios Mineros Z,Desengrasante Industrial,L240319,27,5090,3284,Químicos,116,89,Bodega Sur
+2024-03-16,F00324,María López,Servicios Mineros Z,Desengrasante Industrial,L240304,10,5090,3284,Químicos,36,26,Bodega Sur
+2024-03-18,F00325,Pedro Ruiz,Logística Andes,Solvente Multiuso,L240328,4,7096,4613,Solventes,7,3,Bodega Centro
+2024-03-18,F00325,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L240305,10,5239,3025,Limpieza,42,32,Bodega Centro
+2024-03-18,F00325,Pedro Ruiz,Logística Andes,Detergente Enzimático,L240304,4,6675,3899,Limpieza,12,8,Bodega Centro
+2024-03-18,F00325,Pedro Ruiz,Logística Andes,Detergente Enzimático,L240314,30,6675,3899,Limpieza,94,64,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Detergente Enzimático,L240320,18,5898,3614,Limpieza,62,44,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Detergente Enzimático,L240319,13,5898,3614,Limpieza,47,34,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Aditivo Antiespuma,L240303,11,6038,3686,Químicos,12,1,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Aditivo Antiespuma,L240309,39,6038,3686,Químicos,64,25,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Detergente Alcalino,L240319,2,4076,2498,Limpieza,7,5,Bodega Centro
+2024-03-18,F00326,Ana Torres,Logística Andes,Detergente Alcalino,L240318,15,4076,2498,Limpieza,23,8,Bodega Centro
+2024-03-19,F00327,Juan Pérez,Logística Andes,Removedor de Ceras,L240318,6,9092,5134,Solventes,9,3,Bodega Sur
+2024-03-19,F00327,Juan Pérez,Logística Andes,Detergente Enzimático,L240329,26,6546,4072,Limpieza,84,58,Bodega Sur
+2024-03-19,F00327,Juan Pérez,Logística Andes,Desengrasante Industrial,L240315,2,4992,3299,Químicos,4,2,Bodega Sur
+2024-03-19,F00327,Juan Pérez,Logística Andes,Desengrasante Industrial,L240313,50,4992,3299,Químicos,86,36,Bodega Sur
+2024-03-19,F00327,Juan Pérez,Logística Andes,Sellador Epóxico,L240327,6,13556,9268,Químicos,20,14,Bodega Sur
+2024-03-19,F00328,Pedro Ruiz,MetalMaq Ltda,Detergente Alcalino,L240324,14,4199,2295,Limpieza,57,43,Bodega Norte
+2024-03-19,F00328,Pedro Ruiz,MetalMaq Ltda,Removedor de Ceras,L240312,6,9611,5535,Solventes,17,11,Bodega Norte
+2024-03-19,F00329,María López,Retail Pacífico,Detergente Enzimático,L240315,342,6319,3823,Limpieza,1141,799,Bodega Norte
+2024-03-19,F00329,María López,Retail Pacífico,Aditivo Antiespuma,L240329,62,5533,3263,Químicos,136,74,Bodega Norte
+2024-03-19,F00329,María López,Retail Pacífico,Solvente Multiuso,L240310,20,7268,4896,Solventes,63,43,Bodega Norte
+2024-03-19,F00330,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L240316,3,9594,4956,Solventes,7,4,Bodega Sur
+2024-03-20,F00331,María López,Servicios Mineros Z,Desinfectante Amonio,L240317,16,5305,3191,Limpieza,44,28,Bodega Norte
+2024-03-20,F00331,María López,Servicios Mineros Z,Sellador Epóxico,L240328,1,12722,9375,Químicos,2,1,Bodega Norte
+2024-03-21,F00332,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L240320,39,5528,3528,Químicos,154,115,Bodega Norte
+2024-03-21,F00332,Juan Pérez,Supermercados Nova,Removedor de Ceras,L240325,1,9089,5336,Solventes,2,1,Bodega Norte
+2024-03-21,F00333,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240314,1,6508,3853,Limpieza,2,1,Bodega Centro
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Detergente Enzimático,L240311,63,6579,3834,Limpieza,127,64,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240316,9,4801,2958,Químicos,33,24,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240312,25,4801,2958,Químicos,86,61,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Removedor de Ceras,L240323,2,8964,5469,Solventes,9,7,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Removedor de Ceras,L240301,5,8964,5469,Solventes,16,11,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L240327,4,12376,9443,Químicos,13,9,Bodega Norte
+2024-03-22,F00334,Ana Torres,MetalMaq Ltda,Sellador Epóxico,L240313,3,12376,9443,Químicos,12,9,Bodega Norte
+2024-03-22,F00335,María López,Comercial FríoSur,Desinfectante Amonio,L240311,25,5139,3076,Limpieza,74,49,Bodega Centro
+2024-03-22,F00336,Juan Pérez,Industrias Polar,Desengrasante Industrial,L240321,50,5246,3158,Químicos,90,40,Bodega Centro
+2024-03-22,F00336,Juan Pérez,Industrias Polar,Desinfectante Amonio,L240327,35,5535,3082,Limpieza,104,69,Bodega Centro
+2024-03-22,F00336,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240307,23,5774,3352,Químicos,68,45,Bodega Centro
+2024-03-23,F00337,Ana Torres,Distribuidora Austral,Solvente Multiuso,L240321,19,7247,4925,Solventes,82,63,Bodega Centro
+2024-03-23,F00337,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240315,52,6660,3627,Limpieza,173,121,Bodega Centro
+2024-03-23,F00337,Ana Torres,Distribuidora Austral,Detergente Alcalino,L240311,13,3891,2376,Limpieza,15,2,Bodega Centro
+2024-03-23,F00338,Ana Torres,Química Valpo,Sellador Epóxico,L240306,3,13357,8456,Químicos,5,2,Bodega Norte
+2024-03-23,F00338,Ana Torres,Química Valpo,Sellador Epóxico,L240313,2,13357,8456,Químicos,6,4,Bodega Norte
+2024-03-23,F00338,Ana Torres,Química Valpo,Detergente Enzimático,L240320,58,6034,4020,Limpieza,85,27,Bodega Norte
+2024-03-23,F00338,Ana Torres,Química Valpo,Aditivo Antiespuma,L240304,39,5824,3285,Químicos,126,87,Bodega Norte
+2024-03-23,F00339,Juan Pérez,Logística Andes,Removedor de Ceras,L240310,3,8998,5045,Solventes,15,12,Bodega Centro
+2024-03-23,F00339,Juan Pérez,Logística Andes,Desengrasante Industrial,L240306,43,4588,2907,Químicos,267,224,Bodega Centro
+2024-03-25,F00340,Ana Torres,Logística Andes,Solvente Multiuso,L240318,14,7320,4428,Solventes,20,6,Bodega Norte
+2024-03-25,F00341,Juan Pérez,Industrias Polar,Desengrasante Industrial,L240328,43,5070,2877,Químicos,102,59,Bodega Norte
+2024-03-25,F00341,Juan Pérez,Industrias Polar,Detergente Enzimático,L240321,57,6285,4129,Limpieza,176,119,Bodega Norte
+2024-03-25,F00341,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240305,33,6125,3386,Químicos,133,100,Bodega Norte
+2024-03-25,F00342,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240318,56,6147,3302,Químicos,56,0,Bodega Centro
+2024-03-25,F00342,Juan Pérez,Industrias Polar,Solvente Multiuso,L240317,17,7087,5012,Solventes,48,31,Bodega Centro
+2024-03-25,F00342,Juan Pérez,Industrias Polar,Detergente Alcalino,L240319,12,3818,2249,Limpieza,35,23,Bodega Centro
+2024-03-25,F00342,Juan Pérez,Industrias Polar,Removedor de Ceras,L240302,8,8452,4976,Solventes,30,22,Bodega Centro
+2024-03-25,F00343,Juan Pérez,Logística Andes,Desengrasante Industrial,L240304,22,5055,3081,Químicos,72,50,Bodega Norte
+2024-03-25,F00343,Juan Pérez,Logística Andes,Desinfectante Amonio,L240301,5,5451,3230,Limpieza,12,7,Bodega Norte
+2024-03-25,F00343,Juan Pérez,Logística Andes,Desinfectante Amonio,L240302,12,5451,3230,Limpieza,41,29,Bodega Norte
+2024-03-25,F00344,María López,Industrias Polar,Aditivo Antiespuma,L240304,18,5901,3592,Químicos,73,55,Bodega Centro
+2024-03-25,F00344,María López,Industrias Polar,Desinfectante Amonio,L240315,19,4973,3241,Limpieza,53,34,Bodega Centro
+2024-03-26,F00345,Pedro Ruiz,Distribuidora Austral,Aditivo Antiespuma,L240313,34,6137,3622,Químicos,141,107,Bodega Centro
+2024-03-26,F00345,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240310,1,12927,9497,Químicos,3,2,Bodega Centro
+2024-03-26,F00345,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240326,9,8667,5573,Solventes,30,21,Bodega Centro
+2024-03-26,F00345,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240325,17,6438,3921,Limpieza,17,0,Bodega Centro
+2024-03-26,F00345,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240309,24,6438,3921,Limpieza,47,23,Bodega Centro
+2024-03-26,F00346,María López,Comercial FríoSur,Desengrasante Industrial,L240317,54,4798,3132,Químicos,224,170,Bodega Sur
+2024-03-26,F00346,María López,Comercial FríoSur,Desinfectante Amonio,L240326,4,5242,3284,Limpieza,6,2,Bodega Sur
+2024-03-26,F00346,María López,Comercial FríoSur,Desinfectante Amonio,L240318,12,5242,3284,Limpieza,51,39,Bodega Sur
+2024-03-26,F00346,María López,Comercial FríoSur,Detergente Enzimático,L240326,11,6188,3890,Limpieza,43,32,Bodega Sur
+2024-03-27,F00347,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L240328,71,6428,3834,Limpieza,285,214,Bodega Centro
+2024-03-27,F00347,Juan Pérez,MetalMaq Ltda,Desengrasante Industrial,L240303,20,4779,3169,Químicos,44,24,Bodega Centro
+2024-03-27,F00347,Juan Pérez,MetalMaq Ltda,Desengrasante Industrial,L240319,3,4779,3169,Químicos,11,8,Bodega Centro
+2024-03-27,F00347,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L240308,5,8528,5161,Solventes,12,7,Bodega Centro
+2024-03-27,F00347,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L240329,47,6147,3479,Químicos,212,165,Bodega Centro
+2024-03-27,F00348,María López,Servicios Mineros Z,Removedor de Ceras,L240317,5,8588,5199,Solventes,8,3,Bodega Sur
+2024-03-27,F00348,María López,Servicios Mineros Z,Detergente Enzimático,L240325,51,5836,4100,Limpieza,115,64,Bodega Sur
+2024-03-27,F00348,María López,Servicios Mineros Z,Desinfectante Amonio,L240316,25,5524,3282,Limpieza,68,43,Bodega Sur
+2024-03-27,F00348,María López,Servicios Mineros Z,Sellador Epóxico,L240327,5,13004,8651,Químicos,26,21,Bodega Sur
+2024-03-27,F00348,María López,Servicios Mineros Z,Detergente Alcalino,L240328,19,3900,2322,Limpieza,57,38,Bodega Sur
+2024-03-28,F00349,Juan Pérez,Química Valpo,Sellador Epóxico,L240327,3,13185,9059,Químicos,10,7,Bodega Sur
+2024-03-28,F00350,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240310,25,7389,4565,Solventes,106,81,Bodega Sur
+2024-03-28,F00350,Ana Torres,Comercial FríoSur,Detergente Enzimático,L240309,18,5984,4081,Limpieza,51,33,Bodega Sur
+2024-03-28,F00350,Ana Torres,Comercial FríoSur,Removedor de Ceras,L240307,4,9184,5590,Solventes,17,13,Bodega Sur
+2024-03-28,F00350,Ana Torres,Comercial FríoSur,Removedor de Ceras,L240308,3,9184,5590,Solventes,8,5,Bodega Sur
+2024-03-28,F00350,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240310,25,3928,2417,Limpieza,91,66,Bodega Sur
+2024-03-28,F00351,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240328,15,3749,2493,Limpieza,32,17,Bodega Centro
+2024-03-28,F00351,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240316,7,9357,5235,Solventes,16,9,Bodega Centro
+2024-03-29,F00352,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L240324,3,13609,9445,Químicos,12,9,Bodega Centro
+2024-03-29,F00352,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L240329,5,8702,5299,Solventes,6,1,Bodega Centro
+2024-03-30,F00353,Juan Pérez,Industrias Polar,Solvente Multiuso,L240317,5,7293,4413,Solventes,18,13,Bodega Sur
+2024-03-30,F00353,Juan Pérez,Industrias Polar,Solvente Multiuso,L240323,24,7293,4413,Solventes,49,25,Bodega Sur
+2024-03-30,F00353,Juan Pérez,Industrias Polar,Desinfectante Amonio,L240324,24,5149,3009,Limpieza,79,55,Bodega Sur
+2024-03-30,F00353,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240327,48,5495,3701,Químicos,222,174,Bodega Sur
+2024-03-30,F00354,María López,Industrias Polar,Detergente Alcalino,L240315,15,3918,2511,Limpieza,58,43,Bodega Norte
+2024-03-30,F00354,María López,Industrias Polar,Sellador Epóxico,L240303,1,12134,9218,Químicos,4,3,Bodega Norte
+2024-03-30,F00354,María López,Industrias Polar,Sellador Epóxico,L240320,5,12134,9218,Químicos,12,7,Bodega Norte
+2024-03-30,F00354,María López,Industrias Polar,Aditivo Antiespuma,L240317,25,6015,3709,Químicos,90,65,Bodega Norte
+2024-03-30,F00354,María López,Industrias Polar,Removedor de Ceras,L240321,10,9004,4965,Solventes,29,19,Bodega Norte
+2024-03-30,F00354,María López,Industrias Polar,Removedor de Ceras,L240322,1,9004,4965,Solventes,4,3,Bodega Norte
+2024-04-01,F00355,María López,Comercial FríoSur,Solvente Multiuso,L240411,2,7216,4647,Solventes,14,12,Bodega Centro
+2024-04-01,F00355,María López,Comercial FríoSur,Solvente Multiuso,L240404,16,7216,4647,Solventes,49,33,Bodega Centro
+2024-04-01,F00355,María López,Comercial FríoSur,Aditivo Antiespuma,L240414,20,5553,3231,Químicos,84,64,Bodega Centro
+2024-04-01,F00355,María López,Comercial FríoSur,Desinfectante Amonio,L240413,18,5527,3001,Limpieza,18,0,Bodega Centro
+2024-04-01,F00355,María López,Comercial FríoSur,Sellador Epóxico,L240420,2,11933,8667,Químicos,5,3,Bodega Centro
+2024-04-01,F00356,Ana Torres,Química Valpo,Desengrasante Industrial,L240402,53,5184,2946,Químicos,228,175,Bodega Centro
+2024-04-01,F00356,Ana Torres,Química Valpo,Solvente Multiuso,L240405,26,7740,4425,Solventes,94,68,Bodega Centro
+2024-04-01,F00356,Ana Torres,Química Valpo,Detergente Enzimático,L240407,24,6466,3703,Limpieza,83,59,Bodega Centro
+2024-04-01,F00356,Ana Torres,Química Valpo,Desinfectante Amonio,L240401,27,5429,3011,Limpieza,91,64,Bodega Centro
+2024-04-01,F00357,Pedro Ruiz,MetalMaq Ltda,Aditivo Antiespuma,L240421,24,6072,3312,Químicos,110,86,Bodega Centro
+2024-04-01,F00357,Pedro Ruiz,MetalMaq Ltda,Detergente Enzimático,L240427,22,5904,4041,Limpieza,36,14,Bodega Centro
+2024-04-01,F00357,Pedro Ruiz,MetalMaq Ltda,Sellador Epóxico,L240407,4,12635,9095,Químicos,9,5,Bodega Centro
+2024-04-01,F00357,Pedro Ruiz,MetalMaq Ltda,Desengrasante Industrial,L240421,37,4968,2899,Químicos,131,94,Bodega Centro
+2024-04-02,F00358,Juan Pérez,Industrias Polar,Desinfectante Amonio,L240420,21,5487,2973,Limpieza,66,45,Bodega Sur
+2024-04-02,F00358,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240420,11,5462,3530,Químicos,47,36,Bodega Sur
+2024-04-02,F00358,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240428,9,5462,3530,Químicos,23,14,Bodega Sur
+2024-04-02,F00358,Juan Pérez,Industrias Polar,Removedor de Ceras,L240419,1,9265,5228,Solventes,1,0,Bodega Sur
+2024-04-03,F00359,María López,Química Valpo,Detergente Enzimático,L240409,21,6109,3924,Limpieza,75,54,Bodega Norte
+2024-04-03,F00359,María López,Química Valpo,Detergente Alcalino,L240401,4,4221,2408,Limpieza,11,7,Bodega Norte
+2024-04-03,F00359,María López,Química Valpo,Desinfectante Amonio,L240401,17,5074,3300,Limpieza,57,40,Bodega Norte
+2024-04-03,F00359,María López,Química Valpo,Sellador Epóxico,L240410,11,13150,8409,Químicos,20,9,Bodega Norte
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L240419,5,4088,2412,Limpieza,14,9,Bodega Centro
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L240401,16,4088,2412,Limpieza,48,32,Bodega Centro
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L240412,43,5994,3442,Químicos,148,105,Bodega Centro
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240425,81,4762,3215,Químicos,275,194,Bodega Centro
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Removedor de Ceras,L240406,7,9603,4894,Solventes,13,6,Bodega Centro
+2024-04-04,F00360,Pedro Ruiz,Supermercados Nova,Desinfectante Amonio,L240401,26,5632,3226,Limpieza,93,67,Bodega Centro
+2024-04-04,F00361,Juan Pérez,Servicios Mineros Z,Desinfectante Amonio,L240418,15,5471,3075,Limpieza,52,37,Bodega Sur
+2024-04-04,F00361,Juan Pérez,Servicios Mineros Z,Desengrasante Industrial,L240407,18,4920,3282,Químicos,70,52,Bodega Sur
+2024-04-04,F00361,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240422,27,5409,3545,Químicos,99,72,Bodega Sur
+2024-04-05,F00362,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L240408,36,5231,3183,Químicos,188,152,Bodega Sur
+2024-04-05,F00362,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240429,12,12217,8275,Químicos,49,37,Bodega Sur
+2024-04-05,F00362,Ana Torres,Servicios Mineros Z,Detergente Alcalino,L240429,19,4140,2413,Limpieza,62,43,Bodega Sur
+2024-04-05,F00362,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L240414,27,5928,3996,Limpieza,27,0,Bodega Sur
+2024-04-05,F00363,María López,Alimentos Andinos,Desinfectante Amonio,L240406,36,5640,3157,Limpieza,107,71,Bodega Norte
+2024-04-05,F00363,María López,Alimentos Andinos,Aditivo Antiespuma,L240424,31,6119,3498,Químicos,96,65,Bodega Norte
+2024-04-05,F00364,Ana Torres,Distribuidora Austral,Removedor de Ceras,L240418,20,8838,4952,Solventes,55,35,Bodega Centro
+2024-04-05,F00364,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L240415,44,4889,2885,Químicos,99,55,Bodega Centro
+2024-04-05,F00364,Ana Torres,Distribuidora Austral,Detergente Alcalino,L240411,18,4019,2202,Limpieza,67,49,Bodega Centro
+2024-04-06,F00365,María López,Industrias Polar,Desengrasante Industrial,L240408,49,5023,2881,Químicos,142,93,Bodega Centro
+2024-04-06,F00365,María López,Industrias Polar,Detergente Enzimático,L240404,51,6460,4144,Limpieza,143,92,Bodega Centro
+2024-04-06,F00366,María López,Comercial FríoSur,Solvente Multiuso,L240411,22,7990,4721,Solventes,68,46,Bodega Sur
+2024-04-06,F00366,María López,Comercial FríoSur,Detergente Alcalino,L240401,33,3935,2370,Limpieza,109,76,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240412,41,4792,3277,Químicos,68,27,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240404,19,4792,3277,Químicos,95,76,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Detergente Alcalino,L240427,28,3954,2279,Limpieza,68,40,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L240403,22,5899,3534,Químicos,79,57,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Aditivo Antiespuma,L240402,1,5899,3534,Químicos,2,1,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Desinfectante Amonio,L240420,10,5546,3258,Limpieza,32,22,Bodega Sur
+2024-04-06,F00367,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L240421,1,12337,8431,Químicos,3,2,Bodega Sur
+2024-04-10,F00368,Pedro Ruiz,Alimentos Andinos,Desengrasante Industrial,L240423,12,4679,2901,Químicos,33,21,Bodega Centro
+2024-04-10,F00369,María López,Supermercados Nova,Desinfectante Amonio,L240414,26,4968,3108,Limpieza,79,53,Bodega Norte
+2024-04-10,F00369,María López,Supermercados Nova,Sellador Epóxico,L240401,1,12241,8338,Químicos,2,1,Bodega Norte
+2024-04-10,F00370,Ana Torres,Industrias Polar,Detergente Alcalino,L240415,23,3779,2310,Limpieza,61,38,Bodega Norte
+2024-04-10,F00370,Ana Torres,Industrias Polar,Aditivo Antiespuma,L240402,39,5550,3504,Químicos,124,85,Bodega Norte
+2024-04-10,F00370,Ana Torres,Industrias Polar,Detergente Enzimático,L240423,41,6458,3933,Limpieza,158,117,Bodega Norte
+2024-04-10,F00370,Ana Torres,Industrias Polar,Desinfectante Amonio,L240407,13,5504,3137,Limpieza,40,27,Bodega Norte
+2024-04-10,F00371,Pedro Ruiz,Industrias Polar,Detergente Alcalino,L240405,21,4053,2220,Limpieza,60,39,Bodega Centro
+2024-04-10,F00371,Pedro Ruiz,Industrias Polar,Detergente Enzimático,L240420,32,6312,3655,Limpieza,67,35,Bodega Centro
+2024-04-11,F00372,Ana Torres,Química Valpo,Detergente Alcalino,L240408,3,4054,2239,Limpieza,13,10,Bodega Centro
+2024-04-11,F00372,Ana Torres,Química Valpo,Detergente Alcalino,L240404,20,4054,2239,Limpieza,23,3,Bodega Centro
+2024-04-11,F00372,Ana Torres,Química Valpo,Sellador Epóxico,L240407,7,13535,9381,Químicos,15,8,Bodega Centro
+2024-04-11,F00372,Ana Torres,Química Valpo,Desengrasante Industrial,L240405,50,4992,2911,Químicos,141,91,Bodega Centro
+2024-04-11,F00373,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240426,22,3719,2457,Limpieza,91,69,Bodega Sur
+2024-04-11,F00373,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240412,2,3719,2457,Limpieza,9,7,Bodega Sur
+2024-04-12,F00374,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240418,26,6381,4031,Limpieza,105,79,Bodega Sur
+2024-04-12,F00374,Ana Torres,Distribuidora Austral,Detergente Enzimático,L240426,8,6381,4031,Limpieza,34,26,Bodega Sur
+2024-04-12,F00374,Ana Torres,Distribuidora Austral,Detergente Alcalino,L240425,18,4030,2216,Limpieza,79,61,Bodega Sur
+2024-04-12,F00374,Ana Torres,Distribuidora Austral,Solvente Multiuso,L240412,21,7801,4494,Solventes,67,46,Bodega Sur
+2024-04-12,F00374,Ana Torres,Distribuidora Austral,Removedor de Ceras,L240406,8,9428,5297,Solventes,27,19,Bodega Sur
+2024-04-12,F00375,María López,Química Valpo,Aditivo Antiespuma,L240408,36,5475,3680,Químicos,63,27,Bodega Norte
+2024-04-12,F00375,María López,Química Valpo,Aditivo Antiespuma,L240417,2,5475,3680,Químicos,6,4,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Sellador Epóxico,L240401,1,13091,8982,Químicos,2,1,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Sellador Epóxico,L240412,3,13091,8982,Químicos,7,4,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L240424,1,4913,3175,Químicos,2,1,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L240419,39,4913,3175,Químicos,39,0,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Desinfectante Amonio,L240421,17,4968,3309,Limpieza,89,72,Bodega Norte
+2024-04-12,F00376,Pedro Ruiz,Logística Andes,Detergente Alcalino,L240422,21,3882,2295,Limpieza,56,35,Bodega Norte
+2024-04-13,F00377,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240408,29,7522,4532,Solventes,121,92,Bodega Centro
+2024-04-13,F00377,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240427,8,5358,3047,Limpieza,19,11,Bodega Centro
+2024-04-13,F00377,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240422,7,5358,3047,Limpieza,29,22,Bodega Centro
+2024-04-15,F00378,María López,Supermercados Nova,Sellador Epóxico,L240401,11,12532,9062,Químicos,43,32,Bodega Norte
+2024-04-15,F00378,María López,Supermercados Nova,Desengrasante Industrial,L240420,7,4573,3047,Químicos,27,20,Bodega Norte
+2024-04-15,F00378,María López,Supermercados Nova,Desengrasante Industrial,L240405,43,4573,3047,Químicos,141,98,Bodega Norte
+2024-04-16,F00379,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240414,2,12815,8695,Químicos,2,0,Bodega Norte
+2024-04-16,F00379,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240407,1,12815,8695,Químicos,3,2,Bodega Norte
+2024-04-16,F00379,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L240420,19,7447,4857,Solventes,73,54,Bodega Norte
+2024-04-16,F00379,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L240412,27,5217,3090,Químicos,110,83,Bodega Norte
+2024-04-16,F00379,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L240425,5,5217,3090,Químicos,22,17,Bodega Norte
+2024-04-20,F00380,Ana Torres,Supermercados Nova,Removedor de Ceras,L240405,1,9649,4869,Solventes,3,2,Bodega Norte
+2024-04-20,F00380,Ana Torres,Supermercados Nova,Desinfectante Amonio,L240426,21,5668,3334,Limpieza,34,13,Bodega Norte
+2024-04-20,F00380,Ana Torres,Supermercados Nova,Detergente Enzimático,L240423,34,6242,3627,Limpieza,143,109,Bodega Norte
+2024-04-22,F00381,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240420,5,9475,5343,Solventes,16,11,Bodega Sur
+2024-04-22,F00381,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240406,47,6626,3887,Limpieza,136,89,Bodega Sur
+2024-04-22,F00381,Pedro Ruiz,Distribuidora Austral,Desengrasante Industrial,L240416,21,4802,3263,Químicos,60,39,Bodega Sur
+2024-04-22,F00382,Juan Pérez,MetalMaq Ltda,Desengrasante Industrial,L240427,50,4640,2913,Químicos,221,171,Bodega Norte
+2024-04-22,F00382,Juan Pérez,MetalMaq Ltda,Desinfectante Amonio,L240414,10,5259,3406,Limpieza,19,9,Bodega Norte
+2024-04-24,F00383,María López,Química Valpo,Detergente Enzimático,L240411,62,6233,4059,Limpieza,114,52,Bodega Sur
+2024-04-24,F00383,María López,Química Valpo,Sellador Epóxico,L240418,9,12280,8685,Químicos,16,7,Bodega Sur
+2024-04-24,F00383,María López,Química Valpo,Removedor de Ceras,L240424,14,9268,4868,Solventes,62,48,Bodega Sur
+2024-04-24,F00383,María López,Química Valpo,Detergente Alcalino,L240401,1,3759,2277,Limpieza,2,1,Bodega Sur
+2024-04-24,F00383,María López,Química Valpo,Detergente Alcalino,L240416,1,3759,2277,Limpieza,2,1,Bodega Sur
+2024-04-24,F00384,María López,Distribuidora Austral,Desinfectante Amonio,L240411,7,5242,3204,Limpieza,19,12,Bodega Norte
+2024-04-24,F00384,María López,Distribuidora Austral,Desinfectante Amonio,L240410,25,5242,3204,Limpieza,93,68,Bodega Norte
+2024-04-24,F00384,María López,Distribuidora Austral,Detergente Alcalino,L240412,9,3823,2340,Limpieza,19,10,Bodega Norte
+2024-04-24,F00384,María López,Distribuidora Austral,Detergente Alcalino,L240401,1,3823,2340,Limpieza,1,0,Bodega Norte
+2024-04-25,F00385,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240429,5,7706,5032,Solventes,17,12,Bodega Norte
+2024-04-25,F00385,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240411,22,7706,5032,Solventes,89,67,Bodega Norte
+2024-04-25,F00385,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240401,18,5447,2989,Limpieza,70,52,Bodega Norte
+2024-04-26,F00386,María López,Comercial FríoSur,Sellador Epóxico,L240416,4,13645,8562,Químicos,18,14,Bodega Norte
+2024-04-26,F00386,María López,Comercial FríoSur,Solvente Multiuso,L240402,28,7155,4608,Solventes,81,53,Bodega Norte
+2024-04-26,F00387,María López,Servicios Mineros Z,Sellador Epóxico,L240407,4,13147,9020,Químicos,14,10,Bodega Norte
+2024-04-26,F00387,María López,Servicios Mineros Z,Detergente Enzimático,L240413,14,6072,3708,Limpieza,47,33,Bodega Norte
+2024-04-26,F00387,María López,Servicios Mineros Z,Solvente Multiuso,L240401,19,7580,4904,Solventes,63,44,Bodega Norte
+2024-04-26,F00387,María López,Servicios Mineros Z,Desinfectante Amonio,L240423,10,5528,3403,Limpieza,30,20,Bodega Norte
+2024-04-26,F00387,María López,Servicios Mineros Z,Desengrasante Industrial,L240418,43,4935,2966,Químicos,137,94,Bodega Norte
+2024-04-26,F00388,Pedro Ruiz,Distribuidora Austral,Desinfectante Amonio,L240429,6,5215,2959,Limpieza,23,17,Bodega Sur
+2024-04-26,F00388,Pedro Ruiz,Distribuidora Austral,Desinfectante Amonio,L240419,6,5215,2959,Limpieza,8,2,Bodega Sur
+2024-04-26,F00388,Pedro Ruiz,Distribuidora Austral,Solvente Multiuso,L240424,7,7180,4445,Solventes,29,22,Bodega Sur
+2024-04-26,F00388,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240422,41,4277,2298,Limpieza,80,39,Bodega Sur
+2024-04-26,F00389,María López,Distribuidora Austral,Aditivo Antiespuma,L240424,62,5648,3264,Químicos,211,149,Bodega Sur
+2024-04-27,F00390,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L240423,11,5170,3175,Limpieza,59,48,Bodega Sur
+2024-04-27,F00390,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240408,31,7723,4942,Solventes,62,31,Bodega Sur
+2024-04-27,F00391,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L240407,15,7507,5050,Solventes,33,18,Bodega Norte
+2024-04-27,F00391,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L240426,6,6225,4096,Limpieza,13,7,Bodega Norte
+2024-04-27,F00391,Juan Pérez,Comercial FríoSur,Detergente Enzimático,L240422,14,6225,4096,Limpieza,50,36,Bodega Norte
+2024-04-27,F00391,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240422,27,5608,2967,Limpieza,105,78,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Detergente Enzimático,L240415,47,6165,3655,Limpieza,117,70,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240419,1,8878,4923,Solventes,2,1,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240409,2,8878,4923,Solventes,2,0,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L240410,2,5711,3660,Químicos,5,3,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L240423,2,5711,3660,Químicos,5,3,Bodega Norte
+2024-04-27,F00392,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L240407,19,4256,2491,Limpieza,64,45,Bodega Norte
+2024-05-01,F00393,María López,Alimentos Andinos,Desengrasante Industrial,L240529,35,4993,3131,Químicos,76,41,Bodega Centro
+2024-05-01,F00393,María López,Alimentos Andinos,Detergente Enzimático,L240511,45,6297,3940,Limpieza,109,64,Bodega Centro
+2024-05-02,F00394,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L240513,27,5063,2860,Químicos,53,26,Bodega Norte
+2024-05-02,F00394,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240515,12,6694,3980,Limpieza,43,31,Bodega Norte
+2024-05-02,F00395,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240519,6,9287,5470,Solventes,19,13,Bodega Norte
+2024-05-02,F00395,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L240517,20,4272,2383,Limpieza,54,34,Bodega Norte
+2024-05-02,F00396,María López,Supermercados Nova,Detergente Alcalino,L240526,12,4248,2350,Limpieza,29,17,Bodega Centro
+2024-05-02,F00396,María López,Supermercados Nova,Solvente Multiuso,L240506,266,7968,4751,Solventes,677,411,Bodega Centro
+2024-05-03,F00397,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240520,35,6354,3889,Limpieza,39,4,Bodega Centro
+2024-05-03,F00397,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L240517,13,7304,5034,Solventes,42,29,Bodega Centro
+2024-05-03,F00397,Pedro Ruiz,Supermercados Nova,Solvente Multiuso,L240513,4,7304,5034,Solventes,10,6,Bodega Centro
+2024-05-03,F00397,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L240522,13,12941,8530,Químicos,33,20,Bodega Centro
+2024-05-03,F00397,Pedro Ruiz,Supermercados Nova,Desengrasante Industrial,L240523,39,5160,3073,Químicos,167,128,Bodega Centro
+2024-05-03,F00398,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240512,19,4034,2512,Limpieza,35,16,Bodega Centro
+2024-05-03,F00398,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240510,1,8687,5111,Solventes,3,2,Bodega Centro
+2024-05-03,F00398,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240508,3,8687,5111,Solventes,11,8,Bodega Centro
+2024-05-03,F00398,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240526,2,12211,9031,Químicos,5,3,Bodega Centro
+2024-05-03,F00398,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240504,3,12211,9031,Químicos,8,5,Bodega Centro
+2024-05-04,F00399,Juan Pérez,Logística Andes,Solvente Multiuso,L240519,25,7138,4383,Solventes,34,9,Bodega Centro
+2024-05-04,F00399,Juan Pérez,Logística Andes,Detergente Alcalino,L240511,8,3893,2433,Limpieza,8,0,Bodega Centro
+2024-05-04,F00399,Juan Pérez,Logística Andes,Detergente Alcalino,L240504,6,3893,2433,Limpieza,11,5,Bodega Centro
+2024-05-06,F00400,María López,Distribuidora Austral,Desengrasante Industrial,L240527,35,4985,2887,Químicos,60,25,Bodega Norte
+2024-05-06,F00400,María López,Distribuidora Austral,Removedor de Ceras,L240507,1,9272,5332,Solventes,3,2,Bodega Norte
+2024-05-06,F00400,María López,Distribuidora Austral,Detergente Alcalino,L240506,19,4128,2210,Limpieza,63,44,Bodega Norte
+2024-05-06,F00401,María López,Logística Andes,Solvente Multiuso,L240525,5,7369,4465,Solventes,14,9,Bodega Sur
+2024-05-06,F00401,María López,Logística Andes,Solvente Multiuso,L240519,19,7369,4465,Solventes,54,35,Bodega Sur
+2024-05-06,F00401,María López,Logística Andes,Desengrasante Industrial,L240512,33,4620,3217,Químicos,105,72,Bodega Sur
+2024-05-07,F00402,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L240509,18,4624,3294,Químicos,60,42,Bodega Sur
+2024-05-07,F00402,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L240513,33,4624,3294,Químicos,37,4,Bodega Sur
+2024-05-07,F00402,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L240504,10,5761,3305,Químicos,30,20,Bodega Sur
+2024-05-07,F00402,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L240501,32,5761,3305,Químicos,82,50,Bodega Sur
+2024-05-07,F00403,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L240516,23,5046,3154,Químicos,69,46,Bodega Norte
+2024-05-09,F00404,Ana Torres,Retail Pacífico,Aditivo Antiespuma,L240505,33,5364,3513,Químicos,196,163,Bodega Sur
+2024-05-09,F00404,Ana Torres,Retail Pacífico,Desinfectante Amonio,L240510,9,5115,3329,Limpieza,33,24,Bodega Sur
+2024-05-09,F00404,Ana Torres,Retail Pacífico,Desinfectante Amonio,L240525,5,5115,3329,Limpieza,14,9,Bodega Sur
+2024-05-09,F00404,Ana Torres,Retail Pacífico,Detergente Alcalino,L240528,17,3762,2500,Limpieza,55,38,Bodega Sur
+2024-05-09,F00404,Ana Torres,Retail Pacífico,Desengrasante Industrial,L240515,53,4941,2938,Químicos,172,119,Bodega Sur
+2024-05-09,F00405,María López,Química Valpo,Sellador Epóxico,L240528,5,12562,9496,Químicos,15,10,Bodega Sur
+2024-05-09,F00406,Ana Torres,Comercial FríoSur,Desengrasante Industrial,L240526,17,4681,3180,Químicos,47,30,Bodega Centro
+2024-05-09,F00406,Ana Torres,Comercial FríoSur,Desengrasante Industrial,L240522,22,4681,3180,Químicos,31,9,Bodega Centro
+2024-05-09,F00406,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240507,22,5456,3312,Limpieza,43,21,Bodega Centro
+2024-05-09,F00406,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240510,10,5456,3312,Limpieza,27,17,Bodega Centro
+2024-05-10,F00407,María López,Industrias Polar,Detergente Enzimático,L240505,36,6250,3854,Limpieza,66,30,Bodega Sur
+2024-05-10,F00407,María López,Industrias Polar,Removedor de Ceras,L240513,1,8575,5360,Solventes,3,2,Bodega Sur
+2024-05-10,F00407,María López,Industrias Polar,Removedor de Ceras,L240524,1,8575,5360,Solventes,2,1,Bodega Sur
+2024-05-10,F00407,María López,Industrias Polar,Solvente Multiuso,L240503,6,7873,4552,Solventes,10,4,Bodega Sur
+2024-05-10,F00407,María López,Industrias Polar,Solvente Multiuso,L240508,6,7873,4552,Solventes,21,15,Bodega Sur
+2024-05-10,F00407,María López,Industrias Polar,Desinfectante Amonio,L240529,13,5664,3193,Limpieza,66,53,Bodega Sur
+2024-05-10,F00408,Ana Torres,Logística Andes,Removedor de Ceras,L240512,8,8743,4953,Solventes,37,29,Bodega Centro
+2024-05-10,F00408,Ana Torres,Logística Andes,Detergente Alcalino,L240520,8,3967,2249,Limpieza,15,7,Bodega Centro
+2024-05-10,F00408,Ana Torres,Logística Andes,Sellador Epóxico,L240502,6,12162,8552,Químicos,33,27,Bodega Centro
+2024-05-13,F00409,María López,Distribuidora Austral,Removedor de Ceras,L240513,3,9433,5154,Solventes,8,5,Bodega Centro
+2024-05-13,F00409,María López,Distribuidora Austral,Removedor de Ceras,L240524,1,9433,5154,Solventes,1,0,Bodega Centro
+2024-05-13,F00410,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L240525,5,12779,8749,Químicos,8,3,Bodega Centro
+2024-05-13,F00410,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L240524,67,5237,2984,Químicos,221,154,Bodega Centro
+2024-05-13,F00411,María López,Química Valpo,Aditivo Antiespuma,L240514,64,5843,3566,Químicos,166,102,Bodega Centro
+2024-05-14,F00412,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L240525,5,12477,8291,Químicos,9,4,Bodega Sur
+2024-05-14,F00412,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L240527,9,5195,2867,Químicos,20,11,Bodega Sur
+2024-05-14,F00412,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240509,14,4111,2214,Limpieza,18,4,Bodega Sur
+2024-05-14,F00412,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240524,27,5893,3677,Limpieza,96,69,Bodega Sur
+2024-05-15,F00413,Ana Torres,Industrias Polar,Desinfectante Amonio,L240518,5,5233,3046,Limpieza,8,3,Bodega Centro
+2024-05-15,F00413,Ana Torres,Industrias Polar,Desinfectante Amonio,L240507,15,5233,3046,Limpieza,54,39,Bodega Centro
+2024-05-15,F00413,Ana Torres,Industrias Polar,Detergente Enzimático,L240506,36,5811,3773,Limpieza,131,95,Bodega Centro
+2024-05-15,F00414,Juan Pérez,Retail Pacífico,Detergente Enzimático,L240523,24,5847,3861,Limpieza,70,46,Bodega Sur
+2024-05-15,F00414,Juan Pérez,Retail Pacífico,Detergente Alcalino,L240510,20,3807,2194,Limpieza,51,31,Bodega Sur
+2024-05-15,F00414,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240514,19,5356,3154,Limpieza,72,53,Bodega Sur
+2024-05-17,F00415,María López,Servicios Mineros Z,Desinfectante Amonio,L240514,2,5307,3341,Limpieza,9,7,Bodega Centro
+2024-05-17,F00415,María López,Servicios Mineros Z,Desinfectante Amonio,L240518,7,5307,3341,Limpieza,25,18,Bodega Centro
+2024-05-17,F00415,María López,Servicios Mineros Z,Detergente Alcalino,L240501,21,4193,2319,Limpieza,60,39,Bodega Centro
+2024-05-17,F00415,María López,Servicios Mineros Z,Aditivo Antiespuma,L240502,54,5409,3278,Químicos,252,198,Bodega Centro
+2024-05-17,F00416,Juan Pérez,Industrias Polar,Sellador Epóxico,L240505,5,11984,8818,Químicos,13,8,Bodega Centro
+2024-05-17,F00416,Juan Pérez,Industrias Polar,Detergente Alcalino,L240505,15,3851,2255,Limpieza,24,9,Bodega Centro
+2024-05-17,F00417,Juan Pérez,Distribuidora Austral,Solvente Multiuso,L240518,32,7748,4609,Solventes,32,0,Bodega Sur
+2024-05-18,F00418,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L240520,8,5206,3095,Químicos,17,9,Bodega Centro
+2024-05-18,F00418,Pedro Ruiz,Retail Pacífico,Desengrasante Industrial,L240513,6,5206,3095,Químicos,21,15,Bodega Centro
+2024-05-18,F00419,Pedro Ruiz,Distribuidora Austral,Desinfectante Amonio,L240515,6,5493,3200,Limpieza,9,3,Bodega Sur
+2024-05-18,F00419,Pedro Ruiz,Distribuidora Austral,Sellador Epóxico,L240510,11,12349,8692,Químicos,14,3,Bodega Sur
+2024-05-18,F00420,Ana Torres,Industrias Polar,Desinfectante Amonio,L240522,25,4972,2990,Limpieza,64,39,Bodega Norte
+2024-05-18,F00420,Ana Torres,Industrias Polar,Desinfectante Amonio,L240520,4,4972,2990,Limpieza,15,11,Bodega Norte
+2024-05-18,F00420,Ana Torres,Industrias Polar,Desengrasante Industrial,L240509,5,4920,2942,Químicos,16,11,Bodega Norte
+2024-05-18,F00420,Ana Torres,Industrias Polar,Desengrasante Industrial,L240501,34,4920,2942,Químicos,94,60,Bodega Norte
+2024-05-20,F00421,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L240509,25,7731,4749,Solventes,108,83,Bodega Sur
+2024-05-20,F00421,Pedro Ruiz,MetalMaq Ltda,Sellador Epóxico,L240502,2,12769,9237,Químicos,3,1,Bodega Sur
+2024-05-20,F00421,Pedro Ruiz,MetalMaq Ltda,Aditivo Antiespuma,L240513,75,6140,3238,Químicos,113,38,Bodega Sur
+2024-05-20,F00421,Pedro Ruiz,MetalMaq Ltda,Detergente Alcalino,L240510,24,4128,2217,Limpieza,77,53,Bodega Sur
+2024-05-20,F00421,Pedro Ruiz,MetalMaq Ltda,Detergente Alcalino,L240527,18,4128,2217,Limpieza,70,52,Bodega Sur
+2024-05-24,F00422,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L240519,65,4801,2981,Químicos,182,117,Bodega Centro
+2024-05-24,F00422,Pedro Ruiz,Industrias Polar,Solvente Multiuso,L240511,28,7214,4628,Solventes,31,3,Bodega Centro
+2024-05-24,F00422,Pedro Ruiz,Industrias Polar,Sellador Epóxico,L240507,10,12445,8470,Químicos,36,26,Bodega Centro
+2024-05-24,F00423,Juan Pérez,Alimentos Andinos,Solvente Multiuso,L240517,19,8068,4441,Solventes,60,41,Bodega Norte
+2024-05-24,F00423,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L240523,10,8772,5607,Solventes,29,19,Bodega Norte
+2024-05-27,F00424,Pedro Ruiz,Química Valpo,Removedor de Ceras,L240522,7,9544,5321,Solventes,27,20,Bodega Norte
+2024-05-27,F00424,Pedro Ruiz,Química Valpo,Sellador Epóxico,L240521,6,13110,8698,Químicos,21,15,Bodega Norte
+2024-05-27,F00424,Pedro Ruiz,Química Valpo,Desinfectante Amonio,L240524,7,4958,3266,Limpieza,15,8,Bodega Norte
+2024-05-27,F00425,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240503,9,8011,4704,Solventes,34,25,Bodega Centro
+2024-05-27,F00425,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240519,10,8011,4704,Solventes,28,18,Bodega Centro
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Removedor de Ceras,L240501,8,9344,5271,Solventes,34,26,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L240516,26,6124,3564,Químicos,90,64,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L240521,11,6124,3564,Químicos,29,18,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L240520,5,4668,3135,Químicos,17,12,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Desengrasante Industrial,L240526,10,4668,3135,Químicos,31,21,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L240529,4,4253,2463,Limpieza,14,10,Bodega Norte
+2024-05-27,F00426,Pedro Ruiz,Servicios Mineros Z,Desinfectante Amonio,L240524,16,5220,3119,Limpieza,80,64,Bodega Norte
+2024-05-28,F00427,Ana Torres,Industrias Polar,Removedor de Ceras,L240509,11,8527,4970,Solventes,39,28,Bodega Sur
+2024-05-28,F00427,Ana Torres,Industrias Polar,Desinfectante Amonio,L240510,1,5023,3170,Limpieza,4,3,Bodega Sur
+2024-05-28,F00427,Ana Torres,Industrias Polar,Desinfectante Amonio,L240517,34,5023,3170,Limpieza,114,80,Bodega Sur
+2024-05-28,F00427,Ana Torres,Industrias Polar,Aditivo Antiespuma,L240524,12,5590,3300,Químicos,27,15,Bodega Sur
+2024-05-28,F00427,Ana Torres,Industrias Polar,Desengrasante Industrial,L240502,13,5047,3064,Químicos,62,49,Bodega Sur
+2024-05-28,F00427,Ana Torres,Industrias Polar,Desengrasante Industrial,L240513,30,5047,3064,Químicos,149,119,Bodega Sur
+2024-05-28,F00428,Pedro Ruiz,Industrias Polar,Desinfectante Amonio,L240501,26,5377,3119,Limpieza,94,68,Bodega Sur
+2024-05-28,F00428,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L240504,36,4666,3077,Químicos,100,64,Bodega Sur
+2024-05-28,F00429,María López,Servicios Mineros Z,Detergente Alcalino,L240510,3,3862,2413,Limpieza,12,9,Bodega Sur
+2024-05-28,F00429,María López,Servicios Mineros Z,Detergente Alcalino,L240518,10,3862,2413,Limpieza,25,15,Bodega Sur
+2024-05-29,F00430,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L240511,33,5178,3164,Limpieza,120,87,Bodega Norte
+2024-05-29,F00430,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240527,56,5029,3196,Químicos,226,170,Bodega Norte
+2024-05-29,F00430,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L240522,30,7258,4548,Solventes,69,39,Bodega Norte
+2024-05-30,F00431,Pedro Ruiz,Química Valpo,Sellador Epóxico,L240525,6,13380,9202,Químicos,20,14,Bodega Centro
+2024-05-30,F00431,Pedro Ruiz,Química Valpo,Detergente Alcalino,L240521,5,3742,2310,Limpieza,15,10,Bodega Centro
+2024-05-30,F00431,Pedro Ruiz,Química Valpo,Removedor de Ceras,L240515,10,8689,5473,Solventes,27,17,Bodega Centro
+2024-05-30,F00432,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L240524,62,5980,3254,Químicos,232,170,Bodega Sur
+2024-05-30,F00432,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240502,13,5186,3267,Limpieza,35,22,Bodega Sur
+2024-06-01,F00433,María López,Servicios Mineros Z,Solvente Multiuso,L240609,34,7907,4524,Solventes,46,12,Bodega Centro
+2024-06-01,F00433,María López,Servicios Mineros Z,Detergente Enzimático,L240613,44,5918,4034,Limpieza,226,182,Bodega Centro
+2024-06-01,F00433,María López,Servicios Mineros Z,Aditivo Antiespuma,L240602,54,6123,3332,Químicos,156,102,Bodega Centro
+2024-06-01,F00433,María López,Servicios Mineros Z,Desengrasante Industrial,L240611,49,4780,3189,Químicos,107,58,Bodega Centro
+2024-06-01,F00433,María López,Servicios Mineros Z,Desengrasante Industrial,L240613,8,4780,3189,Químicos,26,18,Bodega Centro
+2024-06-03,F00434,María López,MetalMaq Ltda,Detergente Enzimático,L240626,45,6438,3685,Limpieza,56,11,Bodega Centro
+2024-06-03,F00434,María López,MetalMaq Ltda,Removedor de Ceras,L240612,4,9480,5110,Solventes,11,7,Bodega Centro
+2024-06-03,F00434,María López,MetalMaq Ltda,Detergente Alcalino,L240629,44,4045,2260,Limpieza,54,10,Bodega Centro
+2024-06-03,F00434,María López,MetalMaq Ltda,Aditivo Antiespuma,L240618,46,5646,3661,Químicos,186,140,Bodega Centro
+2024-06-03,F00434,María López,MetalMaq Ltda,Sellador Epóxico,L240601,7,12456,9200,Químicos,8,1,Bodega Centro
+2024-06-03,F00435,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240614,59,5794,3413,Químicos,134,75,Bodega Centro
+2024-06-03,F00435,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240608,3,5794,3413,Químicos,6,3,Bodega Centro
+2024-06-04,F00436,Pedro Ruiz,Supermercados Nova,Removedor de Ceras,L240616,4,9074,4993,Solventes,6,2,Bodega Centro
+2024-06-04,F00436,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240603,51,6698,3744,Limpieza,193,142,Bodega Centro
+2024-06-04,F00436,Pedro Ruiz,Supermercados Nova,Sellador Epóxico,L240617,4,12935,8598,Químicos,15,11,Bodega Centro
+2024-06-04,F00437,Juan Pérez,Distribuidora Austral,Desengrasante Industrial,L240616,61,4993,2914,Químicos,245,184,Bodega Sur
+2024-06-04,F00437,Juan Pérez,Distribuidora Austral,Detergente Enzimático,L240620,71,6198,3641,Limpieza,204,133,Bodega Sur
+2024-06-04,F00437,Juan Pérez,Distribuidora Austral,Aditivo Antiespuma,L240604,73,5745,3528,Químicos,182,109,Bodega Sur
+2024-06-04,F00438,María López,Supermercados Nova,Detergente Enzimático,L240614,59,6269,3787,Limpieza,59,0,Bodega Sur
+2024-06-04,F00438,María López,Supermercados Nova,Detergente Enzimático,L240628,1,6269,3787,Limpieza,2,1,Bodega Sur
+2024-06-04,F00438,María López,Supermercados Nova,Detergente Alcalino,L240601,33,3859,2398,Limpieza,59,26,Bodega Sur
+2024-06-04,F00438,María López,Supermercados Nova,Solvente Multiuso,L240606,26,7034,4802,Solventes,67,41,Bodega Sur
+2024-06-05,F00439,Pedro Ruiz,Alimentos Andinos,Detergente Alcalino,L240627,36,4284,2398,Limpieza,88,52,Bodega Norte
+2024-06-05,F00439,Pedro Ruiz,Alimentos Andinos,Aditivo Antiespuma,L240623,8,5551,3473,Químicos,14,6,Bodega Norte
+2024-06-05,F00439,Pedro Ruiz,Alimentos Andinos,Aditivo Antiespuma,L240604,15,5551,3473,Químicos,42,27,Bodega Norte
+2024-06-06,F00440,Juan Pérez,MetalMaq Ltda,Aditivo Antiespuma,L240612,60,5334,3590,Químicos,123,63,Bodega Centro
+2024-06-08,F00441,Juan Pérez,MetalMaq Ltda,Detergente Alcalino,L240617,32,3744,2352,Limpieza,69,37,Bodega Centro
+2024-06-08,F00441,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L240626,62,6523,3978,Limpieza,182,120,Bodega Centro
+2024-06-10,F00442,Juan Pérez,Retail Pacífico,Solvente Multiuso,L240624,35,7994,4607,Solventes,99,64,Bodega Norte
+2024-06-10,F00442,Juan Pérez,Retail Pacífico,Detergente Enzimático,L240620,89,6359,4052,Limpieza,139,50,Bodega Norte
+2024-06-10,F00442,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240623,198,5551,3021,Limpieza,508,310,Bodega Norte
+2024-06-10,F00443,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L240602,55,6624,4037,Limpieza,222,167,Bodega Centro
+2024-06-10,F00444,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240604,62,6110,4019,Limpieza,236,174,Bodega Norte
+2024-06-10,F00444,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240624,37,4265,2504,Limpieza,102,65,Bodega Norte
+2024-06-10,F00444,Pedro Ruiz,Distribuidora Austral,Desinfectante Amonio,L240605,35,5247,3204,Limpieza,86,51,Bodega Norte
+2024-06-10,F00444,Pedro Ruiz,Distribuidora Austral,Aditivo Antiespuma,L240617,53,5966,3699,Químicos,105,52,Bodega Norte
+2024-06-10,F00445,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240608,66,5467,3654,Químicos,284,218,Bodega Centro
+2024-06-10,F00445,Juan Pérez,Servicios Mineros Z,Desinfectante Amonio,L240628,27,5578,3260,Limpieza,103,76,Bodega Centro
+2024-06-10,F00445,Juan Pérez,Servicios Mineros Z,Desengrasante Industrial,L240606,62,4859,3079,Químicos,156,94,Bodega Centro
+2024-06-10,F00445,Juan Pérez,Servicios Mineros Z,Solvente Multiuso,L240614,18,7667,4414,Solventes,56,38,Bodega Centro
+2024-06-10,F00445,Juan Pérez,Servicios Mineros Z,Solvente Multiuso,L240618,24,7667,4414,Solventes,52,28,Bodega Centro
+2024-06-12,F00446,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240627,11,5557,3146,Limpieza,12,1,Bodega Norte
+2024-06-13,F00447,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L240614,9,12584,8659,Químicos,21,12,Bodega Centro
+2024-06-13,F00447,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240628,92,6324,3893,Limpieza,131,39,Bodega Centro
+2024-06-13,F00447,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240619,6,3801,2288,Limpieza,18,12,Bodega Centro
+2024-06-13,F00447,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240613,19,3801,2288,Limpieza,74,55,Bodega Centro
+2024-06-13,F00448,María López,Industrias Polar,Desengrasante Industrial,L240615,52,5019,2995,Químicos,141,89,Bodega Centro
+2024-06-13,F00448,María López,Industrias Polar,Aditivo Antiespuma,L240624,38,6006,3303,Químicos,125,87,Bodega Centro
+2024-06-13,F00448,María López,Industrias Polar,Removedor de Ceras,L240617,6,8991,4946,Solventes,16,10,Bodega Centro
+2024-06-13,F00448,María López,Industrias Polar,Detergente Enzimático,L240629,24,5823,3712,Limpieza,45,21,Bodega Centro
+2024-06-13,F00449,María López,Comercial FríoSur,Desinfectante Amonio,L240628,39,5016,3144,Limpieza,90,51,Bodega Sur
+2024-06-13,F00449,María López,Comercial FríoSur,Detergente Enzimático,L240614,33,6280,4082,Limpieza,56,23,Bodega Sur
+2024-06-13,F00449,María López,Comercial FríoSur,Detergente Enzimático,L240622,14,6280,4082,Limpieza,44,30,Bodega Sur
+2024-06-13,F00449,María López,Comercial FríoSur,Desengrasante Industrial,L240626,48,4640,3061,Químicos,143,95,Bodega Sur
+2024-06-15,F00450,Ana Torres,Química Valpo,Desinfectante Amonio,L240620,37,5369,3245,Limpieza,149,112,Bodega Sur
+2024-06-15,F00451,María López,Distribuidora Austral,Removedor de Ceras,L240606,11,9372,4858,Solventes,45,34,Bodega Norte
+2024-06-15,F00451,María López,Distribuidora Austral,Aditivo Antiespuma,L240603,64,6149,3739,Químicos,209,145,Bodega Norte
+2024-06-15,F00452,María López,Distribuidora Austral,Solvente Multiuso,L240620,43,7431,4639,Solventes,79,36,Bodega Norte
+2024-06-15,F00452,María López,Distribuidora Austral,Desinfectante Amonio,L240611,28,5543,3185,Limpieza,32,4,Bodega Norte
+2024-06-15,F00452,María López,Distribuidora Austral,Sellador Epóxico,L240625,11,12372,9154,Químicos,45,34,Bodega Norte
+2024-06-15,F00452,María López,Distribuidora Austral,Removedor de Ceras,L240619,14,9549,4987,Solventes,20,6,Bodega Norte
+2024-06-17,F00453,María López,Química Valpo,Sellador Epóxico,L240626,13,11938,8659,Químicos,31,18,Bodega Norte
+2024-06-17,F00453,María López,Química Valpo,Detergente Enzimático,L240617,38,6476,3886,Limpieza,38,0,Bodega Norte
+2024-06-17,F00454,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240609,40,7064,4491,Solventes,115,75,Bodega Norte
+2024-06-17,F00454,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240624,1,7064,4491,Solventes,3,2,Bodega Norte
+2024-06-17,F00454,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240603,2,3884,2509,Limpieza,7,5,Bodega Norte
+2024-06-17,F00454,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240612,26,3884,2509,Limpieza,98,72,Bodega Norte
+2024-06-17,F00455,Pedro Ruiz,Comercial FríoSur,Desinfectante Amonio,L240620,37,5397,3085,Limpieza,141,104,Bodega Centro
+2024-06-17,F00455,Pedro Ruiz,Comercial FríoSur,Removedor de Ceras,L240603,1,8829,5577,Solventes,4,3,Bodega Centro
+2024-06-18,F00456,Juan Pérez,Supermercados Nova,Detergente Enzimático,L240618,79,5834,3788,Limpieza,358,279,Bodega Sur
+2024-06-18,F00456,Juan Pérez,Supermercados Nova,Sellador Epóxico,L240610,14,13234,9277,Químicos,17,3,Bodega Sur
+2024-06-18,F00456,Juan Pérez,Supermercados Nova,Desinfectante Amonio,L240613,33,5491,2970,Limpieza,113,80,Bodega Sur
+2024-06-18,F00457,Ana Torres,Comercial FríoSur,Removedor de Ceras,L240604,4,9193,5370,Solventes,13,9,Bodega Norte
+2024-06-18,F00457,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240615,29,4024,2277,Limpieza,106,77,Bodega Norte
+2024-06-20,F00458,Ana Torres,Retail Pacífico,Detergente Enzimático,L240624,58,6008,3893,Limpieza,165,107,Bodega Norte
+2024-06-20,F00459,María López,MetalMaq Ltda,Detergente Alcalino,L240605,26,3839,2365,Limpieza,58,32,Bodega Sur
+2024-06-20,F00459,María López,MetalMaq Ltda,Detergente Alcalino,L240611,5,3839,2365,Limpieza,9,4,Bodega Sur
+2024-06-25,F00460,Ana Torres,Comercial FríoSur,Aditivo Antiespuma,L240605,50,5526,3264,Químicos,136,86,Bodega Sur
+2024-06-25,F00460,Ana Torres,Comercial FríoSur,Desengrasante Industrial,L240627,72,4989,3146,Químicos,123,51,Bodega Sur
+2024-06-25,F00460,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240628,37,4941,3190,Limpieza,179,142,Bodega Sur
+2024-06-25,F00461,Pedro Ruiz,Supermercados Nova,Detergente Enzimático,L240606,40,6124,3757,Limpieza,158,118,Bodega Centro
+2024-06-25,F00461,Pedro Ruiz,Supermercados Nova,Desinfectante Amonio,L240605,29,5552,3232,Limpieza,71,42,Bodega Centro
+2024-06-26,F00462,Juan Pérez,Alimentos Andinos,Aditivo Antiespuma,L240628,50,5708,3337,Químicos,199,149,Bodega Norte
+2024-06-26,F00462,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L240606,11,9641,5570,Solventes,43,32,Bodega Norte
+2024-06-26,F00463,María López,Alimentos Andinos,Aditivo Antiespuma,L240618,22,5431,3492,Químicos,73,51,Bodega Centro
+2024-06-26,F00463,María López,Alimentos Andinos,Aditivo Antiespuma,L240601,5,5431,3492,Químicos,15,10,Bodega Centro
+2024-06-26,F00463,María López,Alimentos Andinos,Removedor de Ceras,L240616,11,8729,5190,Solventes,37,26,Bodega Centro
+2024-06-26,F00464,Juan Pérez,Servicios Mineros Z,Desinfectante Amonio,L240605,29,5032,3409,Limpieza,83,54,Bodega Sur
+2024-06-26,F00464,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240611,53,5472,3662,Químicos,147,94,Bodega Sur
+2024-06-26,F00464,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240601,41,5472,3662,Químicos,133,92,Bodega Sur
+2024-06-26,F00464,Juan Pérez,Servicios Mineros Z,Desengrasante Industrial,L240616,69,5257,3184,Químicos,251,182,Bodega Sur
+2024-06-27,F00465,Ana Torres,Industrias Polar,Removedor de Ceras,L240625,11,9042,5154,Solventes,18,7,Bodega Sur
+2024-06-27,F00465,Ana Torres,Industrias Polar,Detergente Enzimático,L240620,68,6017,4018,Limpieza,247,179,Bodega Sur
+2024-06-27,F00465,Ana Torres,Industrias Polar,Solvente Multiuso,L240604,35,7322,5057,Solventes,122,87,Bodega Sur
+2024-06-27,F00465,Ana Torres,Industrias Polar,Sellador Epóxico,L240626,8,13465,9524,Químicos,8,0,Bodega Sur
+2024-06-27,F00466,Ana Torres,Supermercados Nova,Solvente Multiuso,L240624,30,7311,4462,Solventes,52,22,Bodega Norte
+2024-06-27,F00466,Ana Torres,Supermercados Nova,Sellador Epóxico,L240603,3,12279,8599,Químicos,7,4,Bodega Norte
+2024-06-27,F00466,Ana Torres,Supermercados Nova,Sellador Epóxico,L240608,4,12279,8599,Químicos,6,2,Bodega Norte
+2024-06-28,F00467,María López,Distribuidora Austral,Desinfectante Amonio,L240613,27,5692,3000,Limpieza,52,25,Bodega Centro
+2024-06-28,F00467,María López,Distribuidora Austral,Desinfectante Amonio,L240610,4,5692,3000,Limpieza,16,12,Bodega Centro
+2024-06-28,F00467,María López,Distribuidora Austral,Desengrasante Industrial,L240621,54,5102,3146,Químicos,219,165,Bodega Centro
+2024-06-28,F00468,Juan Pérez,Retail Pacífico,Detergente Alcalino,L240628,25,4050,2376,Limpieza,62,37,Bodega Centro
+2024-06-28,F00468,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L200527,48,5452,3451,Químicos,109,61,Bodega Centro
+2024-06-28,F00468,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L240603,23,5452,3451,Químicos,43,20,Bodega Centro
+2024-06-29,F00469,Juan Pérez,Industrias Polar,Detergente Alcalino,L240604,49,3767,2332,Limpieza,158,109,Bodega Centro
+2024-06-29,F00469,Juan Pérez,Industrias Polar,Detergente Enzimático,L240615,42,6619,3924,Limpieza,212,170,Bodega Centro
+2024-06-29,F00469,Juan Pérez,Industrias Polar,Removedor de Ceras,L240628,4,8654,4910,Solventes,11,7,Bodega Centro
+2024-06-29,F00470,Juan Pérez,Servicios Mineros Z,Detergente Alcalino,L240602,15,4209,2498,Limpieza,68,53,Bodega Norte
+2024-06-29,F00471,Ana Torres,Alimentos Andinos,Detergente Alcalino,L240615,27,3777,2202,Limpieza,78,51,Bodega Centro
+2024-06-29,F00471,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240607,21,5096,2961,Limpieza,46,25,Bodega Centro
+2024-06-29,F00471,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240626,10,5096,2961,Limpieza,27,17,Bodega Centro
+2024-07-01,F00472,María López,Química Valpo,Detergente Alcalino,L240726,11,4131,2457,Limpieza,52,41,Bodega Norte
+2024-07-01,F00472,María López,Química Valpo,Solvente Multiuso,L240707,34,7594,4664,Solventes,126,92,Bodega Norte
+2024-07-01,F00473,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L240716,45,5654,3709,Químicos,197,152,Bodega Norte
+2024-07-01,F00473,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240707,33,7687,4817,Solventes,88,55,Bodega Norte
+2024-07-01,F00474,Ana Torres,Industrias Polar,Removedor de Ceras,L240705,16,9242,4981,Solventes,63,47,Bodega Sur
+2024-07-03,F00475,María López,Química Valpo,Desinfectante Amonio,L240728,17,5062,2988,Limpieza,52,35,Bodega Sur
+2024-07-03,F00475,María López,Química Valpo,Desinfectante Amonio,L240711,11,5062,2988,Limpieza,33,22,Bodega Sur
+2024-07-03,F00476,María López,Distribuidora Austral,Desinfectante Amonio,L240703,43,5169,3279,Limpieza,212,169,Bodega Centro
+2024-07-03,F00476,María López,Distribuidora Austral,Detergente Enzimático,L240727,49,6551,4032,Limpieza,149,100,Bodega Centro
+2024-07-04,F00477,Ana Torres,Logística Andes,Desengrasante Industrial,L240723,57,4893,2957,Químicos,170,113,Bodega Sur
+2024-07-05,F00478,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240721,33,5216,3172,Limpieza,101,68,Bodega Centro
+2024-07-05,F00478,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L240717,6,8540,5274,Solventes,15,9,Bodega Centro
+2024-07-05,F00478,Juan Pérez,Comercial FríoSur,Detergente Alcalino,L240727,23,4266,2255,Limpieza,65,42,Bodega Centro
+2024-07-05,F00479,Juan Pérez,Química Valpo,Desinfectante Amonio,L240721,28,5411,3178,Limpieza,107,79,Bodega Norte
+2024-07-05,F00480,María López,Distribuidora Austral,Detergente Enzimático,L240721,46,6243,4095,Limpieza,80,34,Bodega Centro
+2024-07-05,F00480,María López,Distribuidora Austral,Sellador Epóxico,L240726,8,13673,9373,Químicos,19,11,Bodega Centro
+2024-07-05,F00480,María López,Distribuidora Austral,Solvente Multiuso,L240707,14,7478,4774,Solventes,44,30,Bodega Centro
+2024-07-05,F00480,María López,Distribuidora Austral,Aditivo Antiespuma,L240719,76,5332,3583,Químicos,146,70,Bodega Centro
+2024-07-05,F00480,María López,Distribuidora Austral,Removedor de Ceras,L240711,8,8810,5374,Solventes,16,8,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Desinfectante Amonio,L240702,5,5110,3230,Limpieza,12,7,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Solvente Multiuso,L240703,7,7094,4663,Solventes,18,11,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Solvente Multiuso,L240702,13,7094,4663,Solventes,34,21,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Sellador Epóxico,L240723,8,12848,9469,Químicos,36,28,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Aditivo Antiespuma,L240704,73,5847,3701,Químicos,264,191,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Removedor de Ceras,L240702,6,8933,4944,Solventes,13,7,Bodega Centro
+2024-07-06,F00481,María López,Comercial FríoSur,Removedor de Ceras,L240704,2,8933,4944,Solventes,7,5,Bodega Centro
+2024-07-06,F00482,Juan Pérez,Alimentos Andinos,Desinfectante Amonio,L240721,22,5200,3062,Limpieza,60,38,Bodega Sur
+2024-07-06,F00482,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L240716,47,5066,3043,Químicos,219,172,Bodega Sur
+2024-07-06,F00482,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L240720,20,5066,3043,Químicos,32,12,Bodega Sur
+2024-07-06,F00482,Juan Pérez,Alimentos Andinos,Detergente Enzimático,L240728,55,6319,3704,Limpieza,135,80,Bodega Sur
+2024-07-06,F00483,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240722,5,5579,3203,Limpieza,15,10,Bodega Norte
+2024-07-06,F00483,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240719,13,5579,3203,Limpieza,23,10,Bodega Norte
+2024-07-06,F00483,Juan Pérez,Retail Pacífico,Solvente Multiuso,L240715,26,7753,4453,Solventes,108,82,Bodega Norte
+2024-07-06,F00483,Juan Pérez,Retail Pacífico,Removedor de Ceras,L240715,2,9530,4946,Solventes,4,2,Bodega Norte
+2024-07-08,F00484,María López,Industrias Polar,Desinfectante Amonio,L240707,30,5154,3070,Limpieza,99,69,Bodega Centro
+2024-07-08,F00484,María López,Industrias Polar,Removedor de Ceras,L240728,4,9271,5261,Solventes,4,0,Bodega Centro
+2024-07-08,F00484,María López,Industrias Polar,Removedor de Ceras,L240710,3,9271,5261,Solventes,5,2,Bodega Centro
+2024-07-08,F00485,Ana Torres,Industrias Polar,Sellador Epóxico,L240702,12,13099,8643,Químicos,30,18,Bodega Sur
+2024-07-08,F00485,Ana Torres,Industrias Polar,Sellador Epóxico,L240722,12,13099,8643,Químicos,23,11,Bodega Sur
+2024-07-08,F00485,Ana Torres,Industrias Polar,Desengrasante Industrial,L240708,42,4806,2867,Químicos,138,96,Bodega Sur
+2024-07-10,F00486,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240701,46,6122,3674,Químicos,152,106,Bodega Sur
+2024-07-10,F00486,Juan Pérez,Industrias Polar,Sellador Epóxico,L240722,10,13178,8739,Químicos,10,0,Bodega Sur
+2024-07-10,F00486,Juan Pérez,Industrias Polar,Removedor de Ceras,L240724,7,9046,5205,Solventes,18,11,Bodega Sur
+2024-07-10,F00486,Juan Pérez,Industrias Polar,Solvente Multiuso,L240717,116,7370,4557,Solventes,204,88,Bodega Sur
+2024-07-10,F00486,Juan Pérez,Industrias Polar,Solvente Multiuso,L240728,10,7370,4557,Solventes,21,11,Bodega Sur
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Desinfectante Amonio,L240727,11,5558,2980,Limpieza,35,24,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Solvente Multiuso,L240708,39,7096,4872,Solventes,147,108,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L240719,9,3734,2333,Limpieza,34,25,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Detergente Alcalino,L240711,26,3734,2333,Limpieza,86,60,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Aditivo Antiespuma,L240727,80,5432,3669,Químicos,322,242,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Detergente Enzimático,L240724,8,6453,3948,Limpieza,34,26,Bodega Centro
+2024-07-10,F00487,Pedro Ruiz,Servicios Mineros Z,Detergente Enzimático,L240716,60,6453,3948,Limpieza,193,133,Bodega Centro
+2024-07-10,F00488,Ana Torres,Supermercados Nova,Detergente Enzimático,L240721,17,6338,4085,Limpieza,58,41,Bodega Norte
+2024-07-10,F00488,Ana Torres,Supermercados Nova,Detergente Enzimático,L240710,22,6338,4085,Limpieza,57,35,Bodega Norte
+2024-07-11,F00489,Ana Torres,Logística Andes,Desengrasante Industrial,L240729,11,4800,3022,Químicos,29,18,Bodega Sur
+2024-07-11,F00489,Ana Torres,Logística Andes,Desengrasante Industrial,L240717,56,4800,3022,Químicos,67,11,Bodega Sur
+2024-07-11,F00489,Ana Torres,Logística Andes,Aditivo Antiespuma,L240707,41,6077,3572,Químicos,102,61,Bodega Sur
+2024-07-11,F00490,Juan Pérez,Alimentos Andinos,Desinfectante Amonio,L240721,17,5145,3407,Limpieza,71,54,Bodega Sur
+2024-07-11,F00490,Juan Pérez,Alimentos Andinos,Removedor de Ceras,L240707,8,8365,4906,Solventes,26,18,Bodega Sur
+2024-07-11,F00491,Ana Torres,Industrias Polar,Aditivo Antiespuma,L240701,55,5610,3483,Químicos,136,81,Bodega Sur
+2024-07-11,F00491,Ana Torres,Industrias Polar,Solvente Multiuso,L240724,20,7775,4838,Solventes,30,10,Bodega Sur
+2024-07-11,F00491,Ana Torres,Industrias Polar,Detergente Alcalino,L240729,8,4157,2430,Limpieza,13,5,Bodega Sur
+2024-07-11,F00491,Ana Torres,Industrias Polar,Detergente Alcalino,L240715,20,4157,2430,Limpieza,52,32,Bodega Sur
+2024-07-11,F00491,Ana Torres,Industrias Polar,Desinfectante Amonio,L240703,12,5395,3108,Limpieza,42,30,Bodega Sur
+2024-07-12,F00492,María López,Servicios Mineros Z,Detergente Alcalino,L240701,23,3790,2528,Limpieza,74,51,Bodega Centro
+2024-07-12,F00492,María López,Servicios Mineros Z,Desinfectante Amonio,L240713,30,5488,3358,Limpieza,122,92,Bodega Centro
+2024-07-12,F00492,María López,Servicios Mineros Z,Sellador Epóxico,L240705,8,11885,8547,Químicos,24,16,Bodega Centro
+2024-07-12,F00493,Juan Pérez,Química Valpo,Aditivo Antiespuma,L240711,51,6029,3659,Químicos,233,182,Bodega Sur
+2024-07-12,F00493,Juan Pérez,Química Valpo,Solvente Multiuso,L240708,34,7252,4551,Solventes,72,38,Bodega Sur
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Removedor de Ceras,L240711,13,8923,5243,Solventes,45,32,Bodega Norte
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L240724,12,6116,4090,Limpieza,12,0,Bodega Norte
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Detergente Enzimático,L240709,13,6116,4090,Limpieza,31,18,Bodega Norte
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Aditivo Antiespuma,L240722,91,5818,3387,Químicos,401,310,Bodega Norte
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Detergente Alcalino,L240717,2,4207,2315,Limpieza,3,1,Bodega Norte
+2024-07-13,F00494,Juan Pérez,Servicios Mineros Z,Detergente Alcalino,L240704,32,4207,2315,Limpieza,56,24,Bodega Norte
+2024-07-13,F00495,Juan Pérez,Química Valpo,Detergente Enzimático,L240717,53,6173,4125,Limpieza,180,127,Bodega Sur
+2024-07-13,F00495,Juan Pérez,Química Valpo,Detergente Alcalino,L240713,32,3772,2399,Limpieza,110,78,Bodega Sur
+2024-07-13,F00496,Ana Torres,Retail Pacífico,Aditivo Antiespuma,L240701,72,6106,3265,Químicos,207,135,Bodega Norte
+2024-07-13,F00496,Ana Torres,Retail Pacífico,Desinfectante Amonio,L240722,42,5206,3247,Limpieza,141,99,Bodega Norte
+2024-07-13,F00496,Ana Torres,Retail Pacífico,Solvente Multiuso,L240728,29,8083,4401,Solventes,71,42,Bodega Norte
+2024-07-13,F00496,Ana Torres,Retail Pacífico,Detergente Enzimático,L240714,372,6090,4051,Limpieza,1112,740,Bodega Norte
+2024-07-13,F00496,Ana Torres,Retail Pacífico,Detergente Alcalino,L240721,26,4136,2354,Limpieza,87,61,Bodega Norte
+2024-07-15,F00497,María López,Supermercados Nova,Desinfectante Amonio,L240723,40,5416,3186,Limpieza,179,139,Bodega Norte
+2024-07-15,F00497,María López,Supermercados Nova,Solvente Multiuso,L240725,44,7570,4870,Solventes,155,111,Bodega Norte
+2024-07-16,F00498,Juan Pérez,Alimentos Andinos,Desinfectante Amonio,L240719,27,5307,3029,Limpieza,81,54,Bodega Sur
+2024-07-16,F00498,Juan Pérez,Alimentos Andinos,Solvente Multiuso,L240703,25,7326,4964,Solventes,89,64,Bodega Sur
+2024-07-16,F00498,Juan Pérez,Alimentos Andinos,Desengrasante Industrial,L240727,372,5017,3091,Químicos,2066,1694,Bodega Sur
+2024-07-16,F00499,Ana Torres,Química Valpo,Removedor de Ceras,L240702,9,9538,5028,Solventes,34,25,Bodega Norte
+2024-07-16,F00499,Ana Torres,Química Valpo,Detergente Alcalino,L240724,31,4262,2528,Limpieza,130,99,Bodega Norte
+2024-07-16,F00499,Ana Torres,Química Valpo,Detergente Alcalino,L240722,4,4262,2528,Limpieza,14,10,Bodega Norte
+2024-07-16,F00499,Ana Torres,Química Valpo,Desinfectante Amonio,L240717,23,4970,3228,Limpieza,67,44,Bodega Norte
+2024-07-16,F00500,Juan Pérez,Comercial FríoSur,Removedor de Ceras,L240723,6,9141,5481,Solventes,21,15,Bodega Sur
+2024-07-16,F00500,Juan Pérez,Comercial FríoSur,Aditivo Antiespuma,L240708,40,5410,3636,Químicos,131,91,Bodega Sur
+2024-07-17,F00501,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L240710,61,4633,3040,Químicos,164,103,Bodega Sur
+2024-07-17,F00501,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L240710,56,6003,3437,Químicos,233,177,Bodega Sur
+2024-07-17,F00501,Juan Pérez,Retail Pacífico,Detergente Enzimático,L240726,72,6542,4063,Limpieza,355,283,Bodega Sur
+2024-07-18,F00502,Pedro Ruiz,Industrias Polar,Desinfectante Amonio,L240723,8,5523,3278,Limpieza,17,9,Bodega Sur
+2024-07-18,F00502,Pedro Ruiz,Industrias Polar,Desinfectante Amonio,L240718,12,5523,3278,Limpieza,36,24,Bodega Sur
+2024-07-18,F00502,Pedro Ruiz,Industrias Polar,Solvente Multiuso,L240705,31,8139,4618,Solventes,70,39,Bodega Sur
+2024-07-18,F00502,Pedro Ruiz,Industrias Polar,Detergente Enzimático,L220709,54,5964,3970,Limpieza,145,91,Bodega Sur
+2024-07-18,F00503,Juan Pérez,Logística Andes,Removedor de Ceras,L240703,16,9475,5350,Solventes,50,34,Bodega Norte
+2024-07-18,F00503,Juan Pérez,Logística Andes,Solvente Multiuso,L240704,23,7867,4540,Solventes,25,2,Bodega Norte
+2024-07-19,F00504,Pedro Ruiz,Comercial FríoSur,Detergente Alcalino,L240706,34,3893,2221,Limpieza,124,90,Bodega Sur
+2024-07-19,F00504,Pedro Ruiz,Comercial FríoSur,Detergente Enzimático,L240703,59,6009,3867,Limpieza,217,158,Bodega Sur
+2024-07-19,F00505,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240706,24,5140,3344,Limpieza,73,49,Bodega Sur
+2024-07-19,F00505,Juan Pérez,Comercial FríoSur,Desengrasante Industrial,L240718,67,5150,3128,Químicos,173,106,Bodega Sur
+2024-07-19,F00506,María López,Comercial FríoSur,Solvente Multiuso,L240715,29,7089,4987,Solventes,124,95,Bodega Centro
+2024-07-19,F00506,María López,Comercial FríoSur,Aditivo Antiespuma,L240712,97,5503,3371,Químicos,367,270,Bodega Centro
+2024-07-19,F00506,María López,Comercial FríoSur,Desinfectante Amonio,L240729,31,5645,3167,Limpieza,58,27,Bodega Centro
+2024-07-19,F00506,María López,Comercial FríoSur,Detergente Alcalino,L240715,29,3891,2484,Limpieza,99,70,Bodega Centro
+2024-07-19,F00506,María López,Comercial FríoSur,Detergente Enzimático,L240719,42,6531,4136,Limpieza,98,56,Bodega Centro
+2024-07-22,F00507,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L240712,12,12921,8732,Químicos,36,24,Bodega Sur
+2024-07-22,F00507,Juan Pérez,Comercial FríoSur,Sellador Epóxico,L240702,1,12921,8732,Químicos,4,3,Bodega Sur
+2024-07-22,F00507,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240702,2,5280,3023,Limpieza,7,5,Bodega Sur
+2024-07-22,F00507,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240703,14,5280,3023,Limpieza,29,15,Bodega Sur
+2024-07-22,F00507,Juan Pérez,Comercial FríoSur,Solvente Multiuso,L240708,25,7648,5057,Solventes,74,49,Bodega Sur
+2024-07-22,F00508,Juan Pérez,Supermercados Nova,Solvente Multiuso,L220314,29,8014,4899,Solventes,42,13,Bodega Norte
+2024-07-22,F00508,Juan Pérez,Supermercados Nova,Removedor de Ceras,L240705,11,8746,5145,Solventes,35,24,Bodega Norte
+2024-07-23,F00509,Ana Torres,Comercial FríoSur,Desinfectante Amonio,L240709,28,5443,3270,Limpieza,93,65,Bodega Centro
+2024-07-23,F00509,Ana Torres,Comercial FríoSur,Detergente Enzimático,L240709,72,5948,3970,Limpieza,208,136,Bodega Centro
+2024-07-23,F00509,Ana Torres,Comercial FríoSur,Sellador Epóxico,L240721,2,12609,9199,Químicos,4,2,Bodega Centro
+2024-07-23,F00509,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240728,41,3754,2486,Limpieza,92,51,Bodega Centro
+2024-07-23,F00510,Pedro Ruiz,Industrias Polar,Solvente Multiuso,L240726,31,7947,4898,Solventes,99,68,Bodega Centro
+2024-07-23,F00510,Pedro Ruiz,Industrias Polar,Desengrasante Industrial,L240726,34,4601,3034,Químicos,92,58,Bodega Centro
+2024-07-24,F00511,María López,MetalMaq Ltda,Detergente Enzimático,L240727,73,6692,3623,Limpieza,99,26,Bodega Sur
+2024-07-24,F00511,María López,MetalMaq Ltda,Sellador Epóxico,L240705,13,13739,8626,Químicos,39,26,Bodega Sur
+2024-07-24,F00511,María López,MetalMaq Ltda,Desinfectante Amonio,L240702,46,5681,3100,Limpieza,114,68,Bodega Sur
+2024-07-24,F00511,María López,MetalMaq Ltda,Removedor de Ceras,L240726,9,9588,5328,Solventes,29,20,Bodega Sur
+2024-07-24,F00512,María López,Química Valpo,Removedor de Ceras,L240706,7,8540,4911,Solventes,7,0,Bodega Norte
+2024-07-24,F00513,Juan Pérez,Retail Pacífico,Sellador Epóxico,L240705,9,13474,9246,Químicos,18,9,Bodega Sur
+2024-07-25,F00514,Ana Torres,Comercial FríoSur,Desengrasante Industrial,L240705,57,5046,3239,Químicos,140,83,Bodega Sur
+2024-07-25,F00514,Ana Torres,Comercial FríoSur,Removedor de Ceras,L240703,5,9312,5240,Solventes,18,13,Bodega Sur
+2024-07-26,F00515,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240720,60,4920,3267,Químicos,212,152,Bodega Centro
+2024-07-26,F00516,María López,Supermercados Nova,Detergente Enzimático,L240717,22,6264,4079,Limpieza,58,36,Bodega Norte
+2024-07-26,F00516,María López,Supermercados Nova,Detergente Enzimático,L240716,40,6264,4079,Limpieza,133,93,Bodega Norte
+2024-07-26,F00516,María López,Supermercados Nova,Desinfectante Amonio,L240721,35,5533,2956,Limpieza,119,84,Bodega Norte
+2024-07-26,F00516,María López,Supermercados Nova,Sellador Epóxico,L240710,91,12658,8877,Químicos,356,265,Bodega Norte
+2024-07-26,F00516,María López,Supermercados Nova,Desengrasante Industrial,L240722,82,4682,2871,Químicos,155,73,Bodega Norte
+2024-07-27,F00517,Juan Pérez,Comercial FríoSur,Desinfectante Amonio,L240722,36,5354,3250,Limpieza,74,38,Bodega Centro
+2024-07-27,F00518,Ana Torres,Logística Andes,Removedor de Ceras,L240723,5,9306,5014,Solventes,16,11,Bodega Sur
+2024-07-27,F00518,Ana Torres,Logística Andes,Desinfectante Amonio,L240719,28,5098,3012,Limpieza,82,54,Bodega Sur
+2024-07-27,F00518,Ana Torres,Logística Andes,Sellador Epóxico,L240714,4,12474,9354,Químicos,15,11,Bodega Sur
+2024-07-27,F00518,Ana Torres,Logística Andes,Aditivo Antiespuma,L240705,54,5726,3574,Químicos,188,134,Bodega Sur
+2024-07-27,F00518,Ana Torres,Logística Andes,Detergente Alcalino,L240725,35,3947,2221,Limpieza,113,78,Bodega Sur
+2024-07-27,F00519,María López,Supermercados Nova,Detergente Alcalino,L240718,32,3862,2406,Limpieza,127,95,Bodega Sur
+2024-07-31,F00520,Pedro Ruiz,MetalMaq Ltda,Removedor de Ceras,L240719,1,8914,4962,Solventes,1,0,Bodega Sur
+2024-07-31,F00520,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L240727,39,7718,4518,Solventes,94,55,Bodega Sur
+2024-07-31,F00520,Pedro Ruiz,MetalMaq Ltda,Aditivo Antiespuma,L240723,92,5364,3501,Químicos,405,313,Bodega Sur
+2024-07-31,F00521,Ana Torres,Supermercados Nova,Solvente Multiuso,L240707,24,7201,4378,Solventes,41,17,Bodega Norte
+2024-07-31,F00521,Ana Torres,Supermercados Nova,Desinfectante Amonio,L240706,17,5551,3141,Limpieza,74,57,Bodega Norte
+2024-07-31,F00521,Ana Torres,Supermercados Nova,Aditivo Antiespuma,L240718,48,5812,3613,Químicos,152,104,Bodega Norte
+2024-07-31,F00521,Ana Torres,Supermercados Nova,Removedor de Ceras,L240711,9,8857,5016,Solventes,30,21,Bodega Norte
+2024-07-31,F00522,María López,Retail Pacífico,Sellador Epóxico,L240719,10,12864,8535,Químicos,34,24,Bodega Sur
+2024-07-31,F00522,María López,Retail Pacífico,Removedor de Ceras,L240727,5,9613,5327,Solventes,15,10,Bodega Sur
+2024-07-31,F00522,María López,Retail Pacífico,Removedor de Ceras,L240726,4,9613,5327,Solventes,11,7,Bodega Sur
+2024-07-31,F00522,María López,Retail Pacífico,Desengrasante Industrial,L240719,53,4568,2956,Químicos,189,136,Bodega Sur
+2024-08-02,F00523,María López,MetalMaq Ltda,Solvente Multiuso,L240804,8,7137,4383,Solventes,19,11,Bodega Sur
+2024-08-02,F00523,María López,MetalMaq Ltda,Desengrasante Industrial,L240810,28,4723,3066,Químicos,52,24,Bodega Sur
+2024-08-02,F00524,Juan Pérez,Industrias Polar,Removedor de Ceras,L240810,3,9516,5019,Solventes,8,5,Bodega Norte
+2024-08-02,F00524,Juan Pérez,Industrias Polar,Solvente Multiuso,L240824,27,7118,4952,Solventes,66,39,Bodega Norte
+2024-08-02,F00524,Juan Pérez,Industrias Polar,Aditivo Antiespuma,L240823,21,5936,3340,Químicos,94,73,Bodega Norte
+2024-08-02,F00524,Juan Pérez,Industrias Polar,Detergente Enzimático,L240828,2,6679,3879,Limpieza,4,2,Bodega Norte
+2024-08-02,F00524,Juan Pérez,Industrias Polar,Detergente Enzimático,L240819,47,6679,3879,Limpieza,178,131,Bodega Norte
+2024-08-02,F00525,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240819,4,7316,4706,Solventes,17,13,Bodega Sur
+2024-08-02,F00525,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240802,2,7316,4706,Solventes,5,3,Bodega Sur
+2024-08-02,F00525,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240814,1,12026,8582,Químicos,2,1,Bodega Sur
+2024-08-02,F00525,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240811,1,12026,8582,Químicos,2,1,Bodega Sur
+2024-08-02,F00525,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L240802,39,5799,3727,Limpieza,93,54,Bodega Sur
+2024-08-03,F00526,Pedro Ruiz,Alimentos Andinos,Detergente Alcalino,L240809,12,4028,2509,Limpieza,30,18,Bodega Centro
+2024-08-03,F00526,Pedro Ruiz,Alimentos Andinos,Removedor de Ceras,L240807,54,8575,4983,Solventes,115,61,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Detergente Enzimático,L240807,9,6190,4042,Limpieza,43,34,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Detergente Enzimático,L240806,17,6190,4042,Limpieza,44,27,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Desengrasante Industrial,L240827,48,4924,3271,Químicos,100,52,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Removedor de Ceras,L240820,1,8808,5416,Solventes,3,2,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Removedor de Ceras,L240811,9,8808,5416,Solventes,21,12,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Detergente Alcalino,L240804,12,4102,2500,Limpieza,12,0,Bodega Centro
+2024-08-05,F00527,María López,Supermercados Nova,Aditivo Antiespuma,L240808,45,5554,3469,Químicos,170,125,Bodega Centro
+2024-08-07,F00528,María López,Distribuidora Austral,Desengrasante Industrial,L240814,40,5187,3202,Químicos,125,85,Bodega Norte
+2024-08-07,F00528,María López,Distribuidora Austral,Desinfectante Amonio,L240828,33,5446,3128,Limpieza,139,106,Bodega Norte
+2024-08-07,F00529,Ana Torres,Comercial FríoSur,Aditivo Antiespuma,L240820,15,6080,3390,Químicos,66,51,Bodega Sur
+2024-08-07,F00529,Ana Torres,Comercial FríoSur,Aditivo Antiespuma,L240828,12,6080,3390,Químicos,43,31,Bodega Sur
+2024-08-09,F00530,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240817,6,9375,5292,Solventes,19,13,Bodega Sur
+2024-08-09,F00530,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240823,3,9375,5292,Solventes,7,4,Bodega Sur
+2024-08-09,F00530,Pedro Ruiz,Distribuidora Austral,Detergente Enzimático,L240808,59,6667,3860,Limpieza,230,171,Bodega Sur
+2024-08-09,F00531,María López,Alimentos Andinos,Detergente Enzimático,L240823,33,6268,3795,Limpieza,83,50,Bodega Centro
+2024-08-09,F00532,Ana Torres,Retail Pacífico,Sellador Epóxico,L240813,6,13122,8614,Químicos,10,4,Bodega Norte
+2024-08-09,F00532,Ana Torres,Retail Pacífico,Desengrasante Industrial,L240804,35,5246,2996,Químicos,72,37,Bodega Norte
+2024-08-09,F00532,Ana Torres,Retail Pacífico,Desinfectante Amonio,L240821,27,5265,3360,Limpieza,63,36,Bodega Norte
+2024-08-09,F00532,Ana Torres,Retail Pacífico,Removedor de Ceras,L240824,6,8600,4917,Solventes,13,7,Bodega Norte
+2024-08-12,F00533,María López,Logística Andes,Desengrasante Industrial,L240804,26,4665,3138,Químicos,95,69,Bodega Norte
+2024-08-12,F00534,Ana Torres,Servicios Mineros Z,Detergente Alcalino,L240821,19,4019,2433,Limpieza,37,18,Bodega Norte
+2024-08-12,F00534,Ana Torres,Servicios Mineros Z,Aditivo Antiespuma,L240806,39,5451,3406,Químicos,39,0,Bodega Norte
+2024-08-12,F00534,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240820,7,12359,8946,Químicos,23,16,Bodega Norte
+2024-08-12,F00534,Ana Torres,Servicios Mineros Z,Desengrasante Industrial,L240828,57,4578,3288,Químicos,274,217,Bodega Norte
+2024-08-12,F00535,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L240810,20,5179,3201,Químicos,33,13,Bodega Sur
+2024-08-12,F00535,Ana Torres,Distribuidora Austral,Desengrasante Industrial,L240812,11,5179,3201,Químicos,24,13,Bodega Sur
+2024-08-12,F00535,Ana Torres,Distribuidora Austral,Desinfectante Amonio,L240810,21,5393,3337,Limpieza,104,83,Bodega Sur
+2024-08-12,F00535,Ana Torres,Distribuidora Austral,Removedor de Ceras,L240817,2,9563,4945,Solventes,4,2,Bodega Sur
+2024-08-12,F00536,María López,Servicios Mineros Z,Solvente Multiuso,L240826,19,7657,4665,Solventes,57,38,Bodega Norte
+2024-08-12,F00536,María López,Servicios Mineros Z,Desengrasante Industrial,L240814,51,4657,3098,Químicos,195,144,Bodega Norte
+2024-08-12,F00536,María López,Servicios Mineros Z,Detergente Alcalino,L240819,15,3898,2190,Limpieza,58,43,Bodega Norte
+2024-08-12,F00537,Ana Torres,Alimentos Andinos,Sellador Epóxico,L240808,14,13337,9281,Químicos,36,22,Bodega Norte
+2024-08-12,F00537,Ana Torres,Alimentos Andinos,Aditivo Antiespuma,L240814,90,5851,3676,Químicos,264,174,Bodega Norte
+2024-08-12,F00537,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240817,14,7193,4809,Solventes,49,35,Bodega Norte
+2024-08-14,F00538,María López,Química Valpo,Removedor de Ceras,L240808,8,9476,5069,Solventes,23,15,Bodega Sur
+2024-08-14,F00538,María López,Química Valpo,Sellador Epóxico,L240811,5,13447,9402,Químicos,15,10,Bodega Sur
+2024-08-14,F00538,María López,Química Valpo,Desengrasante Industrial,L240822,56,4673,2972,Químicos,191,135,Bodega Sur
+2024-08-14,F00539,Ana Torres,Servicios Mineros Z,Sellador Epóxico,L240829,12,12292,8499,Químicos,27,15,Bodega Sur
+2024-08-14,F00539,Ana Torres,Servicios Mineros Z,Detergente Enzimático,L240807,29,6445,4164,Limpieza,83,54,Bodega Sur
+2024-08-14,F00540,María López,Supermercados Nova,Solvente Multiuso,L240804,16,8007,4536,Solventes,49,33,Bodega Sur
+2024-08-14,F00540,María López,Supermercados Nova,Desengrasante Industrial,L240818,43,4684,3256,Químicos,118,75,Bodega Sur
+2024-08-14,F00540,María López,Supermercados Nova,Detergente Alcalino,L240822,23,4173,2247,Limpieza,96,73,Bodega Sur
+2024-08-15,F00541,Pedro Ruiz,MetalMaq Ltda,Removedor de Ceras,L240827,14,9538,5192,Solventes,26,12,Bodega Sur
+2024-08-15,F00541,Pedro Ruiz,MetalMaq Ltda,Solvente Multiuso,L240805,18,7685,4556,Solventes,106,88,Bodega Sur
+2024-08-16,F00542,Juan Pérez,MetalMaq Ltda,Desinfectante Amonio,L240805,21,5184,2955,Limpieza,48,27,Bodega Norte
+2024-08-16,F00542,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L240809,25,6650,3897,Limpieza,79,54,Bodega Norte
+2024-08-16,F00542,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L240828,3,6650,3897,Limpieza,10,7,Bodega Norte
+2024-08-16,F00542,Juan Pérez,MetalMaq Ltda,Sellador Epóxico,L240817,2,12059,9093,Químicos,8,6,Bodega Norte
+2024-08-16,F00543,Pedro Ruiz,Química Valpo,Aditivo Antiespuma,L240814,26,5592,3395,Químicos,27,1,Bodega Centro
+2024-08-16,F00543,Pedro Ruiz,Química Valpo,Removedor de Ceras,L240813,4,9454,5238,Solventes,13,9,Bodega Centro
+2024-08-16,F00543,Pedro Ruiz,Química Valpo,Solvente Multiuso,L240808,20,7173,4536,Solventes,71,51,Bodega Centro
+2024-08-16,F00544,Ana Torres,Retail Pacífico,Desinfectante Amonio,L240812,12,5419,3313,Limpieza,54,42,Bodega Centro
+2024-08-16,F00544,Ana Torres,Retail Pacífico,Desengrasante Industrial,L240803,35,4826,2878,Químicos,196,161,Bodega Centro
+2024-08-17,F00545,Juan Pérez,MetalMaq Ltda,Detergente Enzimático,L240810,31,6481,3957,Limpieza,81,50,Bodega Norte
+2024-08-17,F00545,Juan Pérez,MetalMaq Ltda,Removedor de Ceras,L240821,7,8986,5169,Solventes,27,20,Bodega Norte
+2024-08-17,F00545,Juan Pérez,MetalMaq Ltda,Desengrasante Industrial,L240807,27,4815,3228,Químicos,60,33,Bodega Norte
+2024-08-17,F00546,Ana Torres,Servicios Mineros Z,Solvente Multiuso,L240828,28,7871,4646,Solventes,141,113,Bodega Centro
+2024-08-17,F00546,Ana Torres,Servicios Mineros Z,Desinfectante Amonio,L240818,21,5478,3154,Limpieza,111,90,Bodega Centro
+2024-08-17,F00546,Ana Torres,Servicios Mineros Z,Removedor de Ceras,L240815,4,8509,4928,Solventes,7,3,Bodega Centro
+2024-08-17,F00547,Pedro Ruiz,Comercial FríoSur,Aditivo Antiespuma,L240825,40,5428,3232,Químicos,60,20,Bodega Norte
+2024-08-17,F00547,Pedro Ruiz,Comercial FríoSur,Desinfectante Amonio,L240828,8,5305,2995,Limpieza,37,29,Bodega Norte
+2024-08-17,F00548,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240829,12,5053,3123,Limpieza,14,2,Bodega Sur
+2024-08-17,F00548,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L240818,8,4957,2987,Químicos,14,6,Bodega Sur
+2024-08-17,F00548,Juan Pérez,Retail Pacífico,Desengrasante Industrial,L240828,23,4957,2987,Químicos,70,47,Bodega Sur
+2024-08-17,F00548,Juan Pérez,Retail Pacífico,Sellador Epóxico,L240811,6,13048,9128,Químicos,20,14,Bodega Sur
+2024-08-17,F00549,María López,Alimentos Andinos,Detergente Alcalino,L240826,29,4286,2336,Limpieza,69,40,Bodega Norte
+2024-08-17,F00549,María López,Alimentos Andinos,Desengrasante Industrial,L240825,12,4817,2909,Químicos,16,4,Bodega Norte
+2024-08-17,F00549,María López,Alimentos Andinos,Desengrasante Industrial,L240814,28,4817,2909,Químicos,125,97,Bodega Norte
+2024-08-17,F00550,María López,Alimentos Andinos,Sellador Epóxico,L240827,4,12590,8311,Químicos,6,2,Bodega Centro
+2024-08-17,F00550,María López,Alimentos Andinos,Aditivo Antiespuma,L220327,16,5607,3638,Químicos,34,18,Bodega Centro
+2024-08-17,F00550,María López,Alimentos Andinos,Removedor de Ceras,L240804,1,8498,5484,Solventes,2,1,Bodega Centro
+2024-08-17,F00551,María López,Servicios Mineros Z,Detergente Enzimático,L240804,43,5977,3963,Limpieza,69,26,Bodega Centro
+2024-08-17,F00551,María López,Servicios Mineros Z,Detergente Alcalino,L200417,12,4006,2225,Limpieza,43,31,Bodega Centro
+2024-08-17,F00551,María López,Servicios Mineros Z,Detergente Alcalino,L240804,10,4006,2225,Limpieza,22,12,Bodega Centro
+2024-08-17,F00551,María López,Servicios Mineros Z,Solvente Multiuso,L240806,6,7863,4649,Solventes,10,4,Bodega Centro
+2024-08-22,F00552,Juan Pérez,Distribuidora Austral,Solvente Multiuso,L240804,12,7055,4512,Solventes,28,16,Bodega Norte
+2024-08-22,F00552,Juan Pérez,Distribuidora Austral,Solvente Multiuso,L240805,16,7055,4512,Solventes,47,31,Bodega Norte
+2024-08-22,F00552,Juan Pérez,Distribuidora Austral,Detergente Alcalino,L240809,13,3838,2527,Limpieza,44,31,Bodega Norte
+2024-08-22,F00552,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240819,4,8827,5024,Solventes,8,4,Bodega Norte
+2024-08-22,F00552,Juan Pérez,Distribuidora Austral,Removedor de Ceras,L240814,1,8827,5024,Solventes,2,1,Bodega Norte
+2024-08-22,F00553,Ana Torres,MetalMaq Ltda,Desengrasante Industrial,L240818,42,4615,3189,Químicos,89,47,Bodega Norte
+2024-08-23,F00554,Ana Torres,Comercial FríoSur,Detergente Alcalino,L240812,15,4189,2185,Limpieza,43,28,Bodega Norte
+2024-08-23,F00554,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240822,2,8020,4740,Solventes,2,0,Bodega Norte
+2024-08-23,F00554,Ana Torres,Comercial FríoSur,Solvente Multiuso,L240822,21,8020,4740,Solventes,65,44,Bodega Norte
+2024-08-23,F00555,Ana Torres,MetalMaq Ltda,Desinfectante Amonio,L240824,11,5461,3250,Limpieza,45,34,Bodega Norte
+2024-08-23,F00555,Ana Torres,MetalMaq Ltda,Solvente Multiuso,L240817,18,7846,4685,Solventes,43,25,Bodega Norte
+2024-08-23,F00555,Ana Torres,MetalMaq Ltda,Detergente Alcalino,L240812,16,3770,2416,Limpieza,47,31,Bodega Norte
+2024-08-23,F00555,Ana Torres,MetalMaq Ltda,Aditivo Antiespuma,L240802,3,5571,3700,Químicos,9,6,Bodega Norte
+2024-08-23,F00555,Ana Torres,MetalMaq Ltda,Aditivo Antiespuma,L240807,19,5571,3700,Químicos,51,32,Bodega Norte
+2024-08-24,F00556,María López,Supermercados Nova,Desengrasante Industrial,L240821,44,4594,3254,Químicos,155,111,Bodega Sur
+2024-08-24,F00556,María López,Supermercados Nova,Detergente Alcalino,L240805,13,4004,2403,Limpieza,32,19,Bodega Sur
+2024-08-24,F00557,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240809,1,5679,3191,Limpieza,3,2,Bodega Centro
+2024-08-24,F00557,Juan Pérez,Retail Pacífico,Desinfectante Amonio,L240809,20,5679,3191,Limpieza,59,39,Bodega Centro
+2024-08-24,F00557,Juan Pérez,Retail Pacífico,Sellador Epóxico,L240810,1,13099,9445,Químicos,1,0,Bodega Centro
+2024-08-24,F00557,Juan Pérez,Retail Pacífico,Sellador Epóxico,L240826,1,13099,9445,Químicos,2,1,Bodega Centro
+2024-08-24,F00558,Ana Torres,Química Valpo,Solvente Multiuso,L240808,224,7283,4725,Solventes,563,339,Bodega Sur
+2024-08-24,F00558,Ana Torres,Química Valpo,Desinfectante Amonio,L240806,19,5424,3041,Limpieza,53,34,Bodega Sur
+2024-08-24,F00558,Ana Torres,Química Valpo,Desinfectante Amonio,L240817,3,5424,3041,Limpieza,10,7,Bodega Sur
+2024-08-24,F00559,María López,Supermercados Nova,Detergente Alcalino,L240803,15,3899,2447,Limpieza,47,32,Bodega Norte
+2024-08-24,F00559,María López,Supermercados Nova,Desengrasante Industrial,L240806,44,4985,3259,Químicos,99,55,Bodega Norte
+2024-08-24,F00559,María López,Supermercados Nova,Removedor de Ceras,L240814,6,8962,5089,Solventes,10,4,Bodega Norte
+2024-08-26,F00560,Pedro Ruiz,Logística Andes,Desengrasante Industrial,L240807,19,5170,3223,Químicos,24,5,Bodega Sur
+2024-08-26,F00561,Juan Pérez,Retail Pacífico,Removedor de Ceras,L240812,13,8641,4910,Solventes,35,22,Bodega Norte
+2024-08-26,F00561,Juan Pérez,Retail Pacífico,Solvente Multiuso,L240803,19,7451,4536,Solventes,45,26,Bodega Norte
+2024-08-26,F00561,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L220304,4,5350,3575,Químicos,10,6,Bodega Norte
+2024-08-26,F00561,Juan Pérez,Retail Pacífico,Aditivo Antiespuma,L240827,3,5350,3575,Químicos,6,3,Bodega Norte
+2024-08-26,F00562,María López,Servicios Mineros Z,Solvente Multiuso,L240829,12,7509,4541,Solventes,23,11,Bodega Sur
+2024-08-26,F00562,María López,Servicios Mineros Z,Solvente Multiuso,L240815,15,7509,4541,Solventes,40,25,Bodega Sur
+2024-08-26,F00562,María López,Servicios Mineros Z,Detergente Alcalino,L240815,31,3743,2501,Limpieza,152,121,Bodega Sur
+2024-08-26,F00562,María López,Servicios Mineros Z,Desinfectante Amonio,L240812,7,5221,3260,Limpieza,9,2,Bodega Sur
+2024-08-26,F00563,María López,Distribuidora Austral,Desinfectante Amonio,L240818,36,5123,3288,Limpieza,66,30,Bodega Norte
+2024-08-26,F00564,Juan Pérez,Supermercados Nova,Desengrasante Industrial,L240812,7,5129,3296,Químicos,14,7,Bodega Centro
+2024-08-26,F00564,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L240813,10,5470,3724,Químicos,42,32,Bodega Centro
+2024-08-26,F00564,Juan Pérez,Supermercados Nova,Aditivo Antiespuma,L240815,2,5470,3724,Químicos,2,0,Bodega Centro
+2024-08-27,F00565,Ana Torres,Alimentos Andinos,Desinfectante Amonio,L240810,1,5251,3333,Limpieza,2,1,Bodega Centro
+2024-08-27,F00565,Ana Torres,Alimentos Andinos,Solvente Multiuso,L240805,11,7099,4655,Solventes,28,17,Bodega Centro
+2024-08-27,F00566,María López,Supermercados Nova,Desinfectante Amonio,L240813,21,5316,2970,Limpieza,56,35,Bodega Sur
+2024-08-27,F00566,María López,Supermercados Nova,Solvente Multiuso,L240817,12,7849,4472,Solventes,33,21,Bodega Sur
+2024-08-28,F00567,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L240811,20,6387,4041,Limpieza,71,51,Bodega Centro
+2024-08-28,F00567,Pedro Ruiz,Alimentos Andinos,Detergente Enzimático,L240824,32,6387,4041,Limpieza,102,70,Bodega Centro
+2024-08-28,F00568,Juan Pérez,Alimentos Andinos,Detergente Alcalino,L240816,17,4285,2250,Limpieza,36,19,Bodega Centro
+2024-08-28,F00568,Juan Pérez,Alimentos Andinos,Sellador Epóxico,L240824,13,12674,8389,Químicos,28,15,Bodega Centro
+2024-08-28,F00569,Pedro Ruiz,Industrias Polar,Sellador Epóxico,L240813,1,13341,8620,Químicos,4,3,Bodega Sur
+2024-08-28,F00569,Pedro Ruiz,Industrias Polar,Sellador Epóxico,L240811,4,13341,8620,Químicos,11,7,Bodega Sur
+2024-08-28,F00569,Pedro Ruiz,Industrias Polar,Aditivo Antiespuma,L240829,39,5606,3282,Químicos,56,17,Bodega Sur
+2024-08-29,F00570,Pedro Ruiz,Distribuidora Austral,Removedor de Ceras,L240808,10,9160,5302,Solventes,25,15,Bodega Sur
+2024-08-29,F00570,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240808,6,3973,2443,Limpieza,16,10,Bodega Sur
+2024-08-29,F00570,Pedro Ruiz,Distribuidora Austral,Detergente Alcalino,L240803,20,3973,2443,Limpieza,89,69,Bodega Sur
+2024-08-29,F00571,María López,Supermercados Nova,Desengrasante Industrial,L240808,34,5269,2984,Químicos,109,75,Bodega Norte
+2024-08-30,F00572,María López,Servicios Mineros Z,Desinfectante Amonio,L240829,24,5714,3341,Limpieza,63,39,Bodega Centro
+2024-08-31,F00573,María López,Supermercados Nova,Desengrasante Industrial,L240802,57,4838,3242,Químicos,132,75,Bodega Sur
+2024-08-31,F00573,María López,Supermercados Nova,Desinfectante Amonio,L240814,2,5261,3403,Limpieza,3,1,Bodega Sur
+2024-08-31,F00573,María López,Supermercados Nova,Desinfectante Amonio,L240809,21,5261,3403,Limpieza,51,30,Bodega Sur
+2024-08-31,F00574,María López,Distribuidora Austral,Detergente Alcalino,L240829,8,4008,2200,Limpieza,25,17,Bodega Norte
+2024-08-31,F00574,María López,Distribuidora Austral,Detergente Enzimático,L240806,78,6109,3964,Limpieza,191,113,Bodega Norte
+2024-08-31,F00574,María López,Distribuidora Austral,Sellador Epóxico,L240802,1,11896,9530,Químicos,3,2,Bodega Norte

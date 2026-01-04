@@ -22,9 +22,13 @@ from sqlalchemy.orm import Session, joinedload
 
 from core.logging_config import logger
 from core.models import Proveedor, Producto
+from core.models.enums import ModuleKey
 from core.models.inbound import InboundPlantillaProveedor, InboundPlantillaProveedorLinea
 from core.models.time import utcnow
 from core.services.services_entitlements import resolve_entitlements
+
+# ✅ Usage counters (Strategy C)
+from core.services.services_usage import increment_usage_dual
 
 from .services_inbound_core import InboundDomainError
 
@@ -187,6 +191,14 @@ def crear_proveedor(
 
     try:
         db.add(proveedor)
+        db.flush()  # ✅ asegura proveedor.id antes de usage (misma transacción)
+
+        # ==========================================================
+        # ✅ CONTADOR (Strategy C)
+        # metric_key debe calzar con limits["inbound"]["proveedores"]
+        # ==========================================================
+        increment_usage_dual(db, int(negocio_id), ModuleKey.INBOUND, "proveedores", 1.0)
+
         db.commit()
         db.refresh(proveedor)
         logger.info("[INBOUND][PROV] creado negocio_id=%s proveedor_id=%s", negocio_id, proveedor.id)

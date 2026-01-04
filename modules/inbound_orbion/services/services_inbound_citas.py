@@ -7,7 +7,7 @@ from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 
-from core.models.enums import CitaEstado, RecepcionEstado
+from core.models.enums import CitaEstado, RecepcionEstado, ModuleKey
 from core.models.inbound.citas import InboundCita
 from core.models.inbound.recepciones import InboundRecepcion
 from core.models.inbound.lineas import InboundLinea
@@ -19,6 +19,9 @@ from core.models.inbound.proveedores import Proveedor
 
 # ✅ TZ helpers (enterprise)
 from core.formatting import assume_cl_local_to_utc, to_cl_tz
+
+# ✅ Usage counters (Strategy C: OPERATIONAL + BILLABLE)
+from core.services.services_usage import increment_usage_dual
 
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
 
@@ -278,7 +281,7 @@ def crear_cita_y_recepcion(
         estado=CitaEstado.PROGRAMADA,
     )
 
-        # 2) Crear recepción 1:1
+    # 2) Crear recepción 1:1
     recepcion = InboundRecepcion(
         negocio_id=int(negocio_id),
         proveedor_id=int(proveedor_id) if proveedor_id else None,
@@ -299,11 +302,10 @@ def crear_cita_y_recepcion(
         tipo_carga=_strip(tipo_carga),
     )
 
-
     try:
         db.add(cita)
         db.add(recepcion)
-        db.flush()  # asegura IDs
+        db.flush()  # asegura IDs (cita.id / recepcion.id)
 
         if plantilla_id:
             _aplicar_plantilla_a_recepcion(
@@ -312,6 +314,14 @@ def crear_cita_y_recepcion(
                 recepcion_id=int(recepcion.id),
                 plantilla_id=int(plantilla_id),
             )
+
+        # ==========================================================
+        # ✅ CONTADORES (Strategy C)
+        # - Al crear cita se crea recepción 1:1 => ambos se cuentan
+        # - Se hace ANTES del commit para quedar en la misma transacción
+        # ==========================================================
+        increment_usage_dual(db, int(negocio_id), ModuleKey.INBOUND, "citas_mes", 1.0)
+        increment_usage_dual(db, int(negocio_id), ModuleKey.INBOUND, "recepciones_mes", 1.0)
 
         db.commit()
         db.refresh(cita)

@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
 
 from core.models.time import utcnow
-from core.models.enums import RecepcionEstado
+from core.models.enums import RecepcionEstado, ModuleKey
 from core.models.inbound.recepciones import InboundRecepcion
 from core.models.inbound.proveedores import Proveedor
 
+from core.services.services_usage import increment_usage_dual
 from modules.inbound_orbion.services.services_inbound_core import InboundDomainError
 
 try:
@@ -49,7 +50,6 @@ def _date_iso_to_utc_midnight_from_cl(value: str | None) -> datetime | None:
     Regla enterprise:
       - Interpretar como 00:00 en America/Santiago
       - Convertir a UTC tz-aware para persistir (baseline)
-    Esto evita el clásico -3h (y respeta DST si aplica).
     """
     v = _strip_or_none(value)
     if not v:
@@ -64,10 +64,8 @@ def _date_iso_to_utc_midnight_from_cl(value: str | None) -> datetime | None:
     dt_utc = base_utc.replace(year=d.year, month=d.month, day=d.day, hour=0, minute=0, second=0, microsecond=0)
 
     if not _CL_TZ:
-        # fallback: seguimos guardando como UTC 00:00 (no ideal, pero consistente)
         return dt_utc
 
-    # Creamos 00:00 CL y lo convertimos a UTC
     dt_cl = dt_utc.astimezone(_CL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
     return dt_cl.astimezone(base_utc.tzinfo)
 
@@ -256,7 +254,21 @@ def crear_recepcion(
         estado=estado_enum,
     )
 
+    # ------------------------------
+    # ✅ USAGE (Strategy C)
+    # Evento: CREAR recepción
+    # - OPERATIONAL + BILLABLE por el mismo evento
+    # - Misma transacción (si falla commit, no queda usage sucio)
+    # ------------------------------
     db.add(r)
+    increment_usage_dual(
+        db,
+        negocio_id=negocio_id,
+        module_key=ModuleKey.INBOUND,
+        metric_key="recepciones_mes",
+        delta=1.0,
+    )
+
     db.commit()
     db.refresh(r)
     return r

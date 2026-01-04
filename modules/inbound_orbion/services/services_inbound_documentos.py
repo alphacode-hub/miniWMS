@@ -12,32 +12,29 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.logging_config import logger
+from core.models import Negocio
 from core.models.time import utcnow
-from core.models.enums import InboundDocumentoEstado, InboundDocumentoTipo
+from core.models.enums import InboundDocumentoEstado, InboundDocumentoTipo, ModuleKey, UsageCounterType
 from core.models.inbound.documentos import InboundDocumento
+from core.services.services_entitlements import resolve_entitlements
+from core.services.services_usage import get_usage_value, increment_usage_dual
 
 from .services_inbound_core import InboundDomainError, obtener_recepcion_segura
 
 
-# =========================================================
-# Storage baseline (local disk)
-# =========================================================
-# Puedes cambiarlo a /data en Railway, o a un volumen.
 STORAGE_ROOT = Path(os.getenv("ORBION_STORAGE_DIR", "./storage")).resolve()
+
+_METRIC_EVIDENCIAS_MB = "evidencias_mb"
+_READ_CHUNK = 1024 * 1024  # 1MB
+_MAX_SIZE_BYTES = 25 * 1024 * 1024  # 25MB por documento (ajustable)
 
 
 def _safe_filename(name: str) -> str:
-    """
-    Sanitiza nombre para filesystem. Mantiene extensión si existe.
-    """
     name = (name or "").strip()
     if not name:
         return "archivo"
-
-    # quita path traversal
     name = name.replace("\\", "/").split("/")[-1]
-
-    # allow: letras, números, guion, underscore, punto, espacio (lo normalizamos)
     name = re.sub(r"[^a-zA-Z0-9._\-\s]", "", name).strip()
     name = re.sub(r"\s+", "_", name)
     return name or "archivo"
@@ -53,32 +50,58 @@ def _build_path(negocio_id: int, recepcion_id: int, filename: str) -> Path:
 
 
 def _rel_uri(path: Path) -> str:
-    """
-    Guarda el uri de forma portable (relativo a STORAGE_ROOT).
-    Evita rutas absolutas en DB (mejor para despliegues).
-    """
     try:
         return str(path.relative_to(STORAGE_ROOT)).replace("\\", "/")
     except Exception:
-        # fallback: si por alguna razón no es relativo
         return str(path).replace("\\", "/")
 
 
+def _abs_from_uri(uri: str) -> Path:
+    u = (uri or "").strip().replace("\\", "/")
+    if not u:
+        raise InboundDomainError("Documento inválido: uri vacía.")
+    u = u.lstrip("/")
+    abs_path = (STORAGE_ROOT / u).resolve()
+    try:
+        abs_path.relative_to(STORAGE_ROOT.resolve())
+    except Exception:
+        raise InboundDomainError("Documento inválido: ruta no permitida.")
+    return abs_path
+
+
+def _bytes_to_mb(size_bytes: int) -> float:
+    try:
+        b = float(size_bytes or 0)
+    except Exception:
+        b = 0.0
+    if b <= 0:
+        return 0.0
+    return b / (1024.0 * 1024.0)
+
+
+def _get_inbound_limits(ent: dict) -> dict:
+    limits_all = ent.get("limits")
+    if not isinstance(limits_all, dict):
+        return {}
+    inbound = limits_all.get("inbound")
+    return inbound if isinstance(inbound, dict) else {}
+
+
+def _coerce_float(v) -> float | None:
+    if v is None or v == "":
+        return None
+    try:
+        return float(str(v).strip().replace(",", "."))
+    except Exception:
+        return None
+
+
 def _parse_tipo(tipo: str) -> InboundDocumentoTipo:
-    """
-    Acepta inputs de UI tipo:
-    - "GUIA", "guia"
-    - "FACTURA", "factura"
-    - "BL", "bl"
-    - "CERTIFICADO", "certificado"
-    - "OTRO", "otro"
-    """
     if not tipo or not tipo.strip():
         raise InboundDomainError("Debes seleccionar un tipo de documento.")
 
     t = tipo.strip().upper()
 
-    # normalizaciones comunes
     if t in ("GUIA", "GUIA_DESPACHO", "GD"):
         return InboundDocumentoTipo.GUIA
     if t in ("FACTURA", "FAC"):
@@ -94,17 +117,10 @@ def _parse_tipo(tipo: str) -> InboundDocumentoTipo:
 
 
 async def _save_upload_streaming(file: UploadFile, dest: Path) -> Tuple[int, str]:
-    """
-    Guarda un UploadFile a disco en streaming, calculando sha256 y size_bytes.
-
-    Retorna:
-      (size_bytes, sha256_hex)
-    """
     hasher = hashlib.sha256()
     size = 0
 
     try:
-        # Asegura puntero al inicio si se reutiliza (por seguridad)
         try:
             await file.seek(0)
         except Exception:
@@ -112,23 +128,25 @@ async def _save_upload_streaming(file: UploadFile, dest: Path) -> Tuple[int, str
 
         with dest.open("wb") as f:
             while True:
-                chunk = await file.read(1024 * 1024)  # 1MB
+                chunk = await file.read(_READ_CHUNK)
                 if not chunk:
                     break
+                size += len(chunk)
+                if size > _MAX_SIZE_BYTES:
+                    try:
+                        dest.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    raise InboundDomainError(f"Archivo demasiado grande. Máximo {_MAX_SIZE_BYTES // (1024*1024)}MB.")
                 f.write(chunk)
                 hasher.update(chunk)
-                size += len(chunk)
 
         if size <= 0:
-            # limpia archivo vacío si se creó
             try:
-                dest.unlink(missing_ok=True)  # py3.8+? (si falla, ignoramos)
+                if dest.exists():
+                    dest.unlink()
             except Exception:
-                try:
-                    if dest.exists():
-                        dest.unlink()
-                except Exception:
-                    pass
+                pass
             raise InboundDomainError("El archivo está vacío.")
 
         return size, hasher.hexdigest()
@@ -136,7 +154,6 @@ async def _save_upload_streaming(file: UploadFile, dest: Path) -> Tuple[int, str
     except InboundDomainError:
         raise
     except Exception:
-        # si falló escritura, intentamos limpiar
         try:
             if dest.exists():
                 dest.unlink()
@@ -146,11 +163,6 @@ async def _save_upload_streaming(file: UploadFile, dest: Path) -> Tuple[int, str
 
 
 def _assert_recepcion_editable(recepcion) -> None:
-    """
-    Baseline guard: no permitir cambios si la recepción está cerrada o cancelada.
-    No importa el tipo exacto del Enum: comparamos por .value cuando exista.
-    """
-    estado = None
     try:
         estado = recepcion.estado.value if recepcion and recepcion.estado else None
     except Exception:
@@ -160,16 +172,52 @@ def _assert_recepcion_editable(recepcion) -> None:
         raise InboundDomainError("La recepción está cerrada/cancelada. No se pueden modificar documentos.")
 
 
+def _enforce_evidencias_mb(
+    db: Session,
+    *,
+    negocio_id: int,
+    size_bytes: int,
+    negocio: Negocio | None = None,
+) -> None:
+    try:
+        n = negocio or db.query(Negocio).filter(Negocio.id == int(negocio_id)).first()
+    except Exception:
+        n = None
+
+    if not n:
+        return
+
+    ent = resolve_entitlements(n)
+    inbound_limits = _get_inbound_limits(ent)
+    max_mb = _coerce_float(inbound_limits.get("evidencias_mb"))
+
+    if max_mb is None:
+        return
+
+    mb = _bytes_to_mb(size_bytes)
+    if mb <= 0:
+        return
+
+    usado = get_usage_value(
+        db,
+        negocio_id=int(negocio_id),
+        module_key=ModuleKey.INBOUND,
+        metric_key=_METRIC_EVIDENCIAS_MB,
+        counter_type=UsageCounterType.BILLABLE,
+    )
+
+    if float(usado or 0.0) + float(mb) > float(max_mb) + 1e-9:
+        remaining = max(0.0, float(max_mb) - float(usado or 0.0))
+        raise InboundDomainError(
+            f"Límite de evidencias excedido. Disponible: {remaining:.2f} MB (de {float(max_mb):.0f} MB)."
+        )
+
+
 # =========================================================
 # Queries
 # =========================================================
 
-def listar_documentos(
-    db: Session,
-    negocio_id: int,
-    recepcion_id: int,
-) -> List[InboundDocumento]:
-    # valida tenant + existencia recepcion
+def listar_documentos(db: Session, negocio_id: int, recepcion_id: int) -> List[InboundDocumento]:
     obtener_recepcion_segura(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
 
     stmt = (
@@ -178,17 +226,12 @@ def listar_documentos(
         .where(InboundDocumento.recepcion_id == recepcion_id)
         .where(InboundDocumento.activo == 1)
         .where(InboundDocumento.is_deleted.is_(False))
-        .order_by(InboundDocumento.created_at.desc())
+        .order_by(InboundDocumento.created_at.desc(), InboundDocumento.id.desc())
     )
     return list(db.execute(stmt).scalars().all())
 
 
-def obtener_documento(
-    db: Session,
-    negocio_id: int,
-    recepcion_id: int,
-    documento_id: int,
-) -> InboundDocumento:
+def obtener_documento(db: Session, negocio_id: int, recepcion_id: int, documento_id: int) -> InboundDocumento:
     stmt = (
         select(InboundDocumento)
         .where(InboundDocumento.id == documento_id)
@@ -218,8 +261,8 @@ async def crear_documento(
     creado_por: Optional[str],
     linea_id: Optional[int] = None,
     pallet_id: Optional[int] = None,
+    negocio: Negocio | None = None,
 ) -> InboundDocumento:
-    # valida recepcion (tenant) + editable
     recepcion = obtener_recepcion_segura(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
     _assert_recepcion_editable(recepcion)
 
@@ -228,18 +271,27 @@ async def crear_documento(
 
     tipo_enum = _parse_tipo(tipo)
 
+    # ✅ pre-enforce conservador (evita escribir si ya estás pasado)
+    if negocio is not None:
+        _enforce_evidencias_mb(db, negocio_id=negocio_id, size_bytes=_MAX_SIZE_BYTES, negocio=negocio)
+
     filename_safe = _safe_filename(file.filename)
     dest = _build_path(negocio_id, recepcion_id, filename_safe)
 
     size_bytes, sha256_hex = await _save_upload_streaming(file, dest)
 
-    # ===========================
-    # Versionado simple por grupo
-    # ===========================
-    # Regla baseline:
-    # - Si ya existe un documento VIGENTE "actual" con mismo tipo + nombre (en la recepción),
-    #   entonces: reutilizamos doc_group_id, incrementamos version, marcamos anterior como REEMPLAZADO
-    # - Si no existe, creamos grupo nuevo.
+    # ✅ enforce real con size final
+    try:
+        _enforce_evidencias_mb(db, negocio_id=negocio_id, size_bytes=size_bytes, negocio=negocio)
+    except Exception:
+        try:
+            if dest.exists():
+                dest.unlink()
+        except Exception:
+            pass
+        raise
+
+    # buscar current del mismo tipo+nombre (baseline simple)
     stmt_current = (
         select(InboundDocumento)
         .where(InboundDocumento.negocio_id == negocio_id)
@@ -249,14 +301,13 @@ async def crear_documento(
         .where(InboundDocumento.is_current.is_(True))
         .where(InboundDocumento.activo == 1)
         .where(InboundDocumento.is_deleted.is_(False))
-        .order_by(InboundDocumento.created_at.desc())
+        .order_by(InboundDocumento.created_at.desc(), InboundDocumento.id.desc())
     )
     current = db.execute(stmt_current).scalar_one_or_none()
 
     if current:
         group_id = current.doc_group_id or uuid.uuid4().hex
         next_version = int(current.version or 1) + 1
-
         current.is_current = False
         current.estado = InboundDocumentoEstado.REEMPLAZADO
         current.updated_at = utcnow()
@@ -286,30 +337,65 @@ async def crear_documento(
         is_deleted=False,
     )
 
-    db.add(doc)
-    db.flush()
-    return doc
+    try:
+        db.add(doc)
+        db.flush()
+
+        mb = _bytes_to_mb(size_bytes)
+        if mb > 0:
+            try:
+                increment_usage_dual(
+                    db,
+                    negocio_id=int(negocio_id),
+                    module_key=ModuleKey.INBOUND,
+                    metric_key=_METRIC_EVIDENCIAS_MB,
+                    delta=float(mb),
+                )
+            except Exception:
+                # resiliente
+                pass
+
+        logger.info(
+            "[INBOUND][DOC] creado negocio_id=%s recepcion_id=%s doc_id=%s bytes=%s mb=%.3f tipo=%s",
+            negocio_id,
+            recepcion_id,
+            getattr(doc, "id", None),
+            size_bytes,
+            mb,
+            str(tipo_enum),
+        )
+
+        return doc
+
+    except Exception as exc:
+        try:
+            if dest.exists():
+                dest.unlink()
+        except Exception:
+            pass
+        raise InboundDomainError("No se pudo registrar el documento en la base de datos.") from exc
 
 
-def eliminar_documento(
-    db: Session,
-    negocio_id: int,
-    recepcion_id: int,
-    documento_id: int,
-) -> InboundDocumento:
-    # valida recepcion + editable
+def eliminar_documento(db: Session, negocio_id: int, recepcion_id: int, documento_id: int) -> InboundDocumento:
     recepcion = obtener_recepcion_segura(db, negocio_id=negocio_id, recepcion_id=recepcion_id)
     _assert_recepcion_editable(recepcion)
 
     doc = obtener_documento(db, negocio_id=negocio_id, recepcion_id=recepcion_id, documento_id=documento_id)
 
-    # Soft delete (baseline + trazabilidad)
     doc.activo = 0
     doc.is_deleted = True
     doc.deleted_at = utcnow()
     doc.updated_at = utcnow()
 
-    # Si era la versión vigente del grupo, promovemos la última versión anterior activa/no borrada
+    # borrar físico (opcional, resiliente)
+    try:
+        abs_path = _abs_from_uri(getattr(doc, "uri", "") or "")
+        if abs_path.exists() and abs_path.is_file():
+            abs_path.unlink()
+    except Exception:
+        pass
+
+    # promover versión anterior si corresponde
     if doc.is_current and doc.doc_group_id:
         stmt_prev = (
             select(InboundDocumento)
@@ -319,12 +405,11 @@ def eliminar_documento(
             .where(InboundDocumento.id != doc.id)
             .where(InboundDocumento.activo == 1)
             .where(InboundDocumento.is_deleted.is_(False))
-            .order_by(InboundDocumento.version.desc(), InboundDocumento.created_at.desc())
+            .order_by(InboundDocumento.version.desc(), InboundDocumento.created_at.desc(), InboundDocumento.id.desc())
         )
         prev = db.execute(stmt_prev).scalar_one_or_none()
         if prev:
             prev.is_current = True
-            # si estaba reemplazado, lo devolvemos a vigente
             prev.estado = InboundDocumentoEstado.VIGENTE
             prev.updated_at = utcnow()
 

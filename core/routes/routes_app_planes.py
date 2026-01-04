@@ -1,4 +1,5 @@
-﻿"""
+﻿# core/routes/routes_app_planes.py
+"""
 ORBION Plan Center – /app/planes (baseline aligned)
 
 ✅ Un solo lugar para:
@@ -10,6 +11,10 @@ ORBION Plan Center – /app/planes (baseline aligned)
 Reglas enterprise:
 - NO mostrar "core" (es del sistema, siempre ON)
 - coming_soon => mostrar Próximamente y NO permitir acciones
+
+✅ Extra enterprise:
+- Para INBOUND.evidencias_mb: mostrar también "storage activo" (real) calculado desde storage
+  (docs activos + fotos activas), sin romper el patrón de counters.
 """
 
 from __future__ import annotations
@@ -23,6 +28,13 @@ from core.database import get_db
 from core.security import require_user_dep
 from core.logging_config import logger
 from core.services.services_entitlements import get_entitlements_snapshot
+from core.services.services_module_counters import (
+    build_counters_for_ui,
+    build_inbound_counters_for_ui,
+)
+
+# ✅ NUEVO: métrica real (storage activo)
+from core.services.services_inbound_storage_metrics import storage_activo_mb_inbound
 
 router = APIRouter(prefix="/app", tags=["app-planes"])
 
@@ -89,6 +101,54 @@ def _normalize_subscription_for_ui(mod_status: str, sub: dict, ent_period: dict)
     return status_final, sub, period_final
 
 
+def _counters_for_module(*, db: Session, negocio_id: int, slug: str, mod: dict) -> list[dict]:
+    """
+    Construye counters UI listos (sin cálculos en Jinja).
+    Además:
+      - inbound/evidencias_mb incluye storage activo real (docs+fotos activos).
+    """
+    if not isinstance(mod, dict):
+        return []
+
+    # Inbound: orden/labels oficiales
+    if slug == "inbound":
+        counters = build_inbound_counters_for_ui(mod)
+    else:
+        counters = build_counters_for_ui(mod)
+
+    # ✅ storage activo (solo inbound)
+    storage_activo_mb: float | None = None
+    if slug == "inbound":
+        try:
+            storage_activo_mb = float(storage_activo_mb_inbound(db, negocio_id=int(negocio_id)))
+            if storage_activo_mb < 0:
+                storage_activo_mb = 0.0
+        except Exception:
+            storage_activo_mb = None  # resiliente
+
+    # Convertimos dataclass -> dict serializable para template
+    out: list[dict] = []
+    for c in counters:
+        row = {
+            "key": c.key,
+            "label": c.label,
+            "unit": c.unit,
+            "used": c.used,
+            "limit": c.limit,
+            "pct": c.pct,
+            "is_limited": c.is_limited,
+        }
+
+        # ✅ Adjuntar storage activo SOLO al counter evidencias_mb
+        if slug == "inbound" and c.key == "evidencias_mb":
+            row["storage_active"] = storage_activo_mb  # float | None
+            row["storage_active_unit"] = "mb"
+
+        out.append(row)
+
+    return out
+
+
 @router.get("/planes", response_class=HTMLResponse)
 async def app_planes_view(
     request: Request,
@@ -143,11 +203,13 @@ async def app_planes_view(
 
         status_final, sub_final, period_final = _normalize_subscription_for_ui(mod_status, sub, ent_period)
 
-        # ✅ coming_soon manda para UI: no activable
         if coming_soon:
             status_final = "coming_soon"
             sub_final = {}
             period_final = {}
+
+        # ✅ Counters (ya calculados) + storage activo para inbound/evidencias_mb
+        counters = [] if coming_soon else _counters_for_module(db=db, negocio_id=int(negocio_id), slug=slug, mod=mod)
 
         dashboard_modules.append(
             {
@@ -157,13 +219,15 @@ async def app_planes_view(
                 "coming_soon": coming_soon,
                 "period": period_final,
                 "subscription": sub_final,
+                # compat (por si tienes otras pantallas leyendo esto)
                 "limits": _normalize_numeric_dict(limits),
                 "usage": _normalize_numeric_dict(usage),
                 "remaining": _normalize_numeric_dict(remaining),
+                # nuevo (fuente de verdad UI)
+                "counters": counters,
             }
         )
 
-    # Orden UI (inbound primero; wms y futuros después)
     order = {"inbound": 0, "wms": 1, "analytics_plus": 2, "ml_ia": 3}
     dashboard_modules.sort(key=lambda x: order.get(x["slug"], 50))
 

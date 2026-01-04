@@ -157,9 +157,16 @@
         {% for m in (dashboard_modules or []) %}
 
         {# Normalizaciones defensivas #}
-        {% set status_val = (m.status.value if m.status is not none and m.status.value is defined else (m.status|string)) %}
+        {% set status_val = (m.status|string)|lower %}
         {% set status_val = (status_val or "")|lower %}
         {% set badge_val = (m.badge or ( "Próximamente" if m.coming_soon else ("Activo" if m.enabled else "Ver plan") )) %}
+
+        {# Unidad por módulo (desde backend). Default: count #}
+        {% set unit = (m.metric_unit if m.metric_unit is defined else None) %}
+        {% set unit = (unit or "count")|string|lower %}
+        {% set is_mb = (unit == "mb") %}
+        {% set decimals = 1 if is_mb else 0 %}
+        {% set unit_txt = "MB" if is_mb else "" %}
 
         <article class="relative rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 hover:border-cyan-400/40 transition">
             <div class="absolute inset-0 rounded-2xl bg-cyan-500/5 blur-xl pointer-events-none"></div>
@@ -197,21 +204,26 @@
                 <div class="flex justify-between text-[10px] text-slate-400">
                     <span>{{ m.metric_label }}</span>
                     <span>
-                        {{ (m.metric_used if m.metric_used is not none else 0)|cl_num }}
+                        {# defensivo: forzar float para barra + formatear según unidad #}
+                        {% set used = (m.metric_used if m.metric_used is not none else 0)|float %}
+                        {% set lim  = (m.metric_limit if m.metric_limit is not none else 0)|float %}
+
+                        {{ cl_num(used, decimals) }}{% if unit_txt %} {{ unit_txt }}{% endif %}
                         /
-                        {{ (m.metric_limit if m.metric_limit is not none else 0)|cl_num }}
+                        {{ cl_num(lim, decimals) }}{% if unit_txt %} {{ unit_txt }}{% endif %}
                     </span>
                 </div>
 
                 <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                    {% set used = (m.metric_used if m.metric_used is not none else 0) %}
-                    {% set lim = (m.metric_limit if m.metric_limit is not none else 0) %}
                     {% set pct = (used / lim * 100) if lim and lim > 0 else 0 %}
+                    {% if pct < 0 %}{% set pct = 0 %}{% endif %}
+                    {% if pct > 100 %}{% set pct_bar = 100 %}{% else %}{% set pct_bar = pct %}{% endif %}
+
                     <div class="h-full
                          {% if pct < 80 %}bg-emerald-400
                          {% elif pct < 100 %}bg-amber-400
                          {% else %}bg-red-500{% endif %}"
-                        style="width: {{ pct|round(0) }}%"></div>
+                        style="width: {{ pct_bar|round(0) }}%"></div>
                 </div>
             </div>
             {% endif %}

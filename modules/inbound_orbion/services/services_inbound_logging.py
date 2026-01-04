@@ -5,6 +5,7 @@ Logging estructurado – Módulo Inbound (ORBION)
 ✔ Logs JSON (machine-readable)
 ✔ Child logger por dominio (inbound)
 ✔ Seguro ante payloads no serializables
+✔ Seguro ante colisiones de keys (no rompe flujos)
 ✔ Preparado para observability (ELK / Loki / Datadog / OpenTelemetry)
 """
 
@@ -45,6 +46,35 @@ def _safe_json(payload: dict[str, Any]) -> str:
         return json.dumps(safe_payload, ensure_ascii=False)
 
 
+def _merge_extra_safe(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+    """
+    Merge robusto:
+    - Evita colisiones de keys (ej: 'tipo', 'event', 'ts', etc.)
+    - Si colisiona, renombra como 'extra_<key>' y si aún colisiona agrega sufijo.
+    """
+    out = dict(base)
+    for k, v in (extra or {}).items():
+        if k not in out:
+            out[k] = v
+            continue
+
+        # Colisión: renombramos
+        new_key = f"extra_{k}"
+        if new_key not in out:
+            out[new_key] = v
+            continue
+
+        # Si también colisiona, agregamos sufijos
+        i = 2
+        while True:
+            candidate = f"{new_key}_{i}"
+            if candidate not in out:
+                out[candidate] = v
+                break
+            i += 1
+    return out
+
+
 def _base_payload(
     *,
     event: str,
@@ -55,16 +85,17 @@ def _base_payload(
 ) -> dict[str, Any]:
     """
     Estructura base común para todos los logs inbound.
+    IMPORTANTE: merge seguro para evitar colisiones.
     """
-    return {
+    base = {
         "ts": _utc_iso(),
         "domain": "inbound",
         "event": f"inbound.{event}",
         "type": tipo,  # event | error | audit | metric
         "negocio_id": negocio_id,
         "recepcion_id": recepcion_id,
-        **extra,
     }
+    return _merge_extra_safe(base, dict(extra))
 
 
 # ============================
@@ -80,20 +111,19 @@ def log_inbound_event(
 ) -> None:
     """
     Log de evento normal del módulo inbound.
-
-    Ejemplos:
-        - recepcion_creada
-        - linea_agregada
-        - pallet_cerrado
     """
-    payload = _base_payload(
-        event=event,
-        tipo="event",
-        negocio_id=negocio_id,
-        recepcion_id=recepcion_id,
-        **extra,
-    )
-    inbound_logger.info(_safe_json(payload))
+    try:
+        payload = _base_payload(
+            event=event,
+            tipo="event",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            **extra,
+        )
+        inbound_logger.info(_safe_json(payload))
+    except Exception:
+        # logging jamás debe romper flujos
+        pass
 
 
 def log_inbound_error(
@@ -101,27 +131,33 @@ def log_inbound_error(
     *,
     negocio_id: int | None = None,
     recepcion_id: int | None = None,
-    error: Exception | None = None,
+    error: Exception | str | None = None,
     **extra: Any,
 ) -> None:
     """
     Log de error del módulo inbound.
-
-    - `event`: nombre lógico del error
-    - `error`: excepción capturada (opcional)
+    - `error`: excepción o mensaje (opcional)
     """
-    if error is not None:
-        extra.setdefault("error_type", type(error).__name__)
-        extra.setdefault("error_message", str(error))
+    try:
+        if error is not None:
+            if isinstance(error, Exception):
+                extra.setdefault("error_type", type(error).__name__)
+                extra.setdefault("error_message", str(error))
+            else:
+                # string u otro
+                extra.setdefault("error_type", type(error).__name__)
+                extra.setdefault("error_message", str(error))
 
-    payload = _base_payload(
-        event=event,
-        tipo="error",
-        negocio_id=negocio_id,
-        recepcion_id=recepcion_id,
-        **extra,
-    )
-    inbound_logger.error(_safe_json(payload))
+        payload = _base_payload(
+            event=event,
+            tipo="error",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            **extra,
+        )
+        inbound_logger.error(_safe_json(payload))
+    except Exception:
+        pass
 
 
 def log_inbound_audit(
@@ -134,21 +170,19 @@ def log_inbound_audit(
 ) -> None:
     """
     Log de auditoría funcional (acciones humanas relevantes).
-
-    Ejemplos:
-        - cambio_estado_recepcion
-        - eliminacion_linea
-        - override_sla
     """
-    payload = _base_payload(
-        event=event,
-        tipo="audit",
-        negocio_id=negocio_id,
-        recepcion_id=recepcion_id,
-        usuario=usuario,
-        **extra,
-    )
-    inbound_logger.info(_safe_json(payload))
+    try:
+        payload = _base_payload(
+            event=event,
+            tipo="audit",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            usuario=usuario,
+            **extra,
+        )
+        inbound_logger.info(_safe_json(payload))
+    except Exception:
+        pass
 
 
 def log_inbound_metric(
@@ -161,14 +195,16 @@ def log_inbound_metric(
 ) -> None:
     """
     Log de métricas calculadas (SLA, tiempos, KPIs).
-    Pensado para consumo por herramientas de observabilidad.
     """
-    payload = _base_payload(
-        event=event,
-        tipo="metric",
-        negocio_id=negocio_id,
-        recepcion_id=recepcion_id,
-        metricas=metricas,
-        **extra,
-    )
-    inbound_logger.info(_safe_json(payload))
+    try:
+        payload = _base_payload(
+            event=event,
+            tipo="metric",
+            negocio_id=negocio_id,
+            recepcion_id=recepcion_id,
+            metricas=metricas,
+            **extra,
+        )
+        inbound_logger.info(_safe_json(payload))
+    except Exception:
+        pass

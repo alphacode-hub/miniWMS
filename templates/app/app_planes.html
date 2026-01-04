@@ -101,14 +101,12 @@
         {% set coming_soon = (m.coming_soon if m.coming_soon is not none else (m.get("coming_soon") or false)) %}
 
         {% set sub = m.subscription if m.subscription is mapping else (m.get("subscription") or {}) %}
-        {% set cancel_at_period_end = (sub.get("cancel_at_period_end") or false) %}
         {% set trial_ends = sub.get("trial_ends_at") %}
 
         {% set per = m.period if m.period is mapping else (m.get("period") or {}) %}
         {% set per_end = per.get("end") or per.get("to") %}
 
-        {% set limits = m.limits if m.limits is mapping else (m.get("limits") or {}) %}
-        {% set usage  = m.usage  if m.usage  is mapping else (m.get("usage") or {}) %}
+        {% set counters = (m.counters if m.counters is defined else m.get("counters") or []) %}
 
         {% set access_allowed = (enabled and (not coming_soon) and st in ["trial","active"]) %}
 
@@ -164,23 +162,44 @@
                 </span>
             </div>
 
-            {% if limits and limits|length > 0 %}
+            {# ✅ Counters robustos (sin cálculos en Jinja) #}
+            {% if (not coming_soon) and counters and counters|length > 0 %}
             <div class="rounded-xl border border-slate-800 bg-slate-950/30 p-3">
                 <p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase mb-2">
                     Límites del módulo
                 </p>
 
                 <div class="space-y-2">
-                    {% for k, lim in limits.items() %}
-                    {% set used = usage.get(k, 0) %}
-                    {% set pct = (used / lim * 100) if lim and lim > 0 else 0 %}
+                    {% for c in counters %}
+                    {% set unit = (c.unit or "count") %}
+                    {% set dec = (0 if unit == "count" else 1) %}
+                    {% set pct = (c.pct or 0) %}
 
                     <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[11px] text-slate-300">{{ k }}</p>
-                            <p class="text-[10px] text-slate-500">
-                                Uso: {{ cl_num(used,0) }} / {{ cl_num(lim,0) }}
+                        <div class="min-w-0">
+                            <p class="text-[11px] text-slate-300 truncate">
+                                {{ c.label or c.key }}
                             </p>
+
+                            <p class="text-[10px] text-slate-500">
+                                Uso:
+                                {{ cl_num((c.used if c.used is not none else 0), dec) }}
+                                {% if unit == "mb" %}<span class="text-slate-500">MB</span>{% endif %}
+                                /
+                                {{ cl_num((c.limit if c.limit is not none else 0), dec) }}
+                                {% if unit == "mb" %}<span class="text-slate-500">MB</span>{% endif %}
+                            </p>
+
+                            {# ✅ NUEVO: storage activo (solo evidencias_mb si viene desde backend) #}
+                            {% if c.key == "evidencias_mb" and c.storage_active is defined and c.storage_active is not none %}
+                            <p class="text-[10px] text-slate-600 mt-0.5">
+                                Storage activo:
+                                <span class="text-slate-300 font-semibold">
+                                    {{ cl_num(c.storage_active, 1) }}
+                                </span>
+                                <span class="text-slate-600">MB</span>
+                            </p>
+                            {% endif %}
                         </div>
 
                         <div class="w-28">
@@ -199,6 +218,12 @@
                     </div>
                     {% endfor %}
                 </div>
+            </div>
+            {% elif (not coming_soon) %}
+            <div class="rounded-xl border border-slate-800 bg-slate-950/20 p-3">
+                <p class="text-[11px] text-slate-400">
+                    Este módulo no reporta límites en el snapshot actual.
+                </p>
             </div>
             {% endif %}
 

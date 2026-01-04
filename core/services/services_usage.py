@@ -2,27 +2,36 @@
 """
 services_usage.py – ORBION SaaS (enterprise, baseline aligned)
 
-✔ Usage no acumulativo por período (period_start/end)
-✔ Scope: negocio_id + module_key + metric_key + periodo
+✔ Usage por periodo operacional (mes calendario America/Santiago -> persistido en UTC)
+✔ Scope: negocio_id + module_key + counter_type + metric_key + periodo
 ✔ Seguro multi-db (SQLite / Postgres)
 ✔ Resiliente ante concurrencia (UniqueConstraint + IntegrityError + retry)
 ✔ Incremento atómico (evita lost update)
-✔ No acopla módulos funcionales (Inbound/WMS) con planes/billing
+✔ Strategy C: OPERATIONAL + BILLABLE (por el mismo evento)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.models.enums import ModuleKey
-from core.models.saas import SuscripcionModulo, UsageCounter
+from core.models.enums import ModuleKey, UsageCounterType, SubscriptionStatus
+from core.models.saas import UsageCounter, SuscripcionModulo
 from core.models.time import utcnow
+ 
+
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # pragma: no cover
+    ZoneInfo = None  # type: ignore
+
+_CL_TZ = ZoneInfo("America/Santiago") if ZoneInfo else None
 
 
 # =========================================================
@@ -31,7 +40,6 @@ from core.models.time import utcnow
 
 @dataclass(frozen=True)
 class UsageWindow:
-    """Ventana de uso (mismo periodo que la suscripción del módulo)."""
     period_start: datetime
     period_end: datetime
 
@@ -40,69 +48,116 @@ class UsageWindow:
 # HELPERS
 # =========================================================
 
-def _ensure_tz(dt: datetime) -> datetime:
-    """Asegura timezone-aware. En ORBION usamos UTC tz-aware."""
+def _ensure_utc_aware(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=utcnow().tzinfo)
-    return dt
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _norm_metric_key(metric_key: str) -> str:
-    # Canon: minúsculas, sin espacios laterales.
     return (metric_key or "").strip().lower()
 
 
-def _get_subscription_window_or_none(
+def _operational_month_window(now_utc: datetime | None = None) -> UsageWindow:
+    """
+    Ventana: mes calendario en America/Santiago, persistido como UTC tz-aware.
+    Ej: enero = [2026-01-01 00:00 CL, 2026-02-01 00:00 CL)
+    """
+    now = now_utc or utcnow()
+    now = _ensure_utc_aware(now)
+
+    if not _CL_TZ:
+        # fallback: mes UTC
+        y, m = now.year, now.month
+        start = datetime(y, m, 1, tzinfo=timezone.utc)
+        if m == 12:
+            end = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end = datetime(y, m + 1, 1, tzinfo=timezone.utc)
+        return UsageWindow(period_start=start, period_end=end)
+
+    now_cl = now.astimezone(_CL_TZ)
+    y, m = now_cl.year, now_cl.month
+
+    start_cl = datetime(y, m, 1, 0, 0, 0, tzinfo=_CL_TZ)
+    if m == 12:
+        end_cl = datetime(y + 1, 1, 1, 0, 0, 0, tzinfo=_CL_TZ)
+    else:
+        end_cl = datetime(y, m + 1, 1, 0, 0, 0, tzinfo=_CL_TZ)
+
+    # persistimos como UTC
+    return UsageWindow(
+        period_start=_ensure_utc_aware(start_cl),
+        period_end=_ensure_utc_aware(end_cl),
+    )
+
+
+def _subscription_period_window(
     db: Session,
+    *,
     negocio_id: int,
     module_key: ModuleKey,
-) -> tuple[Optional[SuscripcionModulo], Optional[UsageWindow]]:
+    now_utc: datetime | None = None,
+) -> UsageWindow | None:
+    """
+    Ventana BILLABLE por módulo:
+    - Solo si la suscripción está ACTIVE y tiene current_period_start/end.
+    - Retorna None si no aplica (trial/past_due/suspended/cancelled o campos faltantes).
+    """
+    now = now_utc or utcnow()
+    now = _ensure_utc_aware(now)
+
     sub = (
         db.query(SuscripcionModulo)
-        .filter(SuscripcionModulo.negocio_id == negocio_id)
+        .filter(SuscripcionModulo.negocio_id == int(negocio_id))
         .filter(SuscripcionModulo.module_key == module_key)
         .first()
     )
+
     if not sub:
-        return None, None
+        return None
 
-    if not sub.current_period_start or not sub.current_period_end:
-        return sub, None
+    st = getattr(sub.status, "value", str(sub.status)).lower().strip()
+    if st != SubscriptionStatus.ACTIVE.value:
+        return None
 
-    return sub, UsageWindow(
-        period_start=_ensure_tz(sub.current_period_start),
-        period_end=_ensure_tz(sub.current_period_end),
-    )
+    ps = getattr(sub, "current_period_start", None)
+    pe = getattr(sub, "current_period_end", None)
+    if not ps or not pe:
+        return None
 
+    ps = _ensure_utc_aware(ps)
+    pe = _ensure_utc_aware(pe)
+    if pe <= ps:
+        return None
 
-def _get_subscription_window_or_raise(
+    return UsageWindow(period_start=ps, period_end=pe)
+
+def _resolve_window(
     db: Session,
+    *,
     negocio_id: int,
     module_key: ModuleKey,
-) -> tuple[SuscripcionModulo, UsageWindow]:
-    sub, window = _get_subscription_window_or_none(db, negocio_id, module_key)
-    if not sub:
-        raise ValueError(
-            f"No existe suscripción para módulo={module_key.value} en negocio_id={negocio_id}"
-        )
-    if not window:
-        raise ValueError(f"Suscripción sin periodo válido: id={sub.id}")
-    return sub, window
+    counter_type: UsageCounterType,
+) -> UsageWindow:
+    # OPERATIONAL = mes calendario CL (analítica)
+    if counter_type == UsageCounterType.OPERATIONAL:
+        return _operational_month_window()
+
+    # BILLABLE = período de suscripción si existe; si no, fallback mensual CL
+    w = _subscription_period_window(db, negocio_id=negocio_id, module_key=module_key)
+    return w or _operational_month_window()
+
 
 
 def _get_or_create_counter(
     db: Session,
     negocio_id: int,
     module_key: ModuleKey,
+    counter_type: UsageCounterType,
     metric_key: str,
     window: UsageWindow,
 ) -> UsageCounter:
-    """
-    Obtiene el contador de uso del periodo; si no existe, lo crea.
-
-    ✅ Enterprise: SAVEPOINT (begin_nested) para que colisión unique
-    NO haga rollback de toda la transacción del caller.
-    """
     metric = _norm_metric_key(metric_key)
     if not metric:
         raise ValueError("metric_key vacío no es válido")
@@ -112,6 +167,7 @@ def _get_or_create_counter(
             db.query(UsageCounter)
             .filter(UsageCounter.negocio_id == negocio_id)
             .filter(UsageCounter.module_key == module_key)
+            .filter(UsageCounter.counter_type == counter_type)
             .filter(UsageCounter.metric_key == metric)
             .filter(UsageCounter.period_start == window.period_start)
             .filter(UsageCounter.period_end == window.period_end)
@@ -121,13 +177,13 @@ def _get_or_create_counter(
     if row:
         return row
 
-    # Crear nuevo con retry defensivo (concurrencia real)
     for _ in range(2):
         try:
-            with db.begin_nested():  # SAVEPOINT
+            with db.begin_nested():
                 row_new = UsageCounter(
                     negocio_id=negocio_id,
                     module_key=module_key,
+                    counter_type=counter_type,
                     metric_key=metric,
                     period_start=window.period_start,
                     period_end=window.period_end,
@@ -158,14 +214,15 @@ def get_usage_value(
     negocio_id: int,
     module_key: ModuleKey,
     metric_key: str,
+    *,
+    counter_type: UsageCounterType = UsageCounterType.BILLABLE,
 ) -> float:
-    """
-    Retorna el uso actual (value) de una métrica en el periodo actual del módulo.
-    Si no existe suscripción o contador aún, devuelve 0.
-    """
-    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
-    if not window:
-        return 0.0
+    window = _resolve_window(
+        db,
+        negocio_id=negocio_id,
+        module_key=module_key,
+        counter_type=counter_type,
+    )
 
     metric = _norm_metric_key(metric_key)
     if not metric:
@@ -175,6 +232,7 @@ def get_usage_value(
         db.query(UsageCounter.value)
         .filter(UsageCounter.negocio_id == negocio_id)
         .filter(UsageCounter.module_key == module_key)
+        .filter(UsageCounter.counter_type == counter_type)
         .filter(UsageCounter.metric_key == metric)
         .filter(UsageCounter.period_start == window.period_start)
         .filter(UsageCounter.period_end == window.period_end)
@@ -189,35 +247,30 @@ def increment_usage(
     module_key: ModuleKey,
     metric_key: str,
     delta: float = 1.0,
+    *,
+    counter_type: UsageCounterType = UsageCounterType.BILLABLE,
 ) -> float:
-    """
-    Incrementa (en el periodo actual) el contador de uso de una métrica.
-    Retorna el nuevo valor.
-
-    - delta debe ser positivo
-    - No hace commit (lo gestiona el caller)
-    - Incremento atómico (evita lost update)
-    """
     try:
         d = float(delta)
     except Exception:
         d = 0.0
 
     if d <= 0:
-        return get_usage_value(db, negocio_id, module_key, metric_key)
+        return get_usage_value(db, negocio_id, module_key, metric_key, counter_type=counter_type)
 
-    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
-    if not window:
-        # No hay suscripción/periodo -> no contamos usage
-        return 0.0
+    window = _resolve_window(
+        db,
+        negocio_id=negocio_id,
+        module_key=module_key,
+        counter_type=counter_type,
+    )
 
     metric = _norm_metric_key(metric_key)
     if not metric:
         return 0.0
 
-    row = _get_or_create_counter(db, negocio_id, module_key, metric, window)
+    row = _get_or_create_counter(db, negocio_id, module_key, counter_type, metric, window)
 
-    # UPDATE atómico multi-db
     db.execute(
         update(UsageCounter)
         .where(UsageCounter.id == row.id)
@@ -228,44 +281,60 @@ def increment_usage(
     )
     db.flush()
 
-    # Releer el valor actualizado (barato por PK)
     row2 = db.query(UsageCounter.value).filter(UsageCounter.id == row.id).first()
     return float(row2[0]) if row2 and row2[0] is not None else float(d)
 
 
-def get_or_create_usage_counter(
+def increment_usage_dual(
     db: Session,
     negocio_id: int,
     module_key: ModuleKey,
     metric_key: str,
-) -> Optional[UsageCounter]:
+    delta: float = 1.0,
+) -> tuple[float, float]:
     """
-    Retorna el UsageCounter del periodo actual (creándolo si no existe).
-    Si no hay suscripción/periodo, retorna None.
+    Strategy C: incrementa OPERATIONAL y BILLABLE por el mismo evento.
+    Retorna (operational_value, billable_value).
     """
-    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
-    if not window:
-        return None
-    return _get_or_create_counter(db, negocio_id, module_key, metric_key, window)
+    op = increment_usage(
+        db,
+        negocio_id,
+        module_key,
+        metric_key,
+        delta,
+        counter_type=UsageCounterType.OPERATIONAL,
+    )
+    bill = increment_usage(
+        db,
+        negocio_id,
+        module_key,
+        metric_key,
+        delta,
+        counter_type=UsageCounterType.BILLABLE,
+    )
+    return op, bill
 
 
 def list_usage_for_module_current_period(
     db: Session,
     negocio_id: int,
     module_key: ModuleKey,
+    *,
+    counter_type: UsageCounterType = UsageCounterType.BILLABLE,
 ) -> dict[str, float]:
-    """
-    Devuelve todos los usage counters existentes para un módulo en su periodo actual.
-    Si no hay suscripción/periodo, devuelve {}.
-    """
-    _, window = _get_subscription_window_or_none(db, negocio_id, module_key)
-    if not window:
-        return {}
+    window = _resolve_window(
+        db,
+        negocio_id=negocio_id,
+        module_key=module_key,
+        counter_type=counter_type,
+    )
+
 
     rows = (
         db.query(UsageCounter.metric_key, UsageCounter.value)
         .filter(UsageCounter.negocio_id == negocio_id)
         .filter(UsageCounter.module_key == module_key)
+        .filter(UsageCounter.counter_type == counter_type)
         .filter(UsageCounter.period_start == window.period_start)
         .filter(UsageCounter.period_end == window.period_end)
         .all()

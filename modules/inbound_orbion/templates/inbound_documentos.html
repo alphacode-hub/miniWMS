@@ -241,7 +241,7 @@ Helpers UI (template-local)
 
                         <p class="text-[11px] text-slate-500 mt-2">
                             {% if d.creado_por %}{{ d.creado_por }} · {% endif %}
-                            {{ d.creado_en|cl_datetime(short=True, no_tz=True) }}
+                            {{ d.created_at|cl_datetime(short=True, no_tz=True) }}
                             · <span class="text-slate-400">{{ fmt_size(d.size_bytes) }}</span>
                             {% if d.sha256 %} · <span class="font-mono text-slate-400">sha…{{ d.sha256[-8:] }}</span>{% endif %}
                             {% if d.linea_id %} · <span class="text-slate-400">Línea #{{ d.linea_id }}</span>{% endif %}

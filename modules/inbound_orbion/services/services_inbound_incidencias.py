@@ -9,7 +9,9 @@ from sqlalchemy import select
 from core.models.time import utcnow
 from core.models.inbound.incidencias import InboundIncidencia
 from core.models.inbound.fotos import InboundFoto
-from core.models.enums import IncidenciaEstado
+from core.models.enums import IncidenciaEstado, ModuleKey
+
+from core.services.services_usage import increment_usage_dual
 
 from modules.inbound_orbion.services.services_inbound_core import (
     InboundDomainError,
@@ -94,7 +96,12 @@ def crear_incidencia(
 
     # ✅ contrato: si viene línea, debe pertenecer a la misma recepción/negocio
     if linea_id is not None:
-        _ = _validar_linea_recepcion(db, negocio_id=negocio_id, recepcion_id=recepcion.id, linea_id=int(linea_id))
+        _ = _validar_linea_recepcion(
+            db,
+            negocio_id=negocio_id,
+            recepcion_id=recepcion.id,
+            linea_id=int(linea_id),
+        )
 
     inc = InboundIncidencia(
         negocio_id=negocio_id,
@@ -120,6 +127,21 @@ def crear_incidencia(
     )
 
     db.add(inc)
+
+    # ---------------------------------------------------------
+    # ✅ USAGE (Strategy C)
+    # Evento: CREAR incidencia
+    # - OPERATIONAL + BILLABLE por el mismo evento
+    # - Queda en la misma tx del request (commit lo hace la ruta/bridge)
+    # ---------------------------------------------------------
+    increment_usage_dual(
+        db,
+        negocio_id=negocio_id,
+        module_key=ModuleKey.INBOUND,
+        metric_key="incidencias_mes",
+        delta=1.0,
+    )
+
     db.flush()
     return inc
 
@@ -507,6 +529,9 @@ def obtener_resumen_incidencias_cuantitativo(
 
     return {
         "totales": {"count": int(tot_count), "qty": _r(tot_qty), "kg": _r(tot_kg)},
-        "por_linea": {int(k): {"count": int(v["count"]), "qty": _r(v["qty"]), "kg": _r(v["kg"])} for k, v in por_linea.items()},
+        "por_linea": {
+            int(k): {"count": int(v["count"]), "qty": _r(v["qty"]), "kg": _r(v["kg"])}
+            for k, v in por_linea.items()
+        },
         "meta": {"include_cerradas": include_cerradas, "exclude_canceladas": exclude_canceladas},
     }

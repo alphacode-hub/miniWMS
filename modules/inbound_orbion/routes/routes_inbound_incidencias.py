@@ -126,7 +126,13 @@ def _recepcion_editable_bool(recepcion) -> bool:
     return (est != "CERRADO")
 
 
-def _resolve_linea_context(db: Session, *, negocio_id: int, recepcion_id: int, linea_id: int | None) -> tuple[int | None, str | None, str | None]:
+def _resolve_linea_context(
+    db: Session,
+    *,
+    negocio_id: int,
+    recepcion_id: int,
+    linea_id: int | None,
+) -> tuple[int | None, str | None, str | None]:
     """
     Devuelve:
     - linea_id validada (o None)
@@ -140,7 +146,9 @@ def _resolve_linea_context(db: Session, *, negocio_id: int, recepcion_id: int, l
     if int(getattr(linea, "recepcion_id", 0)) != int(recepcion_id):
         raise InboundDomainError("La línea seleccionada no pertenece a esta recepción.")
 
-    unidad = _to_str_or_none(getattr(linea, "unidad", None)) or _to_str_or_none(getattr(getattr(linea, "producto", None), "unidad", None))
+    unidad = _to_str_or_none(getattr(linea, "unidad", None)) or _to_str_or_none(
+        getattr(getattr(linea, "producto", None), "unidad", None)
+    )
     lote = _to_str_or_none(getattr(linea, "lote", None))
     return int(linea.id), unidad, lote
 
@@ -267,7 +275,6 @@ async def inbound_incidencia_crear(
         lote_final = _to_str_or_none(lote) or lote_sugerido
         unidad_final = unidad_auto  # no confiamos en input cliente
 
-        # crear en service (baseline)
         crear_incidencia(
             db,
             negocio_id=negocio_id,
@@ -329,7 +336,6 @@ async def inbound_incidencia_editar(
 
         inc = obtener_incidencia(db, negocio_id=negocio_id, incidencia_id=incidencia_id)
 
-        # seguridad: la incidencia debe pertenecer a la recepción enviada
         if int(getattr(inc, "recepcion_id", 0)) != int(recepcion_id):
             raise InboundDomainError("La incidencia no pertenece a esta recepción.")
 
@@ -343,7 +349,6 @@ async def inbound_incidencia_editar(
             linea_id=linea_id_i,
         )
 
-        # updates
         inc.tipo = _to_str_or_none(tipo) or inc.tipo
         inc.criticidad = _to_str_or_none(criticidad) or inc.criticidad
         inc.titulo = _to_str_or_none(titulo)
@@ -370,7 +375,7 @@ async def inbound_incidencia_editar(
 
 
 # ============================================================
-# DETALLE (lo dejamos, aunque tu UI puede no usarlo)
+# DETALLE
 # ============================================================
 
 @router.get("/incidencias/{incidencia_id}", response_class=HTMLResponse)
@@ -607,7 +612,8 @@ async def inbound_incidencia_eliminar(
 
 
 # ============================================================
-# FOTOS (ref) - Agregar / Eliminar (se mantiene igual)
+# FOTOS (ref) - Agregar / Eliminar
+# ✅ enterprise: también bloqueamos si recepción está cerrada
 # ============================================================
 
 @router.post("/incidencias/{incidencia_id}/fotos/agregar", response_class=HTMLResponse)
@@ -627,6 +633,9 @@ async def inbound_incidencia_foto_agregar(
     email = _email_from_user(user)
 
     try:
+        # ✅ no permitir si recepción cerrada
+        obtener_recepcion_editable(db=db, recepcion_id=int(recepcion_id), negocio_id=negocio_id)
+
         inc = obtener_incidencia(db, negocio_id=negocio_id, incidencia_id=incidencia_id)
         _ = agregar_foto_incidencia_ref(
             db,
@@ -667,6 +676,9 @@ async def inbound_incidencia_foto_eliminar(
     email = _email_from_user(user)
 
     try:
+        # ✅ no permitir si recepción cerrada
+        obtener_recepcion_editable(db=db, recepcion_id=int(recepcion_id), negocio_id=negocio_id)
+
         eliminar_foto_soft(db, negocio_id=negocio_id, foto_id=foto_id, eliminado_por=email)
         db.commit()
         return _redirect(f"/inbound/incidencias/{incidencia_id}?recepcion_id={int(recepcion_id)}", ok="Foto eliminada (soft).")

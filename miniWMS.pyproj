@@ -55,7 +55,9 @@
     <Compile Include="core\services\services_business.py" />
     <Compile Include="core\services\services_enforcement.py" />
     <Compile Include="core\services\services_entitlements.py" />
+    <Compile Include="core\services\services_inbound_storage_metrics.py" />
     <Compile Include="core\services\services_modules.py" />
+    <Compile Include="core\services\services_module_counters.py" />
     <Compile Include="core\services\services_observability.py" />
     <Compile Include="core\services\services_renewal_job.py" />
     <Compile Include="core\services\services_subscriptions.py" />

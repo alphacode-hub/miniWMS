@@ -7,7 +7,9 @@ services_entitlements.py – ORBION SaaS (enterprise, baseline aligned)
 ✅ Snapshot para Hub/Superadmin/Enforcement:
    - modules: enabled/status/period (desde entitlements)
    - limits por módulo (resueltos)
-   - usage real por período (UsageCounter; solo módulos conocidos)
+   - usage por período operacional:
+        * usage = BILLABLE (para hub / límites / plan)
+        * usage_operational = OPERATIONAL (para insights / analítica)
    - overlay SuscripcionModulo si existe (trial_ends, cancel_at_period_end, period*)
    - coming_soon (flag canónico para UI: no vendible / no activable aún)
 """
@@ -21,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from core.logging_config import logger
 from core.models import Negocio
-from core.models.enums import ModuleKey
+from core.models.enums import ModuleKey, UsageCounterType
 from core.models.saas import SuscripcionModulo
 from core.services.services_usage import list_usage_for_module_current_period
 
@@ -291,7 +293,11 @@ def normalize_entitlements(ent: Optional[dict]) -> dict:
     out["modules"]["core"]["status"] = "active"
 
     limits_overrides = ent.get("limits_overrides")
-    out["limits"] = _merge_limits_for_segment(out["segment"], ent.get("limits"), limits_overrides=limits_overrides)
+    out["limits"] = _merge_limits_for_segment(
+        out["segment"],
+        ent.get("limits"),
+        limits_overrides=limits_overrides,
+    )
 
     return out
 
@@ -304,8 +310,10 @@ def resolve_entitlements(negocio: Negocio) -> dict:
     if isinstance(ent, dict) and ent:
         return normalize_entitlements(ent)
 
-    # Baseline enterprise: si no hay entitlements persistidos, devolvemos default (sin legacy)
-    logger.warning("[ENTITLEMENTS] negocio %s sin entitlements persistidos -> usando default baseline", getattr(negocio, "id", None))
+    logger.warning(
+        "[ENTITLEMENTS] negocio %s sin entitlements persistidos -> usando default baseline",
+        getattr(negocio, "id", None),
+    )
     return normalize_entitlements(None)
 
 
@@ -379,6 +387,10 @@ def _effective_enabled_status(
     - entitlements define provisioning (enabled/disabled)
     - subscription define acceso comercial real (trial/active/past_due/suspended/cancelled)
     - coming_soon SIEMPRE bloquea acceso (no vendible aún)
+
+    Nota baseline:
+    - billable/operational usage existe aunque no haya suscripción pagada,
+      porque cuenta mes operacional (CL) y no depende de sub.current_period_*.
     """
     if coming_soon:
         return False, "inactive"
@@ -391,7 +403,7 @@ def _effective_enabled_status(
     sub_status = getattr(sub.status, "value", str(sub.status)).lower().strip()
     sub_status = _norm_status(sub_status, "inactive")
 
-    sub_allows = sub_status in {"trial", "active"}
+    sub_allows = sub_status in {"trial", "active"}  # baseline: acceso real solo trial/active
     effective_enabled = bool(ent_enabled) and bool(sub_allows)
     effective_status = sub_status
     return effective_enabled, effective_status
@@ -435,22 +447,49 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
             coming_soon=coming_soon,
         )
 
-        usage_raw: dict[str, Any] = {}
-        if sub and (not coming_soon):
+        # =========================
+        # USAGE (Strategy C)
+        # - usage           = BILLABLE (plan/límites)
+        # - usage_operational = OPERATIONAL (insights/analytics)
+        #
+        # Regla: siempre que NO sea coming_soon y el módulo sea conocido,
+        # podemos exponer usage aunque no exista suscripción (trial/pago).
+        # =========================
+        usage_billable_raw: dict[str, Any] = {}
+        usage_operational_raw: dict[str, Any] = {}
+
+        if not coming_soon:
             mk_enum = _as_modulekey_or_none(mk_norm)
             if mk_enum:
                 try:
-                    usage_raw = list_usage_for_module_current_period(db, negocio_id, mk_enum) or {}
+                    usage_billable_raw = list_usage_for_module_current_period(
+                        db,
+                        negocio_id,
+                        mk_enum,
+                        counter_type=UsageCounterType.BILLABLE,
+                    ) or {}
                 except Exception:
-                    usage_raw = {}
+                    usage_billable_raw = {}
+
+                try:
+                    usage_operational_raw = list_usage_for_module_current_period(
+                        db,
+                        negocio_id,
+                        mk_enum,
+                        counter_type=UsageCounterType.OPERATIONAL,
+                    ) or {}
+                except Exception:
+                    usage_operational_raw = {}
 
         limits_raw: dict[str, Any] = {}
         if isinstance(limits_all, dict) and isinstance(limits_all.get(mk_norm), dict):
             limits_raw = limits_all.get(mk_norm) or {}
 
         limits = _cast_numeric_dict(limits_raw)
-        usage = _cast_numeric_dict(usage_raw)
+        usage = _cast_numeric_dict(usage_billable_raw)
+        usage_operational = _cast_numeric_dict(usage_operational_raw)
 
+        # Remaining SIEMPRE basado en BILLABLE (usage)
         remaining: dict[str, Any] = {}
         if limits:
             for k, lim in limits.items():
@@ -477,7 +516,8 @@ def get_entitlements_snapshot(db: Session, negocio_id: int) -> Dict[str, Any]:
             payload["period"] = mod.get("period")
 
         payload["limits"] = limits
-        payload["usage"] = usage
+        payload["usage"] = usage  # ✅ BILLABLE
+        payload["usage_operational"] = usage_operational  # ✅ OPERATIONAL
         payload["remaining"] = remaining
         payload.update(overlay)
 

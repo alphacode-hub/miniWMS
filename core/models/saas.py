@@ -27,12 +27,13 @@ from sqlalchemy.types import Enum as SAEnum
 
 from core.database import Base
 from core.models.time import utcnow
-from core.models.enums import ModuleKey, SubscriptionStatus
+from core.models.enums import ModuleKey, SubscriptionStatus, UsageCounterType
 
 
 # Nombres de tipos Enum en DB (Postgres) – consistentes y explícitos
 MODULE_KEY_ENUM_NAME = "module_key_enum"
 SUB_STATUS_ENUM_NAME = "subscription_status_enum"
+USAGE_COUNTER_TYPE_ENUM_NAME = "usage_counter_type_enum"
 
 
 class SuscripcionModulo(Base):
@@ -98,7 +99,6 @@ class SuscripcionModulo(Base):
         return self.status == SubscriptionStatus.TRIAL
 
 
-
 class UsageCounter(Base):
     """
     Contadores de uso por negocio, módulo, métrica y período.
@@ -106,6 +106,10 @@ class UsageCounter(Base):
     - Se reinicia por período (no acumulativo)
     - Base para enforcement (soft/hard) y UX del hub
     - Multi-tenant estricto por negocio_id
+
+    Strategy C:
+    - counter_type = operational | billable
+    - Billable puede igualar Operational (contrato actual).
     """
 
     __tablename__ = "usage_counters"
@@ -113,6 +117,7 @@ class UsageCounter(Base):
         UniqueConstraint(
             "negocio_id",
             "module_key",
+            "counter_type",
             "metric_key",
             "period_start",
             "period_end",
@@ -130,6 +135,7 @@ class UsageCounter(Base):
             "ix_usage_negocio_modulo_periodo",
             "negocio_id",
             "module_key",
+            "counter_type",
             "period_start",
             "period_end",
         ),
@@ -137,6 +143,7 @@ class UsageCounter(Base):
             "ix_usage_lookup_current",
             "negocio_id",
             "module_key",
+            "counter_type",
             "metric_key",
             "period_start",
             "period_end",
@@ -157,6 +164,14 @@ class UsageCounter(Base):
         SAEnum(ModuleKey, name=MODULE_KEY_ENUM_NAME),
         nullable=False,
         index=True,
+    )
+
+    counter_type = Column(
+        SAEnum(UsageCounterType, name=USAGE_COUNTER_TYPE_ENUM_NAME),
+        nullable=False,
+        index=True,
+        default=UsageCounterType.BILLABLE,
+        doc="Tipo de contador: operational (insights) vs billable (límites/plan).",
     )
 
     metric_key = Column(
@@ -184,14 +199,7 @@ class UsageCounter(Base):
     # Relación
     negocio = relationship("Negocio", back_populates="usage_counters")
 
-    # =========================
-    # HELPERS (no DB)
-    # =========================
     def add(self, delta: float) -> float:
-        """
-        Incremento in-memory (no hace commit).
-        Útil para services_usage.py.
-        """
         try:
             d = float(delta)
         except Exception:

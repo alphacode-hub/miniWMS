@@ -23,6 +23,7 @@ from core.security import require_user_dep
 from core.models import Negocio
 from core.models.enums import ModuleKey
 from core.services.services_entitlements import get_entitlements_snapshot
+from core.services.services_module_counters import resolve_used_limit_from_snapshot
 from core.logging_config import logger
 from core.services.services_subscriptions import (
     activate_module,
@@ -95,52 +96,44 @@ def _period_end_from_mod(mod: dict, coming_soon: bool) -> str | None:
     return None
 
 
-def _best_metric_summary(module_slug: str, mod: dict, coming_soon: bool) -> tuple[str | None, int | None, int | None]:
+def _best_metric_summary(
+    module_slug: str,
+    mod: dict,
+    coming_soon: bool,
+) -> tuple[str | None, float | None, float | None, str | None]:
+    """
+    Devuelve:
+      label, used, limit, unit ("count"|"mb"|None)
+
+    Hub (regla v1):
+    - inbound: mostrar SOLO recepciones (fallback evidencias_mb si no existiera recepciones_mes)
+    - wms: placeholder (si existe)
+    """
     if coming_soon:
-        return (None, None, None)
+        return (None, None, None, None)
 
-    limits = mod.get("limits") if isinstance(mod.get("limits"), dict) else {}
-    usage = mod.get("usage") if isinstance(mod.get("usage"), dict) else {}
-    remaining = mod.get("remaining") if isinstance(mod.get("remaining"), dict) else {}
-
-    def _to_int(x) -> int:
-        try:
-            return int(float(x))
-        except Exception:
-            return 0
-
-    def _get_used_limit_int(key: str) -> tuple[int | None, int | None]:
-        if key not in limits:
-            return (None, None)
-
-        lim = _to_int(limits.get(key, 0))
-        used: int | None = None
-
-        if key in usage:
-            used = _to_int(usage.get(key, 0))
-
-        if used is None and key in remaining:
-            rem = _to_int(remaining.get(key, 0))
-            used = max(lim - rem, 0)
-
-        if used is None:
-            used = 0
-
-        return (used, lim)
+    mod = mod if isinstance(mod, dict) else {}
 
     if module_slug == "inbound":
-        for key, label in (("recepciones_mes", "Recepciones"), ("incidencias_mes", "Incidencias")):
-            if key in limits:
-                used, lim = _get_used_limit_int(key)
-                return (label, used, lim)
+        key = "recepciones_mes"
+        used, lim = resolve_used_limit_from_snapshot(mod, key)
+        if lim > 0 or used > 0:
+            return ("Recepciones", used, lim, "count")
+
+        key2 = "evidencias_mb"
+        used2, lim2 = resolve_used_limit_from_snapshot(mod, key2)
+        if lim2 > 0 or used2 > 0:
+            return ("Evidencias", used2, lim2, "mb")
+
+        return (None, None, None, None)
 
     if module_slug == "wms":
         for key, label in (("movimientos_mes", "Movimientos"), ("productos", "Productos")):
-            if key in limits:
-                used, lim = _get_used_limit_int(key)
-                return (label, used, lim)
+            used, lim = resolve_used_limit_from_snapshot(mod, key)
+            if lim > 0 or used > 0:
+                return (label, used, lim, "count")
 
-    return (None, None, None)
+    return (None, None, None, None)
 
 
 def _compute_needs_onboarding(snapshot_modules: dict) -> bool:
@@ -246,7 +239,7 @@ async def orbion_hub_view(
             },
         )
 
-    # 🔥 Importante: aquí “core” NO es un módulo del Hub.
+    # “core” NO es un módulo del Hub.
     base_modules: list[dict] = [
         {
             "slug": "inbound",
@@ -298,7 +291,7 @@ async def orbion_hub_view(
         for m in base_modules:
             mk = m.get("module_key")
 
-            # módulos “futuros” sin mk (solo UI)
+            # módulos futuros sin mk (solo UI)
             if mk is None:
                 dashboard_modules.append(
                     {
@@ -312,6 +305,7 @@ async def orbion_hub_view(
                         "metric_label": None,
                         "metric_used": None,
                         "metric_limit": None,
+                        "metric_unit": None,
                         "period_end": None,
                         "cancel_at_period_end": False,
                         "trial_ends_at": None,
@@ -330,14 +324,13 @@ async def orbion_hub_view(
             access_allowed = _is_access_allowed(enabled, status, coming_soon)
             badge = _badge_from_status(status, enabled, coming_soon)
 
-            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod, coming_soon)
+            metric_label, metric_used, metric_limit, metric_unit = _best_metric_summary(m["slug"], mod, coming_soon)
             period_end = _period_end_from_mod(mod, coming_soon)
 
             sub = mod.get("subscription") or {}
             cancel_at_period_end = bool(sub.get("cancel_at_period_end")) if isinstance(sub, dict) else False
             trial_ends_at = sub.get("trial_ends_at") if isinstance(sub, dict) else None
 
-            # ✅ si coming_soon, NO queremos CTA “Activar módulo”
             if coming_soon:
                 enabled = False
                 access_allowed = False
@@ -354,6 +347,7 @@ async def orbion_hub_view(
                     "metric_label": metric_label,
                     "metric_used": metric_used,
                     "metric_limit": metric_limit,
+                    "metric_unit": metric_unit,
                     "period_end": period_end,
                     "cancel_at_period_end": cancel_at_period_end if (not coming_soon) else False,
                     "trial_ends_at": str(trial_ends_at) if (trial_ends_at and not coming_soon) else None,
@@ -387,7 +381,7 @@ async def orbion_hub_view(
                 continue
 
             badge = _badge_from_status(status, enabled, coming_soon)
-            metric_label, metric_used, metric_limit = _best_metric_summary(m["slug"], mod, coming_soon)
+            metric_label, metric_used, metric_limit, metric_unit = _best_metric_summary(m["slug"], mod, coming_soon)
             period_end = _period_end_from_mod(mod, coming_soon)
 
             dashboard_modules.append(
@@ -402,6 +396,7 @@ async def orbion_hub_view(
                     "metric_label": metric_label,
                     "metric_used": metric_used,
                     "metric_limit": metric_limit,
+                    "metric_unit": metric_unit,
                     "period_end": period_end,
                     "cancel_at_period_end": False,
                     "trial_ends_at": None,
@@ -453,7 +448,6 @@ async def activate_module_from_hub(
 
     mk = _mk_from_str(module_key)
 
-    # ✅ no activable si coming_soon
     if _is_coming_soon_for(db, negocio_id, mk):
         return RedirectResponse(url="/app/planes?error=Módulo próximamente (no disponible aún)", status_code=303)
 

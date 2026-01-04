@@ -29,6 +29,7 @@ from modules.inbound_orbion.services.services_inbound_core import InboundDomainE
 
 from .inbound_common import templates, inbound_roles_dep, get_negocio_or_404
 
+# ✅ CRÍTICO: este símbolo debe existir para que routes_inbound.py lo pueda importar
 router = APIRouter()
 
 
@@ -47,16 +48,16 @@ def _redirect(url: str, *, ok: str | None = None, error: str | None = None) -> R
     if error:
         sep = "&" if "?" in url else "?"
         url = f"{url}{sep}error={_qp(error)}"
-    return RedirectResponse(url=url, status_code=302)
+    # ✅ POST-redirect-GET correcto
+    return RedirectResponse(url=url, status_code=303)
 
 
 def _parse_datetime_local(value: str) -> datetime:
     """
     datetime-local HTML => "YYYY-MM-DDTHH:MM" (sin zona horaria).
-    Por ahora lo dejamos naive, pero si ya tienes helper _ensure_utc_aware en core,
-    lo ideal es convertir aquí antes de persistir.
+    Dejamos naive aquí; el service enterprise lo interpreta como Chile local y lo guarda UTC-aware.
     """
-    return datetime.fromisoformat(value)
+    return datetime.fromisoformat((value or "").strip())
 
 
 # ==========================================================
@@ -72,41 +73,65 @@ async def inbound_citas_lista(
     negocio_id = int(user["negocio_id"])
     get_negocio_or_404(db, negocio_id)
 
-    proveedores = listar_proveedores(db, negocio_id=negocio_id, solo_activos=True)
+    try:
+        proveedores = listar_proveedores(db, negocio_id=negocio_id, solo_activos=True)
 
-    # ✅ 1 query, agrupado (evita N+1)
-    plantillas_por_proveedor = listar_plantillas_activas_grouped_por_proveedor(db, negocio_id)
+        # ✅ 1 query agrupado (evita N+1)
+        plantillas_por_proveedor = listar_plantillas_activas_grouped_por_proveedor(db, negocio_id)
 
-    citas = listar_citas(db, negocio_id=negocio_id)
+        citas = listar_citas(db, negocio_id=negocio_id)
 
-    log_inbound_event(
-        "citas_lista_view",
-        negocio_id=negocio_id,
-        user_email=user.get("email"),
-        total=len(citas or []),
-    )
+        log_inbound_event(
+            "citas_lista_view",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            total=len(citas or []),
+        )
 
-    return templates.TemplateResponse(
-        "inbound_citas.html",
-        {
-            "request": request,
-            "user": user,
-            "citas": citas,
-            "proveedores": proveedores,
-            "plantillas_por_proveedor": plantillas_por_proveedor,
-            "estados": CitaEstado,
-            "ok": request.query_params.get("ok"),
-            "error": request.query_params.get("error"),
-            "modulo_nombre": "Orbion Inbound",
-        },
-    )
+        return templates.TemplateResponse(
+            "inbound_citas.html",
+            {
+                "request": request,
+                "user": user,
+                "citas": citas,
+                "proveedores": proveedores,
+                "plantillas_por_proveedor": plantillas_por_proveedor,
+                "estados": CitaEstado,
+                "ok": request.query_params.get("ok"),
+                "error": request.query_params.get("error"),
+                "modulo_nombre": "Orbion Inbound",
+            },
+        )
+
+    except Exception as exc:
+        log_inbound_error(
+            "citas_lista_error",
+            negocio_id=negocio_id,
+            user_email=user.get("email"),
+            error=str(exc),
+        )
+        return templates.TemplateResponse(
+            "inbound_citas.html",
+            {
+                "request": request,
+                "user": user,
+                "citas": [],
+                "proveedores": [],
+                "plantillas_por_proveedor": {},
+                "estados": CitaEstado,
+                "ok": None,
+                "error": "No se pudo cargar la agenda de citas.",
+                "modulo_nombre": "Orbion Inbound",
+            },
+            status_code=200,
+        )
 
 
 # ==========================================================
 # Crear Cita + Recepción 1:1 (Cita manda)
 # ==========================================================
 
-@router.post("/citas/nueva", response_class=HTMLResponse)
+@router.post("/citas/nueva")
 async def inbound_cita_crear(
     fecha_programada: str = Form(...),
     proveedor_id: int | None = Form(None),
@@ -114,7 +139,7 @@ async def inbound_cita_crear(
     referencia: str = Form(""),
     notas: str = Form(""),
 
-    # ✅ nuevos
+    # ✅ transporte
     contenedor: str = Form(""),
     patente_camion: str = Form(""),
     tipo_carga: str = Form(""),
@@ -125,18 +150,16 @@ async def inbound_cita_crear(
     negocio_id = int(user["negocio_id"])
 
     try:
-        fecha = datetime.fromisoformat(fecha_programada)
+        fecha = _parse_datetime_local(fecha_programada)
 
         cita, recepcion = crear_cita_y_recepcion(
             db=db,
             negocio_id=negocio_id,
-            fecha_programada=fecha,
+            fecha_programada=fecha,  # naive UI -> service lo guarda UTC-aware
             proveedor_id=proveedor_id,
             referencia=referencia,
             notas=notas,
             plantilla_id=plantilla_id,
-
-            # ✅ pasar transporte
             contenedor=contenedor,
             patente_camion=patente_camion,
             tipo_carga=tipo_carga,
@@ -146,15 +169,15 @@ async def inbound_cita_crear(
             "cita_y_recepcion_creadas",
             negocio_id=negocio_id,
             user_email=user.get("email"),
-            cita_id=cita.id,
-            recepcion_id=recepcion.id,
+            cita_id=getattr(cita, "id", None),
+            recepcion_id=getattr(recepcion, "id", None),
             proveedor_id=proveedor_id,
             plantilla_id=plantilla_id,
         )
 
         return _redirect(
             "/inbound/citas",
-            ok=f"Cita creada y recepción {recepcion.codigo_recepcion} pre-registrada.",
+            ok=f"Cita creada y recepción {getattr(recepcion, 'codigo_recepcion', '')} pre-registrada.",
         )
 
     except (ValueError, InboundDomainError) as exc:
@@ -182,7 +205,10 @@ async def inbound_cita_estado(
     negocio_id = int(user["negocio_id"])
 
     try:
-        nuevo_estado = CitaEstado[estado]
+        try:
+            nuevo_estado = CitaEstado[estado]
+        except Exception:
+            return _redirect("/inbound/citas", error="Estado de cita inválido.")
 
         if nuevo_estado == CitaEstado.CANCELADA:
             return _redirect("/inbound/citas", error="Para cancelar usa el botón Cancelar (cita manda).")
@@ -190,7 +216,7 @@ async def inbound_cita_estado(
         cita = cambiar_estado_cita(
             db=db,
             negocio_id=negocio_id,
-            cita_id=cita_id,
+            cita_id=int(cita_id),
             nuevo_estado=nuevo_estado,
         )
 
@@ -198,21 +224,12 @@ async def inbound_cita_estado(
             "cita_estado_actualizado",
             negocio_id=negocio_id,
             user_email=user.get("email"),
-            cita_id=cita.id,
-            estado=cita.estado.value,
+            cita_id=getattr(cita, "id", None),
+            estado=getattr(getattr(cita, "estado", None), "value", str(getattr(cita, "estado", ""))),
         )
 
         return _redirect("/inbound/citas", ok="Estado de cita actualizado.")
 
-    except KeyError:
-        log_inbound_error(
-            "cita_estado_error",
-            negocio_id=negocio_id,
-            user_email=user.get("email"),
-            cita_id=cita_id,
-            error="estado_invalido",
-        )
-        return _redirect("/inbound/citas", error="Estado de cita inválido.")
     except InboundDomainError as exc:
         log_inbound_error(
             "cita_estado_error",
@@ -241,7 +258,7 @@ async def inbound_cita_cancelar(
         cancelar_cita_y_recepcion(
             db,
             negocio_id=negocio_id,
-            cita_id=cita_id,
+            cita_id=int(cita_id),
             motivo=motivo,
         )
 

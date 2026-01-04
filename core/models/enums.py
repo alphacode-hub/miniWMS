@@ -116,3 +116,10 @@ class InboundChecklistItemEstado(str, enum.Enum):
     CUMPLE = "CUMPLE"
     NO_CUMPLE = "NO_CUMPLE"
     NA = "NA"
+
+# =========================
+# Inbound BILLABLE = OPERATIONAL por el mismo evento (si el módulo no es coming_soon)
+# =========================
+class UsageCounterType(str, enum.Enum):
+    OPERATIONAL = "operational"
+    BILLABLE = "billable"

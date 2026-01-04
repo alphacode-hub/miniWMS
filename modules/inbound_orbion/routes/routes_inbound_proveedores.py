@@ -143,7 +143,9 @@ async def inbound_proveedor_crear(
     observaciones: str = Form(""),
 ):
     negocio_id = int(user["negocio_id"])
-    get_negocio_or_404(db, negocio_id)
+
+    # ✅ IMPORTANTE: capturar el negocio para enforcement de entitlements en el servicio
+    negocio = get_negocio_or_404(db, negocio_id)
 
     try:
         proveedor = crear_proveedor(
@@ -156,6 +158,7 @@ async def inbound_proveedor_crear(
             contacto=contacto,
             direccion=direccion,
             observaciones=observaciones,
+            negocio=negocio,  # ✅ activa enforcement del límite "proveedores"
         )
 
         log_inbound_event(
@@ -450,7 +453,6 @@ async def inbound_plantilla_linea_crear(
 
         # 1) si viene producto_id, úsalo
         if pid:
-            # validar que sea del negocio (multi-tenant)
             pr = (
                 db.query(Producto)
                 .filter(Producto.id == pid, Producto.negocio_id == negocio_id)
